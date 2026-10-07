@@ -1,0 +1,16 @@
+{
+  "name": "@telebooks/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configurações compartilhadas do TeleBooks",
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.react.json",
+    "tsconfig.node.json"
+  ],
+  "scripts": {
+    "build": "echo Config build complete",
+    "lint": "echo Config lint ok",
+    "typecheck": "echo Config typecheck ok"
+  }
+}

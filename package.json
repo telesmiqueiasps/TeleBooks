@@ -1,0 +1,22 @@
+{
+  "name": "telebooks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TeleBooks - Biblioteca pessoal, rápida, elegante e visual",
+  "scripts": {
+    "dev": "pnpm --filter \"@telebooks/*\" --parallel dev",
+    "dev:web": "pnpm --filter @telebooks/web dev",
+    "dev:api": "pnpm --filter @telebooks/api dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "packageManager": "pnpm@12.10.1"
+}

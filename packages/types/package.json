@@ -1,0 +1,17 @@
+{
+  "name": "@telebooks/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tipos TypeScript compartilhados do TeleBooks",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo Types lint ok"
+  },
+  "devDependencies": {
+    "@telebooks/config": "workspace:*",
+    "typescript": "^5.8.2"
+  }
+}

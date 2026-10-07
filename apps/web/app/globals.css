@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #faf8f5;
+  --foreground: #161719;
+  --card: #ffffff;
+  --card-foreground: #161719;
+  --border: #e7e3da;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+}
+
+.dark {
+  --background: #111317;
+  --foreground: #f1f3f5;
+  --card: #181b22;
+  --card-foreground: #f1f3f5;
+  --border: #272b35;
+  --muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Efeito sutil de lombada de livro para capas */
+.book-spine {
+  position: relative;
+}
+.book-spine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(255, 255, 255, 0.15) 100%
+  );
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Scrollbar sutil e elegante */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.6);
+}
