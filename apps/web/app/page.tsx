@@ -25,6 +25,7 @@ import { AppShell } from "../components/shell/app-shell";
 import { BookCard, BookItem } from "../components/book-card";
 import { AddBookModal } from "../components/add-book-modal";
 import { ReadingProgressModal } from "../components/reading-progress-modal";
+import { useAuth } from "../components/auth/auth-provider";
 
 const INITIAL_BOOKS: BookItem[] = [
   {
@@ -181,6 +182,13 @@ export default function HomePage() {
     );
   };
 
+  const { user, profile } = useAuth();
+  const greetingName =
+    profile?.full_name?.split(" ")[0] ||
+    user?.user_metadata?.full_name?.split(" ")[0] ||
+    profile?.username ||
+    "Leitor";
+
   return (
     <AppShell
       onAddBookClick={() => setIsAddBookOpen(true)}
@@ -196,7 +204,7 @@ export default function HomePage() {
               <span>Sua biblioteca pessoal em 2026</span>
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[#141618] dark:text-[#f3f4f6]">
-              Boa tarde, Miqueias.
+              Boa tarde, {greetingName}.
             </h1>
             <p className="text-xs sm:text-sm text-[#6b7280] dark:text-[#9ca3af] italic font-serif max-w-xl">
               “Não há amigo tão leal quanto um livro.” — Ernest Hemingway

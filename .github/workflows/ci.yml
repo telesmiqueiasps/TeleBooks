@@ -36,6 +36,9 @@ jobs:
 
       - name: Run Build
         run: pnpm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://plunoacxwgwsjayzwmdl.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_-6EwtyA5ZMDK1XaVkjW21A_r1rMfS_-
 
   api:
     name: Lint & Syntax Check (Backend API)
