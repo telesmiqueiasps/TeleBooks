@@ -17,9 +17,6 @@ develop-eggs/
 dist/
 downloads/
 eggs/
-.eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -65,6 +62,7 @@ coverage/
 # Turbo / Build caches
 .turbo/
 .cache/
+*.tsbuildinfo
 
 # Operating System files
 .DS_Store

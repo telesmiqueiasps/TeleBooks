@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import type { User, Session } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import type { Profile } from "@telebooks/types";
 import { createClient } from "../../lib/supabase/client";
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, newSession: Session | null) => {
       if (!isMounted) return;
 
       setSession(newSession);
