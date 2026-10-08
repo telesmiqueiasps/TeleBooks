@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Cloudflare R2 Storage (S3-compatible)
+    R2_BUCKET_NAME: str = "telebooks-storage"
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_ENDPOINT_URL: str = ""
+    R2_PUBLIC_URL: str = ""
+
     # Observability
     SENTRY_DSN: str = ""
 
@@ -66,6 +74,18 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def r2_endpoint(self) -> str:
+        if self.R2_ENDPOINT_URL:
+            return self.R2_ENDPOINT_URL
+        if self.R2_ACCOUNT_ID:
+            return f"https://{self.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        return ""
+
+    @property
+    def r2_configured(self) -> bool:
+        return bool(self.R2_ACCESS_KEY_ID and self.R2_SECRET_ACCESS_KEY and self.r2_endpoint)
 
     model_config = SettingsConfigDict(
         env_file=(".env", "apps/api/.env"),

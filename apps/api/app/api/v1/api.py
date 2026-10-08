@@ -1,6 +1,15 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, authors, books, genres, health, publishers, shelf
+from app.api.v1.endpoints import (
+    auth,
+    authors,
+    books,
+    genres,
+    health,
+    publishers,
+    shelf,
+    storage,
+)
 
 api_router = APIRouter()
 
@@ -18,3 +27,7 @@ api_router.include_router(genres.router, prefix="/genres", tags=["Genres"])
 
 # Estante Pessoal do Leitor
 api_router.include_router(shelf.router, prefix="/shelf", tags=["Shelf"])
+
+# Armazenamento de Arquivos (Cloudflare R2)
+api_router.include_router(storage.router, prefix="/storage", tags=["Storage"])
+

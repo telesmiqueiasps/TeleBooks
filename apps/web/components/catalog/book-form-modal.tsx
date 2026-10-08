@@ -1,7 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { BookOpen, Check, AlertCircle, Sparkles } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  BookOpen,
+  Check,
+  AlertCircle,
+  Sparkles,
+  UploadCloud,
+  Loader2,
+  Link2,
+  Trash2,
+  CheckCircle2,
+} from "lucide-react";
 import { Modal, Button, Input } from "@telebooks/ui";
 import type { Author, Book, Genre, Publisher } from "@telebooks/types";
 import { api, BookCreateParams } from "../../lib/api";
@@ -28,6 +38,12 @@ export function BookFormModal({
   const [publisherId, setPublisherId] = useState("");
   const [selectedAuthorIds, setSelectedAuthorIds] = useState<string[]>([]);
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
+
+  // Cloudflare R2 Upload state
+  const [coverMode, setCoverMode] = useState<"upload" | "url">("upload");
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverUploadSuccess, setCoverUploadSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [availableAuthors, setAvailableAuthors] = useState<Author[]>([]);
   const [availablePublishers, setAvailablePublishers] = useState<Publisher[]>([]);
@@ -61,9 +77,43 @@ export function BookFormModal({
         setSelectedAuthorIds([]);
         setSelectedGenreIds([]);
       }
+      setIsUploadingCover(false);
+      setCoverUploadSuccess(false);
+      setCoverMode(bookToEdit?.cover_url ? "url" : "upload");
       setError(null);
     }
   }, [isOpen, bookToEdit]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Por favor, selecione um arquivo de imagem válido (JPG, PNG, WebP).");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("A imagem não pode ultrapassar o limite de 15MB.");
+      return;
+    }
+
+    setIsUploadingCover(true);
+    setError(null);
+    setCoverUploadSuccess(false);
+
+    try {
+      const result = await api.uploadFile(file, "covers");
+      setCoverUrl(result.url);
+      setCoverUploadSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar capa para o Cloudflare R2.");
+    } finally {
+      setIsUploadingCover(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const loadDependencies = async () => {
     try {
@@ -275,32 +325,138 @@ export function BookFormModal({
           </div>
         </div>
 
-        {/* Capa e Sinopse */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="md:col-span-3">
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-              URL da Imagem de Capa
+        {/* Imagem de Capa (Cloudflare R2 ou URL) */}
+        <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/40 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+              <span>Imagem de Capa</span>
+              {coverUrl?.includes("r2.dev") && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-medium">
+                  Cloudflare R2
+                </span>
+              )}
             </label>
-            <Input
-              placeholder="https://images.unsplash.com/..."
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-            />
+
+            {/* Alternador de Modo */}
+            <div className="flex items-center gap-1 bg-white dark:bg-neutral-800 p-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setCoverMode("upload")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                  coverMode === "upload"
+                    ? "bg-[#2563eb] text-white"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                }`}
+              >
+                <UploadCloud className="h-3 w-3" />
+                Upload (R2)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCoverMode("url")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                  coverMode === "url"
+                    ? "bg-[#2563eb] text-white"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                }`}
+              >
+                <Link2 className="h-3 w-3" />
+                Link URL
+              </button>
+            </div>
           </div>
-          <div className="flex items-center justify-center p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800/40">
-            {coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={coverUrl}
-                alt="Preview da capa"
-                className="h-16 w-11 object-cover rounded shadow"
-              />
-            ) : (
-              <div className="h-16 w-11 rounded border border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center text-neutral-400">
-                <BookOpen className="h-4 w-4" />
+
+          <div className="flex items-start gap-3">
+            {/* Input área */}
+            <div className="flex-1">
+              {coverMode === "upload" ? (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+
+                  <div
+                    onClick={() => !isUploadingCover && fileInputRef.current?.click()}
+                    className={`border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 ${
+                      isUploadingCover
+                        ? "border-[#2563eb] bg-blue-50/50 dark:bg-blue-950/20 cursor-wait"
+                        : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600 bg-white dark:bg-neutral-900/50"
+                    }`}
+                  >
+                    {isUploadingCover ? (
+                      <>
+                        <Loader2 className="h-5 w-5 text-[#2563eb] animate-spin" />
+                        <span className="text-xs text-neutral-600 dark:text-neutral-300 font-medium">
+                          Enviando capa para o Cloudflare R2...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="h-5 w-5 text-neutral-400" />
+                        <div className="text-xs text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-[#2563eb]">Clique para selecionar</span> ou envie do seu dispositivo
+                        </div>
+                        <span className="text-[10px] text-neutral-400">
+                          JPG, PNG, WebP ou AVIF até 15MB
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Input
+                    placeholder="https://exemplo.com/capa.jpg"
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                  />
+                  <p className="text-[10px] text-neutral-400 mt-1">
+                    Cole uma URL externa acessível de imagem.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnail preview */}
+            <div className="relative group flex-shrink-0">
+              <div className="h-20 w-14 rounded-lg bg-neutral-200 dark:bg-neutral-800 overflow-hidden border border-neutral-300 dark:border-neutral-700 flex items-center justify-center shadow-sm">
+                {coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={coverUrl}
+                    alt="Preview da capa"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <BookOpen className="h-5 w-5 text-neutral-400" />
+                )}
               </div>
-            )}
+              {coverUrl && (
+                <button
+                  type="button"
+                  title="Remover capa"
+                  onClick={() => {
+                    setCoverUrl("");
+                    setCoverUploadSuccess(false);
+                  }}
+                  className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-500 text-white shadow-md hover:bg-rose-600 transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
+
+          {coverUploadSuccess && (
+            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Capa enviada com sucesso para o Cloudflare R2!
+            </div>
+          )}
         </div>
 
         <div>

@@ -31,6 +31,10 @@ from app.schemas.shelf import (
     UserBookRead,
     UserBookUpdate,
 )
+from app.schemas.storage import (
+    FileDeleteResponse,
+    FileUploadResponse,
+)
 
 __all__ = [
     "StandardResponse",
@@ -59,4 +63,7 @@ __all__ = [
     "UserBookUpdate",
     "ReadingSessionCreate",
     "ReadingSessionRead",
+    "FileUploadResponse",
+    "FileDeleteResponse",
 ]
+

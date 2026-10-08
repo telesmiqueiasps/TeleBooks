@@ -47,6 +47,14 @@ export interface UserBookCreateParams {
   private_notes?: string | null;
 }
 
+export interface FileUploadResult {
+  url: string;
+  key: string;
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
 export interface UserBookUpdateParams {
   status?: BookStatus;
   rating?: number | null;
@@ -365,6 +373,62 @@ export const api = {
   async removeFromShelf(userBookId: string): Promise<void> {
     return request<void>(
       `/shelf/${userBookId}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  // ============================================================================
+  // Armazenamento Cloudflare R2: Upload e Remoção
+  // ============================================================================
+  async uploadFile(
+    file: File,
+    folder: "covers" | "avatars" | "documents" = "covers"
+  ): Promise<FileUploadResult> {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${API_BASE_URL}/storage/upload?folder=${folder}`,
+      {
+        method: "POST",
+        headers,
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Erro ao enviar arquivo (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData?.error?.message) {
+          errorMessage = errorData.error.message;
+        }
+      } catch {
+        // Ignora erro de parsing
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async deleteFile(keyOrUrl: string): Promise<void> {
+    const encoded = encodeURIComponent(keyOrUrl);
+    return request<void>(
+      `/storage/file?key_or_url=${encoded}`,
       {
         method: "DELETE",
       },
