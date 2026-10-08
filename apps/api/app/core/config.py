@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     R2_ENDPOINT_URL: str = ""
     R2_PUBLIC_URL: str = ""
 
+    # SMTP Email (Brevo)
+    SMTP_HOST: str = "smtp-relay.brevo.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAILS_FROM_EMAIL: str = "telesystecnologia@gmail.com"
+    EMAILS_FROM_NAME: str = "TeleBooks"
+    FRONTEND_URL: str = "https://telebooks.netlify.app"
+
     # Observability
     SENTRY_DSN: str = ""
 
@@ -88,6 +97,10 @@ class Settings(BaseSettings):
     @property
     def r2_configured(self) -> bool:
         return bool(self.R2_ACCESS_KEY_ID and self.R2_SECRET_ACCESS_KEY and self.r2_endpoint)
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.SMTP_HOST and self.SMTP_USER and self.SMTP_PASSWORD)
 
     model_config = SettingsConfigDict(
         env_file=(".env", "apps/api/.env"),

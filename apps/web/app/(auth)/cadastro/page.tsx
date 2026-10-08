@@ -99,6 +99,8 @@ export default function RegisterPage() {
         "Cadastro realizado com sucesso! Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada."
       );
     } else {
+      // Dispara o e-mail de boas-vindas editorial em segundo plano
+      api.sendWelcomeEmail().catch(() => {});
       router.push("/");
       router.refresh();
     }

@@ -136,6 +136,14 @@ export const api = {
     );
   },
 
+  async sendWelcomeEmail(): Promise<{ success: boolean; email: string }> {
+    return request<{ success: boolean; email: string }>(
+      "/auth/send-welcome",
+      { method: "POST" },
+      true
+    );
+  },
+
   // ============================================================================
   // Catálogo Global: Livros (Books)
   // ============================================================================

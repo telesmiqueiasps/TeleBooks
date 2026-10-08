@@ -55,3 +55,27 @@ def check_username(
 
     return {"username": clean, "available": exists is None}
 
+
+@router.post(
+    "/send-welcome",
+    summary="Enviar e-mail de boas-vindas ao usuário autenticado",
+    description="Dispara e-mail de boas-vindas com design editorial pelo Brevo SMTP.",
+)
+def send_welcome(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.services.email_service import email_service
+
+    user_uuid = uuid.UUID(current_user.id)
+    profile = db.execute(select(Profile).where(Profile.id == user_uuid)).scalar_one_or_none()
+    username = profile.username if profile else (current_user.username or "leitor")
+    full_name = profile.full_name if profile else None
+
+    success = email_service.send_welcome_email(
+        to_email=current_user.email,
+        username=username,
+        full_name=full_name,
+    )
+    return {"success": success, "email": current_user.email}
+
