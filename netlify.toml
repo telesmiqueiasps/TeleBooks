@@ -1,0 +1,14 @@
+# Configuração do Netlify para o Monorepo TeleBooks (Next.js 15 + pnpm workspace)
+
+[build]
+  base = "."
+  command = "pnpm run build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--version"
+  PNPM_FLAGS = "--shamefully-hoist"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
