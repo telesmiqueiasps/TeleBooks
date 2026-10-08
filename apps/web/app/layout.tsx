@@ -25,14 +25,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icone.ico" },
-      { url: "/icone.png", type: "image/png" },
-      { url: "/favicon.ico" },
+      { url: "/icone.ico?v=2" },
+      { url: "/icone.png?v=2", type: "image/png" },
+      { url: "/favicon.ico?v=2" },
     ],
     apple: [
-      { url: "/icone.png", sizes: "180x180", type: "image/png" },
+      { url: "/icone.png?v=2", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/icone.ico",
+    shortcut: "/icone.ico?v=2",
   },
 };
 
