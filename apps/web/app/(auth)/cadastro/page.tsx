@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, UserPlus, AlertCircle, CheckCircle2, Loader2, Check, X } from "lucide-react";
+import { UserPlus, AlertCircle, CheckCircle2, Loader2, Check, X } from "lucide-react";
+import { Logo } from "../../../components/ui/logo";
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from "@telebooks/ui";
 import { registerSchema } from "@telebooks/validation";
 import { useAuth } from "../../../components/auth/auth-provider";
@@ -107,25 +108,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-[#faf8f5] dark:bg-[#111317]">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-[#f8fafc] dark:bg-[#0B0F1A]">
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <span className="font-serif text-2xl font-bold tracking-tight text-[#141618] dark:text-[#f3f4f6]">
-              TeleBooks
-            </span>
+        <div className="flex flex-col items-center text-center space-y-3">
+          <Link href="/" className="inline-flex items-center justify-center transition-transform hover:scale-[1.02]">
+            <Logo size="lg" showSlogan priority />
           </Link>
-          <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] font-serif italic">
-            Crie sua conta e organize sua biblioteca pessoal
+          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] font-sans">
+            Grandes histórias começam com um bom livro.
           </p>
         </div>
 
         {/* Card de Cadastro */}
-        <Card className="border-[#e5e0d8] dark:border-[#272b35] shadow-lg">
+        <Card className="border-[#E2E8F0] dark:border-[#1E293B] shadow-xl bg-white dark:bg-[#0F172A]">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl">Criar nova conta</CardTitle>
             <CardDescription>

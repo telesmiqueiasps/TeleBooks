@@ -31,13 +31,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary:
-        "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm",
+        "bg-[#007BFF] text-white hover:bg-[#0066D6] active:bg-[#0052AD] shadow-sm shadow-[#007BFF]/25",
       secondary:
-        "bg-[#eeeae2] dark:bg-[#252a34] text-[#161719] dark:text-[#f0f2f5] hover:bg-[#e4dfd5] dark:hover:bg-[#2e3442]",
+        "bg-[#F1F5F9] dark:bg-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#E2E8F0] dark:hover:bg-[#334155]",
       outline:
-        "border border-[#e2ddd3] dark:border-[#2f3542] text-[#161719] dark:text-[#f0f2f5] hover:bg-[#f7f5f0] dark:hover:bg-[#1f242e]",
+        "border border-[#E2E8F0] dark:border-[#1E293B] text-[#0F172A] dark:text-[#F8FAFC] hover:bg-[#F8FAFC] dark:hover:bg-[#1E293B]/60",
       ghost:
-        "text-[#4b5563] dark:text-[#9ca3af] hover:text-[#111827] dark:hover:text-[#f3f4f6] hover:bg-[#f3f0e8] dark:hover:bg-[#1e232d]",
+        "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] hover:bg-slate-100 dark:hover:bg-[#1E293B]",
       danger:
         "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm",
     };

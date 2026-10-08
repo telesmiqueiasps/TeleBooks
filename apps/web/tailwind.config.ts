@@ -14,28 +14,45 @@ const config: Config = {
         foreground: "var(--foreground)",
         surface: {
           light: "#ffffff",
-          dark: "#181b22",
+          dark: "#0F172A",
         },
         border: "var(--border)",
-        editorial: {
-          paper: "#fcfbf9",
-          surface: "#ffffff",
-          ink: "#141618",
-          muted: "#6b7280",
-          graphite: "#12151a",
-          darkSurface: "#181b22",
-          border: "#e7e2d8",
-          darkBorder: "#272b35",
-          accent: "#2563eb",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)",
+        // Paleta Oficial TeleBooks
+        telebooks: {
+          blue: "#007BFF", // Azul Principal Oficial
+          navy: "#0F172A", // Azul Escuro Oficial
+          purple: "#6366F1", // Roxo Oficial
+          green: "#10B981", // Verde Oficial
+          gray: "#E5E7EB", // Cinza Oficial
+          darkBg: "#0B0F1A", // Fundo Dark Oficial
+          darkSurface: "#0F172A", // Superfície Dark Oficial
+        },
+        primary: {
+          DEFAULT: "#007BFF",
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
+          500: "#007BFF",
+          600: "#0066d6",
+          700: "#0052ad",
+          800: "#003e85",
+          900: "#002b5c",
         },
       },
       fontFamily: {
-        serif: ["var(--font-serif)", "Newsreader", "Georgia", "Cambria", "serif"],
+        display: ["var(--font-sora)", "Sora", "sans-serif"],
+        sora: ["var(--font-sora)", "Sora", "sans-serif"],
         sans: ["var(--font-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        serif: ["var(--font-sora)", "Sora", "Georgia", "serif"],
       },
       boxShadow: {
         book: "0 8px 24px -4px rgba(0, 0, 0, 0.15), 0 2px 6px -1px rgba(0, 0, 0, 0.08)",
         "book-hover": "0 16px 32px -6px rgba(0, 0, 0, 0.22), 0 4px 10px -2px rgba(0, 0, 0, 0.12)",
+        "brand-glow": "0 0 24px -4px rgba(0, 123, 255, 0.35)",
       },
     },
   },

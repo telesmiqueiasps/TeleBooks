@@ -10,6 +10,8 @@ export interface AppShellProps {
   onAddBookClick?: () => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  bookCount?: number;
+  readingCount?: number;
 }
 
 export function AppShell({
@@ -17,6 +19,8 @@ export function AppShell({
   onAddBookClick = () => {},
   searchQuery = "",
   onSearchChange = () => {},
+  bookCount,
+  readingCount,
 }: AppShellProps) {
   const [currentTab, setCurrentTab] = useState("home");
 
@@ -26,8 +30,8 @@ export function AppShell({
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
-        bookCount={128}
-        readingCount={2}
+        bookCount={bookCount}
+        readingCount={readingCount}
       />
 
       {/* Main Content Area */}
@@ -47,7 +51,7 @@ export function AppShell({
       <BottomNav
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
-        readingCount={2}
+        readingCount={readingCount}
       />
     </div>
   );

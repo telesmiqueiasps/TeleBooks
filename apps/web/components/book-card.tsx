@@ -140,7 +140,7 @@ export function BookCard({
             </div>
             <div className="w-full bg-white/30 h-1.5 rounded-full overflow-hidden">
               <div
-                className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                className="bg-[#007BFF] h-full rounded-full transition-all duration-300"
                 style={{ width: `${percent}%` }}
               />
             </div>
@@ -150,10 +150,10 @@ export function BookCard({
 
       {/* Book Metadata */}
       <div className="mt-3 space-y-1">
-        <h4 className="font-serif text-sm font-semibold text-[#141618] dark:text-[#f3f4f6] line-clamp-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+        <h4 className="font-display text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC] line-clamp-1 group-hover:text-[#007BFF] transition-colors">
           {book.title}
         </h4>
-        <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] line-clamp-1">
+        <p className="text-xs text-[#64748B] dark:text-[#94A3B8] line-clamp-1 font-sans">
           {book.author}
         </p>
 

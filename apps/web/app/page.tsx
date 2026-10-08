@@ -56,6 +56,7 @@ export default function HomePage() {
   // Dados reais da API
   const [shelfBooks, setShelfBooks] = useState<UserBook[]>([]);
   const [catalogBooks, setCatalogBooks] = useState<Book[]>([]);
+  const [genresCount, setGenresCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -126,6 +127,16 @@ export default function HomePage() {
         setTotalPages(res.total_pages || 1);
         setTotalItems(res.total || 0);
       }
+
+      // Buscar total de gêneros/coleções para o contador
+      try {
+        const genresRes = await api.getGenres({ page_size: 1 });
+        if (genresRes?.total) {
+          setGenresCount(genresRes.total);
+        }
+      } catch {
+        // Fallback silencioso
+      }
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Erro ao carregar dados do servidor.";
@@ -139,10 +150,14 @@ export default function HomePage() {
     loadData();
   }, [loadData]);
 
-  // Livro atualmente em leitura para o destaque (Hero)
-  const currentlyReading = useMemo(() => {
-    return shelfBooks.find((ub) => ub.status === "reading");
+  // Livros atualmente em leitura para o destaque (Hero) e seção Continuar Lendo
+  const readingBooks = useMemo(() => {
+    return shelfBooks.filter((ub) => ub.status === "reading");
   }, [shelfBooks]);
+
+  const currentlyReading = useMemo(() => {
+    return readingBooks[0] || null;
+  }, [readingBooks]);
 
   // Conversão de UserBook ou Book para BookItem para o BookCard
   const displayBooks: BookItem[] = useMemo(() => {
@@ -273,6 +288,24 @@ export default function HomePage() {
     profile?.username ||
     "Leitor";
 
+  const uniqueAuthorsCount = useMemo(() => {
+    const set = new Set<string>();
+    shelfBooks.forEach((ub) => {
+      ub.book?.authors?.forEach((a) => set.add(a.name));
+    });
+    return set.size;
+  }, [shelfBooks]);
+
+  const uniquePublishersCount = useMemo(() => {
+    const set = new Set<string>();
+    shelfBooks.forEach((ub) => {
+      if (ub.book?.publisher?.name) {
+        set.add(ub.book.publisher.name);
+      }
+    });
+    return set.size;
+  }, [shelfBooks]);
+
   if (isAuthLoading) {
     return (
       <AppShell>
@@ -299,20 +332,18 @@ export default function HomePage() {
         setSearchQuery(q);
         setCurrentPage(1);
       }}
+      bookCount={shelfBooks.length}
+      readingCount={readingBooks.length}
     >
-      <div className="space-y-10">
+      <div className="space-y-8 sm:space-y-10">
         {/* Editorial Greeting & Header Controls */}
-        <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#e7e3da] dark:border-[#272b35] pb-6">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Sua biblioteca pessoal e catálogo global</span>
-            </div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[#141618] dark:text-[#f3f4f6]">
-              Olá, {greetingName}.
+        <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#E2E8F0] dark:border-[#1E293B] pb-6">
+          <div className="space-y-1">
+            <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0F172A] dark:text-white flex items-center gap-2">
+              Olá, {greetingName} <span className="inline-block origin-bottom-right">👋</span>
             </h1>
-            <p className="text-xs sm:text-sm text-[#6b7280] dark:text-[#9ca3af] italic font-serif max-w-xl">
-              “Não há amigo tão leal quanto um livro.” — Ernest Hemingway
+            <p className="text-sm sm:text-base text-[#64748B] dark:text-[#94A3B8] font-sans">
+              Sua biblioteca, do seu jeito.
             </p>
           </div>
 
@@ -322,7 +353,7 @@ export default function HomePage() {
               variant="outline"
               size="sm"
               onClick={() => setIsManageEntitiesOpen(true)}
-              leftIcon={<Building2 className="h-3.5 w-3.5 text-neutral-500" />}
+              leftIcon={<Building2 className="h-3.5 w-3.5 text-[#64748B]" />}
               className="text-xs"
             >
               Autores & Editoras
@@ -342,140 +373,171 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Hero Card: Lendo Agora (se houver livro com status "reading") */}
-        {currentlyReading && currentlyReading.book && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-xl font-bold text-[#141618] dark:text-[#f3f4f6] flex items-center gap-2">
-                <BookmarkCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                <span>Lendo Agora</span>
-              </h2>
-              <Badge variant="reading" size="sm" dot>
-                Em Andamento
-              </Badge>
+        {/* Quick Stats Grid - Identidade Visual Oficial TeleBooks */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm transition-all hover:shadow-md hover:border-[#CBD5E1] dark:hover:border-[#334155]">
+            <div className="text-2xl sm:text-3xl font-extrabold font-display text-[#0F172A] dark:text-white">
+              {shelfBooks.length}
             </div>
+            <div className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-1">
+              Livros
+            </div>
+          </div>
 
-            <Card className="overflow-hidden border-[#e5e0d8] dark:border-[#272b35] bg-gradient-to-br from-white to-[#faf8f5] dark:from-[#181b22] dark:to-[#14171d]">
-              <div className="flex flex-col sm:flex-row gap-6 p-6 sm:p-8">
-                <div
-                  onClick={() =>
-                    handleOpenShelfEdit({
-                      id: currentlyReading.id,
-                      bookId: currentlyReading.book_id,
-                      title: currentlyReading.book!.title,
-                      author:
-                        currentlyReading.book!.authors?.map((a) => a.name).join(", ") || "",
-                      coverUrl: currentlyReading.book!.cover_url || "",
-                      pages: currentlyReading.book!.page_count || 100,
-                      currentPage: currentlyReading.current_page,
-                      status: "reading",
-                      statusLabel: "Lendo",
-                      isFavorite: currentlyReading.favorite,
-                      isInShelf: true,
-                    })
-                  }
-                  className="relative w-28 sm:w-36 aspect-[2/3] shrink-0 rounded-xl overflow-hidden shadow-book book-spine cursor-pointer transition-transform duration-200 hover:scale-105"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={
-                      currentlyReading.book.cover_url ||
-                      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600"
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm transition-all hover:shadow-md hover:border-[#CBD5E1] dark:hover:border-[#334155]">
+            <div className="text-2xl sm:text-3xl font-extrabold font-display text-[#0F172A] dark:text-white">
+              {uniqueAuthorsCount}
+            </div>
+            <div className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-1">
+              Autores
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm transition-all hover:shadow-md hover:border-[#CBD5E1] dark:hover:border-[#334155]">
+            <div className="text-2xl sm:text-3xl font-extrabold font-display text-[#0F172A] dark:text-white">
+              {uniquePublishersCount}
+            </div>
+            <div className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-1">
+              Editoras
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] shadow-sm transition-all hover:shadow-md hover:border-[#CBD5E1] dark:hover:border-[#334155]">
+            <div className="text-2xl sm:text-3xl font-extrabold font-display text-[#0F172A] dark:text-white">
+              {genresCount || 17}
+            </div>
+            <div className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mt-1">
+              Coleções
+            </div>
+          </div>
+        </section>
+
+        {/* Seção Continuar Lendo - Mockup Identidade Visual */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <span>Continuar lendo</span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode("shelf");
+                setStatusFilter("reading");
+              }}
+              className="text-xs font-semibold text-[#007BFF] hover:underline flex items-center gap-1 group"
+            >
+              <span>Ver todos</span>
+              <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            </button>
+          </div>
+
+          {readingBooks.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {readingBooks.slice(0, 5).map((ub) => {
+                const book = ub.book;
+                if (!book) return null;
+                const pages = book.page_count || 100;
+                const current = ub.current_page || 0;
+                const percent = Math.min(100, Math.round((current / pages) * 100));
+
+                return (
+                  <div
+                    key={ub.id}
+                    onClick={() =>
+                      handleOpenShelfEdit({
+                        id: ub.id,
+                        bookId: ub.book_id,
+                        title: book.title,
+                        author: book.authors?.map((a) => a.name).join(", ") || "",
+                        coverUrl: book.cover_url || "",
+                        pages,
+                        currentPage: current,
+                        status: "reading",
+                        statusLabel: "Lendo",
+                        isFavorite: ub.favorite,
+                        isInShelf: true,
+                      })
                     }
-                    alt={currentlyReading.book.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-
-                <div className="flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="reading" size="sm" dot>
-                        Lendo
-                      </Badge>
-                      <span className="text-xs text-[#6b7280] dark:text-[#9ca3af]">
-                        {currentlyReading.book.genres?.[0]?.name || "Literatura"}
-                      </span>
-                    </div>
-
-                    <h3 className="font-serif text-2xl font-bold text-[#141618] dark:text-[#f3f4f6] mt-2">
-                      {currentlyReading.book.title}
-                    </h3>
-                    <p className="text-sm text-[#6b7280] dark:text-[#9ca3af]">
-                      {currentlyReading.book.authors?.map((a) => a.name).join(", ")}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-baseline text-xs">
-                      <span className="font-medium text-[#141618] dark:text-[#f3f4f6]">
-                        {currentlyReading.current_page} de {currentlyReading.book.page_count || "?"} páginas
-                      </span>
-                      <span className="font-semibold text-amber-600 dark:text-amber-400">
-                        {Math.min(
-                          100,
-                          Math.round(
-                            (currentlyReading.current_page /
-                              (currentlyReading.book.page_count || 1)) *
-                              100
-                          )
-                        )}
-                        % lido
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-[#eeeae2] dark:bg-[#252a35] overflow-hidden">
-                      <div
-                        className="h-full bg-amber-500 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.round(
-                              (currentlyReading.current_page /
-                                (currentlyReading.book.page_count || 1)) *
-                                100
-                            )
-                          )}%`,
-                        }}
+                    className="group flex flex-col cursor-pointer select-none"
+                  >
+                    <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-book group-hover:shadow-book-hover transition-all duration-300 group-hover:-translate-y-1 bg-[#E2E8F0] dark:bg-[#1E293B] book-spine">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={
+                          book.cover_url ||
+                          "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600"
+                        }
+                        alt={book.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                       />
                     </div>
+                    <div className="mt-2.5 space-y-1">
+                      <h4 className="font-display text-sm font-semibold text-[#0F172A] dark:text-white line-clamp-1 group-hover:text-[#007BFF] transition-colors">
+                        {book.title}
+                      </h4>
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] line-clamp-1">
+                        {book.authors?.map((a) => a.name).join(", ") || "Autor não informado"}
+                      </p>
+                      <div className="pt-1 space-y-1">
+                        <div className="flex justify-between items-center text-[10px] text-[#64748B] dark:text-[#94A3B8]">
+                          <span>{percent}%</span>
+                          <span>{current}/{pages} pág</span>
+                        </div>
+                        <div className="w-full bg-[#E2E8F0] dark:bg-[#1E293B] h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-[#007BFF] h-full rounded-full transition-all duration-300"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() =>
-                        handleOpenShelfEdit({
-                          id: currentlyReading.id,
-                          bookId: currentlyReading.book_id,
-                          title: currentlyReading.book!.title,
-                          author:
-                            currentlyReading.book!.authors?.map((a) => a.name).join(", ") || "",
-                          coverUrl: currentlyReading.book!.cover_url || "",
-                          pages: currentlyReading.book!.page_count || 100,
-                          currentPage: currentlyReading.current_page,
-                          status: "reading",
-                          statusLabel: "Lendo",
-                          isFavorite: currentlyReading.favorite,
-                          isInShelf: true,
-                        })
-                      }
-                      leftIcon={<BookmarkCheck className="h-4 w-4" />}
-                    >
-                      Atualizar Leitura
-                    </Button>
-                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="p-6 border-[#E2E8F0] dark:border-[#1E293B] bg-gradient-to-r from-blue-50/40 to-indigo-50/20 dark:from-blue-950/20 dark:to-indigo-950/10">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1 text-center sm:text-left">
+                  <h3 className="font-display font-semibold text-sm sm:text-base text-[#0F172A] dark:text-white">
+                    Nenhum livro em andamento no momento
+                  </h3>
+                  <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+                    Selecione um livro da sua estante ou do catálogo global para acompanhar o seu progresso diário de leitura.
+                  </p>
                 </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setViewMode("shelf");
+                    setStatusFilter("want_to_read");
+                  }}
+                  className="shrink-0 text-xs"
+                >
+                  Explorar Estante
+                </Button>
               </div>
             </Card>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* View Mode Toggle: Minha Estante vs Catálogo Global */}
-        <section className="space-y-6">
+        <section className="space-y-6 pt-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <h2 className="font-display text-xl font-bold text-[#0F172A] dark:text-white">
+                {viewMode === "shelf" ? "Adicionados recentemente" : "Catálogo Global"}
+              </h2>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
+                {viewMode === "shelf"
+                  ? "Seus livros organizados, categorizados e prontos para leitura"
+                  : "Catálogo comunitário com obras, edições e capas disponíveis"}
+              </p>
+            </div>
+
             <div className="flex items-center gap-3">
-              <div className="flex p-1 bg-neutral-200/70 dark:bg-neutral-800/70 rounded-xl">
+              <div className="flex p-1 bg-slate-200/70 dark:bg-[#1E293B] rounded-xl">
                 <button
                   type="button"
                   onClick={() => {
@@ -484,8 +546,8 @@ export default function HomePage() {
                   }}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     viewMode === "shelf"
-                      ? "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
+                      ? "bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white shadow-sm"
+                      : "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white"
                   }`}
                 >
                   <Library className="h-3.5 w-3.5" />
@@ -499,8 +561,8 @@ export default function HomePage() {
                   }}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     viewMode === "catalog"
-                      ? "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
+                      ? "bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white shadow-sm"
+                      : "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white"
                   }`}
                 >
                   <Globe className="h-3.5 w-3.5" />
@@ -511,45 +573,45 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={loadData}
-                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                className="p-2 text-[#64748B] hover:text-[#0F172A] dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
                 title="Recarregar"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
               </button>
             </div>
-
-            {/* Filter Pills for Shelf */}
-            {viewMode === "shelf" && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                {[
-                  { id: "all", label: "Todos" },
-                  { id: "reading", label: "Lendo" },
-                  { id: "want_to_read", label: "Quero Ler" },
-                  { id: "read", label: "Lidos" },
-                  { id: "favorite", label: "Favoritos" },
-                ].map((filter) => {
-                  const isActive = statusFilter === filter.id;
-                  return (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      onClick={() => {
-                        setStatusFilter(filter.id);
-                        setCurrentPage(1);
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap select-none ${
-                        isActive
-                          ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
+
+          {/* Filter Pills for Shelf */}
+          {viewMode === "shelf" && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              {[
+                { id: "all", label: "Todos" },
+                { id: "reading", label: "Lendo" },
+                { id: "want_to_read", label: "Quero Ler" },
+                { id: "read", label: "Lidos" },
+                { id: "favorite", label: "Favoritos" },
+              ].map((filter) => {
+                const isActive = statusFilter === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(filter.id);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap select-none ${
+                      isActive
+                        ? "bg-[#007BFF] text-white shadow-sm shadow-[#007BFF]/25 font-semibold"
+                        : "bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] text-[#64748B] dark:text-[#94A3B8] hover:border-[#CBD5E1] dark:hover:border-[#334155] hover:text-[#0F172A] dark:hover:text-white"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Erro de API */}
           {apiError && (

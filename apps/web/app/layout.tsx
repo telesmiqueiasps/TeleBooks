@@ -1,34 +1,43 @@
 import type { Metadata, Viewport } from "next";
-import { Newsreader, Inter } from "next/font/google";
+import { Sora, Inter } from "next/font/google";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "../components/auth/auth-provider";
 import "./globals.css";
 
-const newsreader = Newsreader({
+const sora = Sora({
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-sora",
   display: "swap",
-  style: ["normal", "italic"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "TeleBooks — Minha biblioteca, do meu jeito",
+  title: "TeleBooks — Sua biblioteca, do seu jeito",
   description:
-    "Plataforma editorial para catalogar, organizar e acompanhar sua biblioteca pessoal.",
+    "TeleBooks — Sua biblioteca, do seu jeito. Mais que livros, é sobre pessoas.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/icone.ico" },
+      { url: "/icone.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [
+      { url: "/icone.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/icone.ico",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#faf8f5",
+  themeColor: "#007BFF",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -42,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${newsreader.variable} ${inter.variable}`}
+      className={`${sora.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <body className="font-sans antialiased bg-background text-foreground selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900/40 dark:selection:text-blue-100">

@@ -10,9 +10,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border border-[#e5e0d8] dark:border-[#272b35] bg-white dark:bg-[#181b22] text-[#161719] dark:text-[#f0f2f5] shadow-sm",
+        "rounded-2xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-[#F8FAFC] shadow-sm",
         interactive &&
-          "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#d0c9be] dark:hover:border-[#383e4d] cursor-pointer",
+          "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-[#CBD5E1] dark:hover:border-[#334155] cursor-pointer",
         className
       )}
       {...props}
@@ -27,7 +27,7 @@ export const CardHeader = forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-5 pb-3", className)}
+    className={cn("flex flex-col space-y-1.5 p-6 pb-3", className)}
     {...props}
   />
 ));
@@ -40,7 +40,7 @@ export const CardTitle = forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "font-serif text-lg font-semibold leading-snug tracking-tight text-[#141618] dark:text-[#f3f4f6]",
+      "font-display text-lg font-bold leading-snug tracking-tight text-[#0F172A] dark:text-[#F8FAFC]",
       className
     )}
     {...props}
@@ -54,7 +54,7 @@ export const CardDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-xs text-[#6b7280] dark:text-[#9ca3af] leading-normal", className)}
+    className={cn("text-xs text-[#64748B] dark:text-[#94A3B8] leading-normal", className)}
     {...props}
   />
 ));

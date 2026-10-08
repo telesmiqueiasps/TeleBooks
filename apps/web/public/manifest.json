@@ -1,12 +1,24 @@
 {
   "name": "TeleBooks",
   "short_name": "TeleBooks",
-  "description": "Biblioteca pessoal para leitores",
+  "description": "Sua biblioteca, do seu jeito. Mais que livros, é sobre pessoas.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fcfbf9",
-  "theme_color": "#fcfbf9",
+  "orientation": "portrait",
+  "background_color": "#0B0F1A",
+  "theme_color": "#007BFF",
   "icons": [
+    {
+      "src": "/icone.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icone.ico",
+      "sizes": "48x48 32x32 16x16",
+      "type": "image/x-icon"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",

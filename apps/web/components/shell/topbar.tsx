@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Search, Plus, BookOpen, Sun, Moon } from "lucide-react";
+import { Search, Plus, Sun, Moon, Bell } from "lucide-react";
 import { Button } from "@telebooks/ui";
 import { useTheme } from "../theme-provider";
+import { Logo } from "../ui/logo";
 
 export interface TopbarProps {
   onAddBookClick: () => void;
@@ -19,15 +20,10 @@ export function Topbar({
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[#e7e3da] dark:border-[#272b35] bg-[#faf8f5]/85 dark:bg-[#111317]/85 backdrop-blur-md px-4 sm:px-8 py-3.5">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[#e2e8f0] dark:border-[#1E293B] bg-white/85 dark:bg-[#0B0F1A]/85 backdrop-blur-md px-4 sm:px-8 py-3.5">
       {/* Mobile Brand Logo */}
-      <div className="flex items-center gap-2.5 md:hidden">
-        <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-blue-600 text-white">
-          <BookOpen className="h-4 w-4" />
-        </div>
-        <span className="font-serif text-lg font-bold text-[#141618] dark:text-[#f3f4f6]">
-          TeleBooks
-        </span>
+      <div className="flex items-center md:hidden">
+        <Logo size="xs" />
       </div>
 
       {/* Global Search Input */}
@@ -37,8 +33,8 @@ export function Topbar({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Buscar por título, autor, ISBN ou gênero..."
-          className="w-full rounded-xl border border-[#e2ddd3] dark:border-[#2b313d] bg-white dark:bg-[#181b22] pl-10 pr-12 py-2 text-xs sm:text-sm text-[#141618] dark:text-[#f0f2f5] placeholder:text-[#9ca3af] dark:placeholder:text-[#64748b] transition-all focus:outline-none focus:border-blue-600 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          placeholder="Buscar livros, autores, editoras..."
+          className="w-full rounded-xl border border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] pl-10 pr-12 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#f8fafc] placeholder:text-[#9ca3af] dark:placeholder:text-[#64748b] transition-all focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 pointer-events-none">
           <kbd className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#f0ebe1] dark:bg-[#252a35] text-[#6b7280] dark:text-[#9ca3af] border border-[#e0dad0] dark:border-[#313744]">
@@ -49,15 +45,25 @@ export function Topbar({
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Notification Bell */}
+        <button
+          type="button"
+          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+          title="Notificações"
+        >
+          <Bell className="h-4 w-4" />
+          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#007BFF]" />
+        </button>
+
         {/* Quick Theme Toggle for Mobile */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="md:hidden h-9 w-9 flex items-center justify-center rounded-lg border border-[#e5e0d8] dark:border-[#272b35] bg-white dark:bg-[#181b22] text-[#4b5563] dark:text-[#9ca3af]"
+          className="md:hidden h-9 w-9 flex items-center justify-center rounded-xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8]"
           aria-label="Alternar tema"
         >
           {theme === "dark" ? (
-            <Moon className="h-4 w-4 text-blue-400" />
+            <Moon className="h-4 w-4 text-[#007BFF]" />
           ) : (
             <Sun className="h-4 w-4 text-amber-500" />
           )}

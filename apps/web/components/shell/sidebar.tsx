@@ -16,7 +16,10 @@ import {
   LogOut,
   User,
   LogIn,
+  Users,
+  List,
 } from "lucide-react";
+import { Logo } from "../ui/logo";
 import {
   NavItem,
   Dropdown,
@@ -57,21 +60,11 @@ export function Sidebar({
     .toUpperCase();
 
   return (
-    <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-[#e7e3da] dark:border-[#272b35] bg-[#faf8f5] dark:bg-[#111317] h-screen sticky top-0 p-4 justify-between select-none">
+    <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0B0F1A] h-screen sticky top-0 p-4 justify-between select-none">
       <div className="space-y-6">
         {/* Brand Header */}
-        <Link href="/" className="flex items-center gap-3 px-2 pt-2">
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-500/20">
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="font-serif text-xl font-bold tracking-tight text-[#141618] dark:text-[#f3f4f6] block leading-none">
-              TeleBooks
-            </span>
-            <span className="text-[11px] text-[#6b7280] dark:text-[#9ca3af] tracking-wide uppercase font-medium">
-              Biblioteca Pessoal
-            </span>
-          </div>
+        <Link href="/" className="flex items-center px-2 pt-2 transition-transform hover:scale-[1.02]">
+          <Logo size="md" />
         </Link>
 
         {/* Navigation Links */}
@@ -90,44 +83,49 @@ export function Sidebar({
             onClick={() => onSelectTab("library")}
           />
           <NavItem
-            label="Lendo Agora"
-            icon={<BookmarkCheck className="h-4 w-4" />}
-            active={currentTab === "reading"}
-            badge={readingCount}
-            onClick={() => onSelectTab("reading")}
-          />
-          <NavItem
-            label="Coleções & Tags"
-            icon={<FolderHeart className="h-4 w-4" />}
-            active={currentTab === "collections"}
-            onClick={() => onSelectTab("collections")}
-          />
-          <NavItem
             label="Estatísticas"
             icon={<BarChart3 className="h-4 w-4" />}
             active={currentTab === "stats"}
             onClick={() => onSelectTab("stats")}
           />
+          <NavItem
+            label="Listas"
+            icon={<List className="h-4 w-4" />}
+            active={currentTab === "lists"}
+            onClick={() => onSelectTab("lists")}
+          />
+          <NavItem
+            label="Comunidade"
+            icon={<Users className="h-4 w-4" />}
+            active={currentTab === "community"}
+            onClick={() => onSelectTab("community")}
+          />
+          <NavItem
+            label="Configurações"
+            icon={<Settings className="h-4 w-4" />}
+            active={currentTab === "settings"}
+            onClick={() => onSelectTab("settings")}
+          />
         </nav>
       </div>
 
       {/* Footer / Profile & Theme */}
-      <div className="space-y-3 pt-4 border-t border-[#e7e3da] dark:border-[#272b35]">
+      <div className="space-y-3 pt-4 border-t border-[#E2E8F0] dark:border-[#1E293B]">
         {/* Theme Toggle */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-medium text-[#525b6a] dark:text-[#9ca3af] hover:bg-[#efebe2] dark:hover:bg-[#1a1e26] transition-colors"
+          className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
         >
           <span className="flex items-center gap-2.5">
             {theme === "dark" ? (
-              <Moon className="h-4 w-4 text-blue-400" />
+              <Moon className="h-4 w-4 text-[#007BFF]" />
             ) : (
               <Sun className="h-4 w-4 text-amber-500" />
             )}
             <span>Tema {theme === "dark" ? "Escuro" : "Claro"}</span>
           </span>
-          <span className="text-[10px] uppercase font-semibold text-[#8c94a0]">
+          <span className="text-[10px] uppercase font-semibold text-[#94A3B8]">
             Alternar
           </span>
         </button>
@@ -136,15 +134,15 @@ export function Sidebar({
         {user ? (
           <Dropdown>
             <DropdownTrigger className="w-full">
-              <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-[#efebe2] dark:hover:bg-[#1a1e26] transition-colors w-full text-left">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-500 text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
+              <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
                   {initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[#141618] dark:text-[#f3f4f6] truncate">
+                  <p className="text-xs font-semibold text-[#0F172A] dark:text-white truncate">
                     {displayName}
                   </p>
-                  <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af] truncate">
+                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
                     @{displayUsername}
                   </p>
                 </div>

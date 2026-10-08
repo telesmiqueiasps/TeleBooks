@@ -28,8 +28,8 @@ export function NavItem({
       className={cn(
         "group relative flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left select-none",
         active
-          ? "bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold"
-          : "text-[#525b6a] dark:text-[#9ca3af] hover:bg-[#f3efe7] dark:hover:bg-[#1e232d] hover:text-[#111827] dark:hover:text-[#f3f4f6]",
+          ? "bg-[#007BFF] text-white font-semibold shadow-sm shadow-[#007BFF]/25"
+          : "text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] hover:text-[#0F172A] dark:hover:text-[#F8FAFC]",
         collapsed && "justify-center px-2",
         className
       )}
@@ -38,8 +38,8 @@ export function NavItem({
         className={cn(
           "shrink-0 transition-transform duration-150 group-hover:scale-105",
           active
-            ? "text-blue-600 dark:text-blue-400"
-            : "text-[#6b7280] dark:text-[#9ca3af] group-hover:text-current"
+            ? "text-white"
+            : "text-[#64748B] dark:text-[#94A3B8] group-hover:text-current"
         )}
       >
         {icon}
@@ -52,17 +52,12 @@ export function NavItem({
           className={cn(
             "rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none",
             active
-              ? "bg-blue-600 text-white"
-              : "bg-[#e5e0d8] dark:bg-[#272b35] text-[#4b5563] dark:text-[#9ca3af]"
+              ? "bg-white/20 text-white"
+              : "bg-[#e2e8f0] dark:bg-[#1E293B] text-[#475569] dark:text-[#94a3b8]"
           )}
         >
           {badge}
         </span>
-      )}
-
-      {/* Indicador de item ativo */}
-      {active && (
-        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600 dark:bg-blue-400" />
       )}
     </button>
   );
