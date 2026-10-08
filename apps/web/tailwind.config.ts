@@ -28,6 +28,22 @@ const config: Config = {
           gray: "#E5E7EB", // Cinza Oficial
           darkBg: "#0B0F1A", // Fundo Dark Oficial
           darkSurface: "#0F172A", // Superfície Dark Oficial
+          // Paleta Premium TeleBooks (Login & Brand)
+          dark: "#030817",
+          secondary: "#07142B",
+          deepNavy: "#0A1935",
+          card: "#07152D",
+          field: "#0D1D3A",
+          primary: "#087CFF",
+          accent: "#119DFF",
+          cyan: "#20B9FF",
+          border: "#203B69",
+          textPrimary: "#F7F9FF",
+          textSecondary: "#A4B5D2",
+          textMuted: "#7186AB",
+          gold: "#F5B85C",
+          error: "#FF6B7A",
+          success: "#42D6A4",
         },
         primary: {
           DEFAULT: "#007BFF",
@@ -48,6 +64,7 @@ const config: Config = {
         sora: ["var(--font-sora)", "Sora", "sans-serif"],
         sans: ["var(--font-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
         serif: ["var(--font-sora)", "Sora", "Georgia", "serif"],
+        handwriting: ["var(--font-caveat)", "Caveat", "cursive"],
       },
       boxShadow: {
         book: "0 8px 24px -4px rgba(0, 0, 0, 0.15), 0 2px 6px -1px rgba(0, 0, 0, 0.08)",

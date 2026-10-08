@@ -132,41 +132,56 @@ export function Sidebar({
 
         {/* User Capsule */}
         {user ? (
-          <Dropdown>
-            <DropdownTrigger className="w-full">
-              <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
-                  {initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-[#0F172A] dark:text-white truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
-                    @{displayUsername}
-                  </p>
-                </div>
-              </div>
-            </DropdownTrigger>
-            <DropdownMenu align="left" className="bottom-full mb-2 w-56">
-              <DropdownItem
-                icon={<User className="h-4 w-4" />}
-                onClick={() => router.push("/perfil")}
-              >
-                Meu Perfil
-              </DropdownItem>
-              <DropdownItem
-                icon={<Settings className="h-4 w-4" />}
-                onClick={() => router.push("/perfil")}
-              >
-                Configurações
-              </DropdownItem>
-              <DropdownSeparator />
-              <DropdownItem danger icon={<LogOut className="h-4 w-4" />} onClick={handleSignOut}>
-                Encerrar Sessão
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
+          <div className="flex items-center gap-1.5 w-full">
+            <div className="flex-1 min-w-0">
+              <Dropdown>
+                <DropdownTrigger className="w-full">
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[#0F172A] dark:text-white truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
+                        @{displayUsername}
+                      </p>
+                    </div>
+                  </div>
+                </DropdownTrigger>
+                <DropdownMenu align="left" className="bottom-full mb-2 w-56">
+                  <DropdownItem
+                    icon={<User className="h-4 w-4" />}
+                    onClick={() => router.push("/perfil")}
+                  >
+                    Meu Perfil
+                  </DropdownItem>
+                  <DropdownItem
+                    icon={<Settings className="h-4 w-4" />}
+                    onClick={() => router.push("/perfil")}
+                  >
+                    Configurações
+                  </DropdownItem>
+                  <DropdownSeparator />
+                  <DropdownItem danger icon={<LogOut className="h-4 w-4" />} onClick={handleSignOut}>
+                    Encerrar Sessão
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            </div>
+
+            {/* Botão Direto de Logout */}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Encerrar Sessão (Logout)"
+              aria-label="Encerrar Sessão (Logout)"
+              className="p-2 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 text-[#64748B] dark:text-[#94A3B8] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         ) : (
           <Link
             href="/login"
