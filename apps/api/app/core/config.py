@@ -63,12 +63,14 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_database_uri(self) -> str:
         """
-        Normaliza a URL do PostgreSQL para compatibilidade com SQLAlchemy 2.x e psycopg2.
-        Converte prefixos legados 'postgres://' para 'postgresql://'.
+        Normaliza a URL do PostgreSQL para compatibilidade com SQLAlchemy 2.x e psycopg2/psycopg3.
+        Converte prefixos 'postgres://' e 'postgresql://' para 'postgresql+psycopg2://'.
         """
         url = self.DATABASE_URL
         if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql://", 1)
+            url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
         return url
 
     @property
