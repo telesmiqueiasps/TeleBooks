@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserPlus, AlertCircle, CheckCircle2, Loader2, Check, X } from "lucide-react";
 import { Logo } from "../../../components/ui/logo";
+import { GoogleButton } from "../../../components/auth/google-button";
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from "@telebooks/ui";
 import { registerSchema } from "@telebooks/validation";
 import { useAuth } from "../../../components/auth/auth-provider";
@@ -129,7 +130,7 @@ export default function RegisterPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="space-y-4">
             {successNotice ? (
               <div className="space-y-4">
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs leading-relaxed">
@@ -145,7 +146,25 @@ export default function RegisterPage() {
                 </Button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-3.5">
+              <>
+                <GoogleButton
+                  label="Cadastrar-se com o Google"
+                  onError={(err) => setError(err)}
+                  disabled={isLoading}
+                />
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-[#E2E8F0] dark:border-[#1E293B]" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white dark:bg-[#0F172A] px-3 text-[#94A3B8] font-medium tracking-wider text-[10px]">
+                      ou crie com e-mail
+                    </span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-3.5">
                 {error && (
                   <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -238,7 +257,8 @@ export default function RegisterPage() {
                   Criar Conta
                 </Button>
               </form>
-            )}
+            </>
+          )}
 
             <div className="mt-6 pt-4 border-t border-[#eeeae2] dark:border-[#252a35] text-center">
               <p className="text-xs text-[#6b7280] dark:text-[#9ca3af]">

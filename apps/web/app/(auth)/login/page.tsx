@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogIn, AlertCircle } from "lucide-react";
 import { Logo } from "../../../components/ui/logo";
+import { GoogleButton } from "../../../components/auth/google-button";
 import {
   Button,
   Input,
@@ -21,12 +22,19 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") || "/";
+  const urlError = searchParams.get("error");
 
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    urlError === "auth_callback_failed"
+      ? "Não foi possível concluir o login com o Google. Tente novamente."
+      : urlError
+      ? decodeURIComponent(urlError)
+      : null
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,18 +63,39 @@ function LoginForm() {
       <CardHeader className="pb-4">
         <CardTitle className="text-xl">Acessar sua biblioteca</CardTitle>
         <CardDescription>
-          Entre com suas credenciais para continuar gerenciando suas leituras.
+          Entre com sua conta Google ou use seu e-mail para continuar.
         </CardDescription>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="space-y-4">
+        {error && (
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Botão Oficial Google OAuth */}
+        <GoogleButton
+          label="Continuar com o Google"
+          redirectTo={redirectTo}
+          onError={(err) => setError(err)}
+          disabled={isLoading}
+        />
+
+        {/* Divisor */}
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-[#E2E8F0] dark:border-[#1E293B]" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white dark:bg-[#0F172A] px-3 text-[#94A3B8] font-medium tracking-wider text-[10px]">
+              ou continue com e-mail
+            </span>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
 
           <Input
             label="Endereço de E-mail"

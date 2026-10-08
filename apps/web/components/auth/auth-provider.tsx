@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signInWithGoogle: (redirectTo?: string) => Promise<{ error?: string }>;
   signUp: (
     email: string,
     password: string,
@@ -159,6 +160,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (redirectTo?: string) => {
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const targetNext = redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : "";
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/auth/callback${targetNext}`,
+        },
+      });
+
+      if (error) {
+        return { error: mapErrorMessage(error) };
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+
+      return {};
+    } catch (err: any) {
+      return { error: mapErrorMessage(err) };
+    }
+  };
+
   const signUp = async (
     email: string,
     password: string,
@@ -272,6 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         isLoading,
         signIn,
+        signInWithGoogle,
         signUp,
         signOut,
         resetPassword,
