@@ -126,6 +126,17 @@ async function request<T>(
 
 export const api = {
   // ============================================================================
+  // Autenticação & Usuários
+  // ============================================================================
+  async checkUsername(
+    username: string
+  ): Promise<{ username: string; available: boolean; reason?: string }> {
+    return request<{ username: string; available: boolean; reason?: string }>(
+      `/auth/check-username?username=${encodeURIComponent(username)}`
+    );
+  },
+
+  // ============================================================================
   // Catálogo Global: Livros (Books)
   // ============================================================================
   async getBooks(params?: {

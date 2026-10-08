@@ -33,3 +33,19 @@ def test_protected_route_with_expired_token(client):
     assert response.status_code == 401
     data = response.json()
     assert data["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_check_username_available(client):
+    response = client.get("/api/v1/auth/check-username?username=usuario_inedito_xyz123")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["available"] is True
+    assert data["username"] == "usuario_inedito_xyz123"
+
+
+def test_check_username_too_short(client):
+    response = client.get("/api/v1/auth/check-username?username=ab")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["available"] is False
+    assert "Mínimo" in data["reason"]

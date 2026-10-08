@@ -34,3 +34,24 @@ def get_me(
         user=current_user,
         profile=profile_read,
     )
+
+
+@router.get(
+    "/check-username",
+    summary="Verificar disponibilidade de nome de usuário",
+    description="Permite que o formulário de cadastro verifique se o username já está em uso.",
+)
+def check_username(
+    username: str,
+    db: Session = Depends(get_db),
+):
+    clean = username.strip().lower()
+    if len(clean) < 3:
+        return {"username": clean, "available": False, "reason": "Mínimo 3 caracteres"}
+
+    exists = db.execute(
+        select(Profile.id).where(Profile.username == clean)
+    ).scalar_one_or_none()
+
+    return {"username": clean, "available": exists is None}
+

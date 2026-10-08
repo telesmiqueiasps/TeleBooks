@@ -115,7 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return "E-mail ou senha incorretos. Por favor, tente novamente.";
     }
     if (msg.includes("email already in use") || msg.includes("already registered")) {
-      return "Este endereço de e-mail já está cadastrado.";
+      return "Este endereço de e-mail já está cadastrado. Tente fazer login.";
+    }
+    if (
+      msg.includes("profiles_username_key") ||
+      msg.includes("duplicate key value violates unique constraint") ||
+      (msg.includes("database error") && msg.includes("username"))
+    ) {
+      return "Este nome de usuário (@username) já está em uso por outro leitor. Por favor, escolha outro.";
     }
     if (msg.includes("weak_password") || msg.includes("password should be at least")) {
       return "A senha deve ter no mínimo 6 caracteres.";

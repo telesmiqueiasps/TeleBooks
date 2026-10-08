@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { BookOpen, UserPlus, AlertCircle, CheckCircle2, Loader2, Check, X } from "lucide-react";
 import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from "@telebooks/ui";
 import { registerSchema } from "@telebooks/validation";
 import { useAuth } from "../../../components/auth/auth-provider";
+import { api } from "../../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,9 +19,41 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+  const [usernameFeedback, setUsernameFeedback] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Verificação de disponibilidade de nome de usuário em tempo real
+  useEffect(() => {
+    const clean = username.trim().replace(/^@/, "").toLowerCase();
+    if (clean.length < 3) {
+      setUsernameStatus("idle");
+      setUsernameFeedback(null);
+      return;
+    }
+
+    setUsernameStatus("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.checkUsername(clean);
+        if (res.available) {
+          setUsernameStatus("available");
+          setUsernameFeedback(`@${clean} está disponível!`);
+        } else {
+          setUsernameStatus("unavailable");
+          setUsernameFeedback(res.reason || `@${clean} já está em uso por outro leitor.`);
+        }
+      } catch {
+        setUsernameStatus("idle");
+        setUsernameFeedback(null);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +62,11 @@ export default function RegisterPage() {
 
     if (password !== confirmPassword) {
       setError("As senhas não coincidem. Digite a mesma senha nos dois campos.");
+      return;
+    }
+
+    if (usernameStatus === "unavailable") {
+      setError(usernameFeedback || "O nome de usuário já está em uso por outro leitor.");
       return;
     }
 
@@ -125,15 +163,41 @@ export default function RegisterPage() {
                   autoComplete="name"
                 />
 
-                <Input
-                  label="Nome de Usuário (@username) *"
-                  placeholder="ex: machadodeassis"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                  required
-                  helperText="Apenas letras, números e sublinhados (mín. 3 caracteres)."
-                />
+                <div>
+                  <Input
+                    label="Nome de Usuário (@username) *"
+                    placeholder="ex: machadodeassis"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                    {usernameStatus === "checking" && (
+                      <span className="text-neutral-500 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
+                        Verificando disponibilidade...
+                      </span>
+                    )}
+                    {usernameStatus === "available" && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        {usernameFeedback}
+                      </span>
+                    )}
+                    {usernameStatus === "unavailable" && (
+                      <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
+                        <X className="h-3 w-3" />
+                        {usernameFeedback}
+                      </span>
+                    )}
+                    {usernameStatus === "idle" && (
+                      <span className="text-neutral-400">
+                        Apenas letras, números e sublinhados (mín. 3 caracteres).
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 <Input
                   label="Endereço de E-mail *"
