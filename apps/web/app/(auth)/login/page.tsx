@@ -45,6 +45,7 @@ function LoginForm() {
       setError(result.error);
     } else {
       router.push(redirectTo);
+      router.refresh();
     }
   };
 

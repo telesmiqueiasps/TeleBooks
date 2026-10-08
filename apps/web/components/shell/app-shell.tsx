@@ -7,16 +7,16 @@ import { BottomNav } from "./bottom-nav";
 
 export interface AppShellProps {
   children: React.ReactNode;
-  onAddBookClick: () => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
+  onAddBookClick?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export function AppShell({
   children,
-  onAddBookClick,
-  searchQuery,
-  onSearchChange,
+  onAddBookClick = () => {},
+  searchQuery = "",
+  onSearchChange = () => {},
 }: AppShellProps) {
   const [currentTab, setCurrentTab] = useState("home");
 

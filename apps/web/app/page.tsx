@@ -30,6 +30,7 @@ import {
 } from "@telebooks/ui";
 import type { Book, BookStatus, UserBook } from "@telebooks/types";
 
+import { useRouter } from "next/navigation";
 import { AppShell } from "../components/shell/app-shell";
 import { BookCard, BookItem } from "../components/book-card";
 import { useAuth } from "../components/auth/auth-provider";
@@ -41,7 +42,8 @@ import { ManageEntitiesModal } from "../components/catalog/manage-entities-modal
 import { ShelfConnectionModal } from "../components/shelf/shelf-connection-modal";
 
 export default function HomePage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
 
   // Estados principais
   const [viewMode, setViewMode] = useState<"shelf" | "catalog">("shelf");
@@ -69,8 +71,21 @@ export default function HomePage() {
 
   const [isManageEntitiesOpen, setIsManageEntitiesOpen] = useState(false);
 
+  // Redirecionamento de segurança para login se não autenticado
+  useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, isAuthLoading, router]);
+
   // Carregamento de dados da API
   const loadData = useCallback(async () => {
+    // Se o leitor está na estante mas ainda não tem sessão, aguarda autenticação
+    if (viewMode === "shelf" && !user) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setApiError(null);
 
@@ -118,7 +133,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [viewMode, statusFilter, searchQuery, currentPage]);
+  }, [viewMode, statusFilter, searchQuery, currentPage, user]);
 
   useEffect(() => {
     loadData();
@@ -257,6 +272,21 @@ export default function HomePage() {
     user?.user_metadata?.full_name?.split(" ")[0] ||
     profile?.username ||
     "Leitor";
+
+  if (isAuthLoading) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+          <RefreshCw className="h-6 w-6 animate-spin text-amber-600 dark:text-amber-400" />
+          <p className="text-sm text-neutral-500 font-serif">Carregando TeleBooks...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <AppShell

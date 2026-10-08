@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/redefinir-senha");
 
   const isProtectedRoute =
+    path === "/" ||
     path.startsWith("/perfil") ||
     path.startsWith("/configuracoes") ||
     path.startsWith("/minha-biblioteca");
