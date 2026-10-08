@@ -64,6 +64,21 @@ def add_book_to_shelf(
 
 
 @router.get(
+    "/by-book/{book_id}",
+    response_model=UserBookRead | None,
+    summary="Buscar vínculo da estante pelo ID bibliográfico do livro",
+)
+def get_shelf_by_book_id(
+    book_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    user_book = ShelfService.get_user_book_by_book_id(db=db, user_id=user_uuid, book_id=book_id)
+    return UserBookRead.model_validate(user_book) if user_book else None
+
+
+@router.get(
     "/{user_book_id}",
     response_model=UserBookRead,
     summary="Detalhes do livro na estante do usuário",

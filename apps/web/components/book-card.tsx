@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Star, MoreVertical, BookOpen, BookmarkCheck, Heart, Trash2 } from "lucide-react";
+import { Star, MoreVertical, BookOpen, BookmarkCheck, Heart, Trash2, Plus } from "lucide-react";
 import {
   Badge,
   BadgeVariant,
@@ -13,7 +13,8 @@ import {
 } from "@telebooks/ui";
 
 export interface BookItem {
-  id: string;
+  id: string; // user_book_id or book_id
+  bookId: string;
   title: string;
   author: string;
   coverUrl: string;
@@ -23,6 +24,7 @@ export interface BookItem {
   statusLabel: string;
   rating?: number;
   isFavorite?: boolean;
+  isInShelf?: boolean;
 }
 
 export interface BookCardProps {
@@ -30,6 +32,8 @@ export interface BookCardProps {
   onOpenDetails?: (book: BookItem) => void;
   onUpdateProgress?: (book: BookItem) => void;
   onToggleFavorite?: (book: BookItem) => void;
+  onAddToShelf?: (book: BookItem) => void;
+  onRemoveFromShelf?: (book: BookItem) => void;
 }
 
 export function BookCard({
@@ -37,7 +41,14 @@ export function BookCard({
   onOpenDetails,
   onUpdateProgress,
   onToggleFavorite,
+  onAddToShelf,
+  onRemoveFromShelf,
 }: BookCardProps) {
+  const percent =
+    book.pages > 0 && book.currentPage !== undefined
+      ? Math.min(100, Math.round((book.currentPage / book.pages) * 100))
+      : 0;
+
   return (
     <div
       onClick={() => onOpenDetails?.(book)}
@@ -48,7 +59,10 @@ export function BookCard({
         {/* Cover Image */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={book.coverUrl}
+          src={
+            book.coverUrl ||
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600"
+          }
           alt={`Capa de ${book.title}`}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           loading="lazy"
@@ -72,50 +86,62 @@ export function BookCard({
                 <MoreVertical className="h-4 w-4" />
               </div>
             </DropdownTrigger>
-            <DropdownMenu align="left" className="w-44">
+            <DropdownMenu align="left" className="w-48">
               <DropdownItem
                 icon={<BookOpen className="h-3.5 w-3.5" />}
                 onClick={() => onOpenDetails?.(book)}
               >
                 Ver Ficha do Livro
               </DropdownItem>
-              <DropdownItem
-                icon={<BookmarkCheck className="h-3.5 w-3.5" />}
-                onClick={() => onUpdateProgress?.(book)}
-              >
-                Atualizar Progresso
-              </DropdownItem>
-              <DropdownItem
-                icon={<Heart className="h-3.5 w-3.5" />}
-                onClick={() => onToggleFavorite?.(book)}
-              >
-                {book.isFavorite ? "Remover dos Favoritos" : "Marcar como Favorito"}
-              </DropdownItem>
-              <DropdownSeparator />
-              <DropdownItem
-                danger
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-                onClick={() => alert(`Livro "${book.title}" selecionado para remoção.`)}
-              >
-                Remover da Estante
-              </DropdownItem>
+
+              {book.isInShelf ? (
+                <>
+                  <DropdownItem
+                    icon={<BookmarkCheck className="h-3.5 w-3.5" />}
+                    onClick={() => onUpdateProgress?.(book)}
+                  >
+                    Editar Leitura na Estante
+                  </DropdownItem>
+                  <DropdownItem
+                    icon={<Heart className="h-3.5 w-3.5" />}
+                    onClick={() => onToggleFavorite?.(book)}
+                  >
+                    {book.isFavorite ? "Remover dos Favoritos" : "Marcar como Favorito"}
+                  </DropdownItem>
+                  <DropdownSeparator />
+                  <DropdownItem
+                    danger
+                    icon={<Trash2 className="h-3.5 w-3.5" />}
+                    onClick={() => onRemoveFromShelf?.(book)}
+                  >
+                    Remover da Estante
+                  </DropdownItem>
+                </>
+              ) : (
+                <DropdownItem
+                  icon={<Plus className="h-3.5 w-3.5" />}
+                  onClick={() => onAddToShelf?.(book)}
+                >
+                  Adicionar à Estante
+                </DropdownItem>
+              )}
             </DropdownMenu>
           </Dropdown>
         </div>
 
         {/* Subtle reading progress overlay at the bottom if reading */}
-        {book.status === "reading" && book.currentPage && (
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-6 text-white text-[11px] font-medium z-10">
+        {book.status === "reading" && book.currentPage !== undefined && (
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-2.5 pt-6 text-white text-[11px] font-medium z-10">
             <div className="flex justify-between items-center mb-1 text-[10px] text-white/90">
-              <span>{Math.round((book.currentPage / book.pages) * 100)}%</span>
-              <span>{book.currentPage}/{book.pages} pág</span>
+              <span>{percent}%</span>
+              <span>
+                {book.currentPage}/{book.pages} pág
+              </span>
             </div>
-            <div className="w-full bg-white/30 h-1 rounded-full overflow-hidden">
+            <div className="w-full bg-white/30 h-1.5 rounded-full overflow-hidden">
               <div
-                className="bg-blue-400 h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (book.currentPage / book.pages) * 100)}%`,
-                }}
+                className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                style={{ width: `${percent}%` }}
               />
             </div>
           </div>
@@ -124,7 +150,7 @@ export function BookCard({
 
       {/* Book Metadata */}
       <div className="mt-3 space-y-1">
-        <h4 className="font-serif text-sm font-semibold text-[#141618] dark:text-[#f3f4f6] line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <h4 className="font-serif text-sm font-semibold text-[#141618] dark:text-[#f3f4f6] line-clamp-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
           {book.title}
         </h4>
         <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] line-clamp-1">

@@ -1,12 +1,18 @@
 from app.schemas.auth import CurrentUser, UserMeResponse
 from app.schemas.catalog import (
+    AuthorCreate,
     AuthorRead,
+    AuthorUpdate,
     BookCreate,
     BookEditionRead,
     BookRead,
     BookUpdate,
+    GenreCreate,
     GenreRead,
+    GenreUpdate,
+    PublisherCreate,
     PublisherRead,
+    PublisherUpdate,
 )
 from app.schemas.common import (
     HealthCheckResponse,
@@ -36,8 +42,14 @@ __all__ = [
     "ProfileCreate",
     "ProfileUpdate",
     "AuthorRead",
+    "AuthorCreate",
+    "AuthorUpdate",
     "PublisherRead",
+    "PublisherCreate",
+    "PublisherUpdate",
     "GenreRead",
+    "GenreCreate",
+    "GenreUpdate",
     "BookRead",
     "BookCreate",
     "BookUpdate",

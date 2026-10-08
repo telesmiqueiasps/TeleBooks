@@ -1,42 +1,114 @@
+import re
+import unicodedata
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def slugify(text: str) -> str:
+    """Converte texto para slug URL amigável."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+    text = re.sub(r"[^\w\s-]", "", text).strip().lower()
+    return re.sub(r"[-\s]+", "-", text)
+
+
+# ==============================================================================
+# Editoras (Publishers)
+# ==============================================================================
 class PublisherBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=255)
+    website: str | None = None
+
+
+class PublisherCreate(PublisherBase):
+    pass
+
+
+class PublisherUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     website: str | None = None
 
 
 class PublisherRead(PublisherBase):
     id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==============================================================================
+# Autores (Authors)
+# ==============================================================================
 class AuthorBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=255)
     bio: str | None = None
     avatar_url: str | None = None
+    birth_date: date | None = None
+    death_date: date | None = None
+
+
+class AuthorCreate(AuthorBase):
+    pass
+
+
+class AuthorUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    bio: str | None = None
+    avatar_url: str | None = None
+    birth_date: date | None = None
+    death_date: date | None = None
 
 
 class AuthorRead(AuthorBase):
     id: uuid.UUID
-    birth_date: date | None = None
-    death_date: date | None = None
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==============================================================================
+# Gêneros (Genres)
+# ==============================================================================
 class GenreBase(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(min_length=1, max_length=100)
+    slug: str | None = None
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def set_slug(cls, v, info):
+        if not v and "name" in info.data:
+            return slugify(info.data["name"])
+        return slugify(v) if v else v
+
+
+class GenreCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    slug: str | None = None
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def set_slug(cls, v, info):
+        if not v and "name" in info.data:
+            return slugify(info.data["name"])
+        return slugify(v) if v else v
+
+
+class GenreUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    slug: str | None = None
 
 
 class GenreRead(GenreBase):
     id: uuid.UUID
+    slug: str
+    created_at: datetime | date
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==============================================================================
+# Edições de Livro (Book Editions)
+# ==============================================================================
 class BookEditionRead(BaseModel):
     id: uuid.UUID
     title: str | None = None
@@ -49,6 +121,9 @@ class BookEditionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==============================================================================
+# Livros Bibliográficos Globais (Books)
+# ==============================================================================
 class BookBase(BaseModel):
     title: str = Field(min_length=1)
     subtitle: str | None = None
@@ -80,6 +155,8 @@ class BookUpdate(BaseModel):
     cover_url: str | None = None
     thumbnail_url: str | None = None
     publisher_id: uuid.UUID | None = None
+    author_ids: list[uuid.UUID] | None = None
+    genre_ids: list[uuid.UUID] | None = None
 
 
 class BookRead(BookBase):

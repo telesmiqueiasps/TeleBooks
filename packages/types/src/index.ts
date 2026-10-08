@@ -32,6 +32,7 @@ export interface Author {
 export interface Publisher {
   id: string;
   name: string;
+  website?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -70,6 +70,21 @@ class ShelfService:
         return user_book
 
     @staticmethod
+    def get_user_book_by_book_id(
+        db: Session, user_id: uuid.UUID, book_id: uuid.UUID
+    ) -> UserBook | None:
+        stmt = (
+            select(UserBook)
+            .options(
+                selectinload(UserBook.book).selectinload(Book.publisher),
+                selectinload(UserBook.book).selectinload(Book.authors),
+                selectinload(UserBook.book).selectinload(Book.genres),
+            )
+            .where(UserBook.book_id == book_id, UserBook.user_id == user_id)
+        )
+        return db.execute(stmt).scalar_one_or_none()
+
+    @staticmethod
     def add_to_shelf(db: Session, user_id: uuid.UUID, data: UserBookCreate) -> UserBook:
         # Verifica se o livro bibliográfico existe
         book = db.execute(select(Book).where(Book.id == data.book_id)).scalar_one_or_none()

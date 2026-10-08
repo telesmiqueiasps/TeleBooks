@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   BookOpen,
   BookmarkCheck,
@@ -10,6 +10,13 @@ import {
   Sparkles,
   Layers,
   SlidersHorizontal,
+  Plus,
+  Building2,
+  Library,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import {
   Button,
@@ -21,168 +28,230 @@ import {
   Skeleton,
   BookCardSkeleton,
 } from "@telebooks/ui";
+import type { Book, BookStatus, UserBook } from "@telebooks/types";
+
 import { AppShell } from "../components/shell/app-shell";
 import { BookCard, BookItem } from "../components/book-card";
-import { AddBookModal } from "../components/add-book-modal";
-import { ReadingProgressModal } from "../components/reading-progress-modal";
 import { useAuth } from "../components/auth/auth-provider";
+import { api } from "../lib/api";
 
-const INITIAL_BOOKS: BookItem[] = [
-  {
-    id: "1",
-    title: "O Nome do Vento",
-    author: "Patrick Rothfuss",
-    coverUrl:
-      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
-    pages: 656,
-    currentPage: 442,
-    status: "reading",
-    statusLabel: "Lendo",
-    rating: 4.8,
-    isFavorite: true,
-  },
-  {
-    id: "2",
-    title: "Cem Anos de Solidão",
-    author: "Gabriel García Márquez",
-    coverUrl:
-      "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600",
-    pages: 448,
-    currentPage: 448,
-    status: "read",
-    statusLabel: "Lido",
-    rating: 5.0,
-    isFavorite: true,
-  },
-  {
-    id: "3",
-    title: "Duna",
-    author: "Frank Herbert",
-    coverUrl:
-      "https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&q=80&w=600",
-    pages: 680,
-    currentPage: 120,
-    status: "reading",
-    statusLabel: "Lendo",
-    rating: 4.7,
-    isFavorite: false,
-  },
-  {
-    id: "4",
-    title: "A República",
-    author: "Platão",
-    coverUrl:
-      "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600",
-    pages: 384,
-    status: "want_to_read",
-    statusLabel: "Quero Ler",
-    rating: 4.5,
-    isFavorite: false,
-  },
-  {
-    id: "5",
-    title: "Crime e Castigo",
-    author: "Fiódor Dostoiévski",
-    coverUrl:
-      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=600",
-    pages: 592,
-    currentPage: 592,
-    status: "read",
-    statusLabel: "Lido",
-    rating: 4.9,
-    isFavorite: true,
-  },
-  {
-    id: "6",
-    title: "Sapiens: Uma Breve História da Humanidade",
-    author: "Yuval Noah Harari",
-    coverUrl:
-      "https://images.unsplash.com/photo-1495640388908-05fa85288e61?auto=format&fit=crop&q=80&w=600",
-    pages: 464,
-    status: "paused",
-    statusLabel: "Pausado",
-    rating: 4.3,
-    isFavorite: false,
-  },
-];
+import { BookDetailsModal } from "../components/catalog/book-details-modal";
+import { BookFormModal } from "../components/catalog/book-form-modal";
+import { ManageEntitiesModal } from "../components/catalog/manage-entities-modal";
+import { ShelfConnectionModal } from "../components/shelf/shelf-connection-modal";
 
 export default function HomePage() {
-  const [books, setBooks] = useState<BookItem[]>(INITIAL_BOOKS);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
-  const [isAddBookOpen, setIsAddBookOpen] = useState(false);
-  const [progressModalBook, setProgressModalBook] = useState<BookItem | null>(null);
-
-  // Active book currently reading (hero card)
-  const currentlyReading = useMemo(
-    () => books.find((b) => b.id === "1") || books[0],
-    [books]
-  );
-
-  // Filter books based on search and tab
-  const filteredBooks = useMemo(() => {
-    return books.filter((book) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        book.author.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "favorite" && book.isFavorite) ||
-        book.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [books, searchQuery, statusFilter]);
-
-  const handleAddBook = (newBook: {
-    title: string;
-    author: string;
-    pages: number;
-    status: "want_to_read" | "reading" | "read";
-    coverUrl?: string;
-  }) => {
-    const statusMap = {
-      want_to_read: "Quero Ler",
-      reading: "Lendo",
-      read: "Lido",
-    };
-
-    const bookItem: BookItem = {
-      id: String(Date.now()),
-      title: newBook.title,
-      author: newBook.author,
-      pages: newBook.pages,
-      currentPage: newBook.status === "reading" ? 1 : newBook.status === "read" ? newBook.pages : 0,
-      status: newBook.status,
-      statusLabel: statusMap[newBook.status],
-      coverUrl:
-        newBook.coverUrl ||
-        "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
-      rating: 5.0,
-      isFavorite: false,
-    };
-
-    setBooks((prev) => [bookItem, ...prev]);
-  };
-
-  const handleSaveProgress = (bookId: string, newPage: number) => {
-    setBooks((prev) =>
-      prev.map((b) => (b.id === bookId ? { ...b, currentPage: newPage } : b))
-    );
-  };
-
-  const handleToggleFavorite = (book: BookItem) => {
-    setBooks((prev) =>
-      prev.map((b) =>
-        b.id === book.id ? { ...b, isFavorite: !b.isFavorite } : b
-      )
-    );
-  };
-
   const { user, profile } = useAuth();
+
+  // Estados principais
+  const [viewMode, setViewMode] = useState<"shelf" | "catalog">("shelf");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Dados reais da API
+  const [shelfBooks, setShelfBooks] = useState<UserBook[]>([]);
+  const [catalogBooks, setCatalogBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Modais
+  const [detailsModalBook, setDetailsModalBook] = useState<Book | null>(null);
+  const [detailsUserBook, setDetailsUserBook] = useState<UserBook | null>(null);
+
+  const [shelfModalBook, setShelfModalBook] = useState<Book | null>(null);
+  const [shelfModalUserBook, setShelfModalUserBook] = useState<UserBook | null>(null);
+
+  const [isBookFormOpen, setIsBookFormOpen] = useState(false);
+  const [bookToEdit, setBookToEdit] = useState<Book | null>(null);
+
+  const [isManageEntitiesOpen, setIsManageEntitiesOpen] = useState(false);
+
+  // Carregamento de dados da API
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      if (viewMode === "shelf") {
+        let statusParam: BookStatus | undefined = undefined;
+        let favoriteParam: boolean | undefined = undefined;
+
+        if (statusFilter === "favorite") {
+          favoriteParam = true;
+        } else if (
+          ["reading", "want_to_read", "read", "paused", "abandoned"].includes(
+            statusFilter
+          )
+        ) {
+          statusParam = statusFilter as BookStatus;
+        }
+
+        const res = await api.getShelf({
+          status: statusParam,
+          favorite: favoriteParam,
+          page: currentPage,
+          page_size: 18,
+        });
+
+        setShelfBooks(res.items || []);
+        setTotalPages(res.total_pages || 1);
+        setTotalItems(res.total || 0);
+      } else {
+        // Modo catálogo global
+        const res = await api.getBooks({
+          q: searchQuery || undefined,
+          page: currentPage,
+          page_size: 18,
+        });
+
+        setCatalogBooks(res.items || []);
+        setTotalPages(res.total_pages || 1);
+        setTotalItems(res.total || 0);
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Erro ao carregar dados do servidor.";
+      setApiError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [viewMode, statusFilter, searchQuery, currentPage]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Livro atualmente em leitura para o destaque (Hero)
+  const currentlyReading = useMemo(() => {
+    return shelfBooks.find((ub) => ub.status === "reading");
+  }, [shelfBooks]);
+
+  // Conversão de UserBook ou Book para BookItem para o BookCard
+  const displayBooks: BookItem[] = useMemo(() => {
+    const statusLabelMap: Record<string, string> = {
+      reading: "Lendo",
+      want_to_read: "Quero Ler",
+      read: "Lido",
+      paused: "Pausado",
+      abandoned: "Abandonado",
+    };
+
+    if (viewMode === "shelf") {
+      return shelfBooks
+        .filter((ub) => {
+          if (!searchQuery) return true;
+          const q = searchQuery.toLowerCase();
+          const matchTitle = ub.book?.title.toLowerCase().includes(q);
+          const matchAuthor = ub.book?.authors?.some((a) =>
+            a.name.toLowerCase().includes(q)
+          );
+          return matchTitle || matchAuthor;
+        })
+        .map((ub) => ({
+          id: ub.id,
+          bookId: ub.book_id,
+          title: ub.book?.title || "Sem título",
+          author:
+            ub.book?.authors?.map((a) => a.name).join(", ") || "Autor não informado",
+          coverUrl:
+            ub.book?.cover_url ||
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
+          pages: ub.book?.page_count || 100,
+          currentPage: ub.current_page,
+          status: (ub.status as any) || "neutral",
+          statusLabel: statusLabelMap[ub.status] ?? "Estante",
+          rating: ub.rating ? Number(ub.rating) : undefined,
+          isFavorite: ub.favorite,
+          isInShelf: true,
+        }));
+    } else {
+      // Modo Catálogo Global
+      return catalogBooks.map((b) => {
+        const userShelfItem = shelfBooks.find((ub) => ub.book_id === b.id);
+        const label = userShelfItem
+          ? statusLabelMap[userShelfItem.status] ?? "Estante"
+          : "Catálogo";
+
+        return {
+          id: b.id,
+          bookId: b.id,
+          title: b.title,
+          author: b.authors?.map((a) => a.name).join(", ") || "Autor não informado",
+          coverUrl:
+            b.cover_url ||
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
+          pages: b.page_count || 100,
+          currentPage: userShelfItem?.current_page,
+          status: (userShelfItem?.status as any) || "neutral",
+          statusLabel: label,
+          rating: userShelfItem?.rating ? Number(userShelfItem.rating) : undefined,
+          isFavorite: userShelfItem?.favorite,
+          isInShelf: !!userShelfItem,
+        };
+      });
+    }
+  }, [viewMode, shelfBooks, catalogBooks, searchQuery]);
+
+  // Ações nos Cards
+  const handleOpenDetails = async (item: BookItem) => {
+    try {
+      const book = await api.getBook(item.bookId);
+      const userBook = shelfBooks.find((ub) => ub.book_id === item.bookId) || null;
+      setDetailsModalBook(book);
+      setDetailsUserBook(userBook);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleOpenShelfEdit = async (item: BookItem) => {
+    try {
+      const book = await api.getBook(item.bookId);
+      const userBook = shelfBooks.find((ub) => ub.book_id === item.bookId) || null;
+      setShelfModalBook(book);
+      setShelfModalUserBook(userBook);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleToggleFavorite = async (item: BookItem) => {
+    const userBook = shelfBooks.find((ub) => ub.book_id === item.bookId);
+    if (!userBook) return;
+    try {
+      await api.updateShelfBook(userBook.id, {
+        favorite: !userBook.favorite,
+      });
+      loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRemoveFromShelf = async (item: BookItem) => {
+    const userBook = shelfBooks.find((ub) => ub.book_id === item.bookId);
+    if (!userBook) return;
+    if (!confirm(`Remover "${item.title}" da sua estante?`)) return;
+    try {
+      await api.removeFromShelf(userBook.id);
+      loadData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBook = async (bookId: string) => {
+    try {
+      await api.deleteBook(bookId);
+      loadData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir livro.");
+    }
+  };
+
   const greetingName =
     profile?.full_name?.split(" ")[0] ||
     user?.user_metadata?.full_name?.split(" ")[0] ||
@@ -191,320 +260,411 @@ export default function HomePage() {
 
   return (
     <AppShell
-      onAddBookClick={() => setIsAddBookOpen(true)}
+      onAddBookClick={() => {
+        setBookToEdit(null);
+        setIsBookFormOpen(true);
+      }}
       searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
+      onSearchChange={(q) => {
+        setSearchQuery(q);
+        setCurrentPage(1);
+      }}
     >
       <div className="space-y-10">
-        {/* Editorial Greeting Header */}
+        {/* Editorial Greeting & Header Controls */}
         <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#e7e3da] dark:border-[#272b35] pb-6">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Sua biblioteca pessoal em 2026</span>
+              <span>Sua biblioteca pessoal e catálogo global</span>
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[#141618] dark:text-[#f3f4f6]">
-              Boa tarde, {greetingName}.
+              Olá, {greetingName}.
             </h1>
             <p className="text-xs sm:text-sm text-[#6b7280] dark:text-[#9ca3af] italic font-serif max-w-xl">
               “Não há amigo tão leal quanto um livro.” — Ernest Hemingway
             </p>
           </div>
 
-          {/* Skeletons Demo Toggle */}
-          <div className="flex items-center gap-2.5">
+          {/* Action Buttons: New Book & Manage Entities */}
+          <div className="flex flex-wrap items-center gap-2.5">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsLoadingDemo((prev) => !prev)}
-              leftIcon={<Layers className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
+              onClick={() => setIsManageEntitiesOpen(true)}
+              leftIcon={<Building2 className="h-3.5 w-3.5 text-neutral-500" />}
               className="text-xs"
             >
-              {isLoadingDemo ? "Ocultar Skeletons" : "Simular Skeletons"}
+              Autores & Editoras
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setBookToEdit(null);
+                setIsBookFormOpen(true);
+              }}
+              leftIcon={<Plus className="h-3.5 w-3.5" />}
+              className="text-xs"
+            >
+              Novo Livro
             </Button>
           </div>
         </section>
 
-        {/* Lendo Agora (Hero Card) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl font-bold text-[#141618] dark:text-[#f3f4f6] flex items-center gap-2">
-              <BookmarkCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <span>Lendo Agora</span>
-            </h2>
-            <Badge variant="reading" size="sm" dot>
-              Em Andamento
-            </Badge>
-          </div>
+        {/* Hero Card: Lendo Agora (se houver livro com status "reading") */}
+        {currentlyReading && currentlyReading.book && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-serif text-xl font-bold text-[#141618] dark:text-[#f3f4f6] flex items-center gap-2">
+                <BookmarkCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <span>Lendo Agora</span>
+              </h2>
+              <Badge variant="reading" size="sm" dot>
+                Em Andamento
+              </Badge>
+            </div>
 
-          {isLoadingDemo ? (
-            <Card className="p-6">
-              <div className="flex flex-col sm:flex-row gap-6">
-                <div className="w-28 sm:w-36 shrink-0">
-                  <Skeleton className="aspect-[2/3] w-full rounded-xl" />
-                </div>
-                <div className="flex-1 space-y-4">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-full rounded-full" />
-                  <div className="flex gap-3 pt-2">
-                    <Skeleton className="h-9 w-32 rounded-lg" />
-                    <Skeleton className="h-9 w-24 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ) : currentlyReading ? (
             <Card className="overflow-hidden border-[#e5e0d8] dark:border-[#272b35] bg-gradient-to-br from-white to-[#faf8f5] dark:from-[#181b22] dark:to-[#14171d]">
               <div className="flex flex-col sm:flex-row gap-6 p-6 sm:p-8">
-                {/* Book Cover with 3D spine and drop shadow */}
                 <div
-                  onClick={() => setProgressModalBook(currentlyReading)}
+                  onClick={() =>
+                    handleOpenShelfEdit({
+                      id: currentlyReading.id,
+                      bookId: currentlyReading.book_id,
+                      title: currentlyReading.book!.title,
+                      author:
+                        currentlyReading.book!.authors?.map((a) => a.name).join(", ") || "",
+                      coverUrl: currentlyReading.book!.cover_url || "",
+                      pages: currentlyReading.book!.page_count || 100,
+                      currentPage: currentlyReading.current_page,
+                      status: "reading",
+                      statusLabel: "Lendo",
+                      isFavorite: currentlyReading.favorite,
+                      isInShelf: true,
+                    })
+                  }
                   className="relative w-28 sm:w-36 aspect-[2/3] shrink-0 rounded-xl overflow-hidden shadow-book book-spine cursor-pointer transition-transform duration-200 hover:scale-105"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={currentlyReading.coverUrl}
-                    alt={currentlyReading.title}
+                    src={
+                      currentlyReading.book.cover_url ||
+                      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600"
+                    }
+                    alt={currentlyReading.book.title}
                     className="h-full w-full object-cover"
                   />
                 </div>
 
-                {/* Book Progress & Actions */}
                 <div className="flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <Badge variant="reading" size="sm" dot>
-                        {currentlyReading.statusLabel}
+                        Lendo
                       </Badge>
                       <span className="text-xs text-[#6b7280] dark:text-[#9ca3af]">
-                        Dia 14 consecutivo de leitura
+                        {currentlyReading.book.genres?.[0]?.name || "Literatura"}
                       </span>
                     </div>
 
                     <h3 className="font-serif text-2xl font-bold text-[#141618] dark:text-[#f3f4f6] mt-2">
-                      {currentlyReading.title}
+                      {currentlyReading.book.title}
                     </h3>
                     <p className="text-sm text-[#6b7280] dark:text-[#9ca3af]">
-                      {currentlyReading.author}
+                      {currentlyReading.book.authors?.map((a) => a.name).join(", ")}
                     </p>
                   </div>
 
-                  {/* Progress Bar & Numerical stats */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-baseline text-xs">
                       <span className="font-medium text-[#141618] dark:text-[#f3f4f6]">
-                        {currentlyReading.currentPage} de {currentlyReading.pages} páginas
+                        {currentlyReading.current_page} de {currentlyReading.book.page_count || "?"} páginas
                       </span>
-                      <span className="font-semibold text-blue-600 dark:text-blue-400">
-                        {Math.round(
-                          ((currentlyReading.currentPage || 0) / currentlyReading.pages) * 100
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                        {Math.min(
+                          100,
+                          Math.round(
+                            (currentlyReading.current_page /
+                              (currentlyReading.book.page_count || 1)) *
+                              100
+                          )
                         )}
                         % lido
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-[#eeeae2] dark:bg-[#252a35] overflow-hidden">
                       <div
-                        className="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-all duration-300"
+                        className="h-full bg-amber-500 rounded-full transition-all duration-300"
                         style={{
-                          width: `${Math.round(
-                            ((currentlyReading.currentPage || 0) / currentlyReading.pages) * 100
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (currentlyReading.current_page /
+                                (currentlyReading.book.page_count || 1)) *
+                                100
+                            )
                           )}%`,
                         }}
                       />
                     </div>
-                    <p className="text-[11px] text-[#8c94a0]">
-                      Restam cerca de{" "}
-                      {currentlyReading.pages - (currentlyReading.currentPage || 0)} páginas
-                      (~3 sessões estimadas).
-                    </p>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <div className="flex items-center gap-3 pt-2">
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => setProgressModalBook(currentlyReading)}
+                      onClick={() =>
+                        handleOpenShelfEdit({
+                          id: currentlyReading.id,
+                          bookId: currentlyReading.book_id,
+                          title: currentlyReading.book!.title,
+                          author:
+                            currentlyReading.book!.authors?.map((a) => a.name).join(", ") || "",
+                          coverUrl: currentlyReading.book!.cover_url || "",
+                          pages: currentlyReading.book!.page_count || 100,
+                          currentPage: currentlyReading.current_page,
+                          status: "reading",
+                          statusLabel: "Lendo",
+                          isFavorite: currentlyReading.favorite,
+                          isInShelf: true,
+                        })
+                      }
                       leftIcon={<BookmarkCheck className="h-4 w-4" />}
                     >
-                      Registrar Páginas
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleFavorite(currentlyReading)}
-                      className="text-xs"
-                    >
-                      {currentlyReading.isFavorite ? "Favoritado" : "Favoritar"}
+                      Atualizar Leitura
                     </Button>
                   </div>
                 </div>
               </div>
             </Card>
-          ) : null}
-        </section>
+          </section>
+        )}
 
-        {/* Metas & Métricas Rápidas */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between text-[#6b7280] dark:text-[#9ca3af]">
-                <span className="text-xs font-medium">Meta Anual</span>
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <CardTitle className="text-xl sm:text-2xl mt-1">18 / 24</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af]">
-                75% da meta concluída
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between text-[#6b7280] dark:text-[#9ca3af]">
-                <span className="text-xs font-medium">Páginas Lidas</span>
-                <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <CardTitle className="text-xl sm:text-2xl mt-1">5.840</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af]">
-                +420 este mês
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between text-[#6b7280] dark:text-[#9ca3af]">
-                <span className="text-xs font-medium">Ritmo Médio</span>
-                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <CardTitle className="text-xl sm:text-2xl mt-1">42 min</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af]">
-                Por dia de leitura
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <div className="flex items-center justify-between text-[#6b7280] dark:text-[#9ca3af]">
-                <span className="text-xs font-medium">Total na Estante</span>
-                <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <CardTitle className="text-xl sm:text-2xl mt-1">128</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af]">
-                Livros catalogados
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Minha Estante Recente */}
+        {/* View Mode Toggle: Minha Estante vs Catálogo Global */}
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="font-serif text-2xl font-bold text-[#141618] dark:text-[#f3f4f6]">
-                Minha Estante Recente
-              </h2>
-              <p className="text-xs text-[#6b7280] dark:text-[#9ca3af]">
-                Acesse rapidamente suas leituras em andamento, desejos e livros concluídos.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex p-1 bg-neutral-200/70 dark:bg-neutral-800/70 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode("shelf");
+                    setCurrentPage(1);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    viewMode === "shelf"
+                      ? "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
+                  }`}
+                >
+                  <Library className="h-3.5 w-3.5" />
+                  Minha Estante ({shelfBooks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode("catalog");
+                    setCurrentPage(1);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    viewMode === "catalog"
+                      ? "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900"
+                  }`}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Catálogo Global
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadData}
+                className="p-1.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                title="Recarregar"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-              {[
-                { id: "all", label: "Todos" },
-                { id: "reading", label: "Lendo" },
-                { id: "want_to_read", label: "Quero Ler" },
-                { id: "read", label: "Lidos" },
-                { id: "favorite", label: "Favoritos" },
-              ].map((filter) => {
-                const isActive = statusFilter === filter.id;
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    onClick={() => setStatusFilter(filter.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap select-none ${
-                      isActive
-                        ? "bg-[#141618] text-white dark:bg-white dark:text-[#111317] shadow-sm"
-                        : "bg-[#eeeae2] dark:bg-[#1f232c] text-[#525b6a] dark:text-[#9ca3af] hover:bg-[#e4dfd5] dark:hover:bg-[#282e3a]"
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Filter Pills for Shelf */}
+            {viewMode === "shelf" && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                {[
+                  { id: "all", label: "Todos" },
+                  { id: "reading", label: "Lendo" },
+                  { id: "want_to_read", label: "Quero Ler" },
+                  { id: "read", label: "Lidos" },
+                  { id: "favorite", label: "Favoritos" },
+                ].map((filter) => {
+                  const isActive = statusFilter === filter.id;
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(filter.id);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap select-none ${
+                        isActive
+                          ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm"
+                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
+          {/* Erro de API */}
+          {apiError && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
+              <span>Nota: {apiError}</span>
+              <Button size="sm" variant="outline" onClick={loadData}>
+                Tentar Novamente
+              </Button>
+            </div>
+          )}
+
           {/* Book Cards Grid */}
-          {isLoadingDemo ? (
+          {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
               {[...Array(6)].map((_, idx) => (
                 <BookCardSkeleton key={idx} />
               ))}
             </div>
-          ) : filteredBooks.length === 0 ? (
+          ) : displayBooks.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-dashed border-[#e5e0d8] dark:border-[#272b35] bg-white/50 dark:bg-[#181b22]/50">
-              <SlidersHorizontal className="h-8 w-8 mx-auto text-[#9ca3af] mb-3" />
-              <h3 className="font-serif text-base font-semibold text-[#141618] dark:text-[#f3f4f6]">
+              <SlidersHorizontal className="h-8 w-8 mx-auto text-neutral-400 mb-3" />
+              <h3 className="font-serif text-base font-semibold text-neutral-900 dark:text-neutral-100">
                 Nenhum livro encontrado
               </h3>
-              <p className="text-xs text-[#6b7280] dark:text-[#9ca3af] mt-1 max-w-sm mx-auto">
-                Não há livros correspondentes a esta busca ou filtro. Tente ajustar os termos ou
-                adicione novos títulos.
+              <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+                {viewMode === "shelf"
+                  ? "Sua estante ainda não possui livros com este filtro. Explore o catálogo global para adicionar novos títulos!"
+                  : "Não há livros no catálogo correspondentes à busca."}
               </p>
-              <Button
-                variant="primary"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                }}
-              >
-                Limpar Filtros
-              </Button>
+              {viewMode === "shelf" ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setViewMode("catalog")}
+                >
+                  Explorar Catálogo Global
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => {
+                    setBookToEdit(null);
+                    setIsBookFormOpen(true);
+                  }}
+                >
+                  Cadastrar Primeiro Livro
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
-              {filteredBooks.map((book) => (
+              {displayBooks.map((item) => (
                 <BookCard
-                  key={book.id}
-                  book={book}
-                  onOpenDetails={(b) => setProgressModalBook(b)}
-                  onUpdateProgress={(b) => setProgressModalBook(b)}
+                  key={item.id}
+                  book={item}
+                  onOpenDetails={handleOpenDetails}
+                  onUpdateProgress={handleOpenShelfEdit}
                   onToggleFavorite={handleToggleFavorite}
+                  onAddToShelf={handleOpenShelfEdit}
+                  onRemoveFromShelf={handleRemoveFromShelf}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-6 border-t border-neutral-200 dark:border-neutral-800">
+              <span className="text-xs text-neutral-500">
+                Página {currentPage} de {totalPages} ({totalItems} livros)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  leftIcon={<ChevronLeft className="h-3.5 w-3.5" />}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  rightIcon={<ChevronRight className="h-3.5 w-3.5" />}
+                >
+                  Próxima
+                </Button>
+              </div>
             </div>
           )}
         </section>
       </div>
 
-      {/* Modals */}
-      <AddBookModal
-        isOpen={isAddBookOpen}
-        onClose={() => setIsAddBookOpen(false)}
-        onAddBook={handleAddBook}
+      {/* Modais do Sistema */}
+      {/* 1. Ficha Bibliográfica Detalhada */}
+      <BookDetailsModal
+        isOpen={!!detailsModalBook}
+        onClose={() => setDetailsModalBook(null)}
+        book={detailsModalBook}
+        userBook={detailsUserBook}
+        onOpenShelfModal={(b, ub) => {
+          setShelfModalBook(b);
+          setShelfModalUserBook(ub || null);
+        }}
+        onOpenEditModal={(b) => {
+          setBookToEdit(b);
+          setIsBookFormOpen(true);
+        }}
+        onDeleteBook={handleDeleteBook}
       />
 
-      <ReadingProgressModal
-        isOpen={!!progressModalBook}
-        onClose={() => setProgressModalBook(null)}
-        book={progressModalBook}
-        onSaveProgress={handleSaveProgress}
+      {/* 2. Gestão de Leitura na Estante (UserBook) */}
+      <ShelfConnectionModal
+        isOpen={!!shelfModalBook}
+        onClose={() => {
+          setShelfModalBook(null);
+          setShelfModalUserBook(null);
+        }}
+        book={shelfModalBook}
+        existingUserBook={shelfModalUserBook}
+        onSuccess={loadData}
+      />
+
+      {/* 3. Cadastro e Edição de Livro Bibliográfico Global (Book) */}
+      <BookFormModal
+        isOpen={isBookFormOpen}
+        onClose={() => {
+          setIsBookFormOpen(false);
+          setBookToEdit(null);
+        }}
+        bookToEdit={bookToEdit}
+        onSuccess={loadData}
+      />
+
+      {/* 4. Gestão de Entidades: Autores, Editoras e Gêneros */}
+      <ManageEntitiesModal
+        isOpen={isManageEntitiesOpen}
+        onClose={() => setIsManageEntitiesOpen(false)}
+        onUpdated={loadData}
       />
     </AppShell>
   );

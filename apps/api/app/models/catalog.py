@@ -1,8 +1,8 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,8 +43,8 @@ class Genre(Base, UUIDPrimaryKeyMixin):
 
     name: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
-    created_at: Mapped[date] = mapped_column(
-        Date,
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default="now()",
         nullable=False,
     )
