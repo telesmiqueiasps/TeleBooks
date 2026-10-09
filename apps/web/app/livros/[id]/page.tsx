@@ -52,6 +52,7 @@ import type {
   Book,
   BookStatus,
   Collection,
+  ReadingSession,
   UserBook,
   UserNote,
   UserQuote,
@@ -61,6 +62,7 @@ import { AppShell } from "../../../components/shell/app-shell";
 import { useAuth } from "../../../components/auth/auth-provider";
 import { api } from "../../../lib/api";
 import { BookFormModal } from "../../../components/catalog/book-form-modal";
+import { ReadingSessionModal } from "../../../components/shelf/reading-session-modal";
 import {
   PERSONAL_COLOR_PALETTE,
   CollectionsManagerModal,
@@ -118,6 +120,8 @@ export default function BookDetailPage() {
   const [userBook, setUserBook] = useState<UserBook | null>(null);
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [quotes, setQuotes] = useState<UserQuote[]>([]);
+  const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([]);
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
 
   // Estados de carregamento e feedback
   const [isLoading, setIsLoading] = useState(true);
@@ -125,8 +129,8 @@ export default function BookDetailPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Aba ativa: "overview" (visão geral), "notes" (notas), "quotes" (citações), "technical" (ficha técnica)
-  const [activeTab, setActiveTab] = useState<"overview" | "notes" | "quotes" | "technical">("overview");
+  // Aba ativa: "overview" (visão geral), "sessions" (sessões), "notes" (notas), "quotes" (citações), "technical" (ficha técnica)
+  const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "notes" | "quotes" | "technical">("overview");
 
   // Estado de cópia de ISBN
   const [copiedIsbn, setCopiedIsbn] = useState<string | null>(null);
@@ -186,21 +190,24 @@ export default function BookDetailPage() {
       setUserTags(tagsData || []);
       setQuickNotesText(userBookData?.private_notes || "");
 
-      // Se o usuário tem o livro na estante, carrega notas e citações
+      // Se o usuário tem o livro na estante, carrega notas, citações e sessões
       if (userBookData?.id) {
         try {
-          const [notesData, quotesData] = await Promise.all([
+          const [notesData, quotesData, sessionsData] = await Promise.all([
             api.getUserNotes(userBookData.id),
             api.getUserQuotes(userBookData.id),
+            api.getReadingSessions({ userBookId: userBookData.id }).catch(() => []),
           ]);
           setNotes(notesData || []);
           setQuotes(quotesData || []);
+          setReadingSessions(sessionsData || []);
         } catch {
-          // Erro silencioso em notas secundárias
+          // Erro silencioso em itens secundários
         }
       } else {
         setNotes([]);
         setQuotes([]);
+        setReadingSessions([]);
       }
     } catch (err: unknown) {
       const errorMsg =
@@ -1048,8 +1055,17 @@ export default function BookDetailPage() {
 
                   {/* Ações Rápidas de Progresso (+10, +25, Terminar) */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-slate-500">Avançar:</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setIsSessionModalOpen(true)}
+                        leftIcon={<Plus className="w-3.5 h-3.5 stroke-[2.5]" />}
+                        className="rounded-full text-xs font-semibold px-3.5 py-1 shadow-xs"
+                      >
+                        Sessão de Leitura
+                      </Button>
+                      <span className="text-xs font-medium text-slate-500 ml-1">Avançar:</span>
                       <button
                         type="button"
                         onClick={() => handlePageUpdate(userBook.current_page + 10)}
@@ -1321,6 +1337,24 @@ export default function BookDetailPage() {
 
               <button
                 type="button"
+                onClick={() => setActiveTab("sessions")}
+                className={`flex items-center gap-2 pb-3.5 text-sm font-semibold border-b-2 transition-all shrink-0 ${
+                  activeTab === "sessions"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                <span>Sessões de Leitura</span>
+                {readingSessions.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    {readingSessions.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("notes")}
                 className={`flex items-center gap-2 pb-3.5 text-sm font-semibold border-b-2 transition-all shrink-0 ${
                   activeTab === "notes"
@@ -1500,6 +1534,123 @@ export default function BookDetailPage() {
                   </dl>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ABA: SESSÕES DE LEITURA */}
+          {activeTab === "sessions" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                    Histórico de Sessões de Leitura
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Acompanhe cada momento dedicado a este exemplar e seu progresso página por página.
+                  </p>
+                </div>
+
+                {userBook && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsSessionModalOpen(true)}
+                    leftIcon={<Plus className="w-4 h-4" />}
+                    className="rounded-full"
+                  >
+                    Nova Sessão
+                  </Button>
+                )}
+              </div>
+
+              {readingSessions.length === 0 ? (
+                <div className="p-12 text-center rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-3">
+                  <Clock className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Nenhuma sessão registrada para este livro
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Registre suas sessões para acompanhar páginas lidas, tempo investido e reflexões de cada capítulo.
+                  </p>
+                  {userBook && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsSessionModalOpen(true)}
+                      leftIcon={<Plus className="w-4 h-4" />}
+                      className="rounded-full mt-2"
+                    >
+                      Registrar Primeira Sessão
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+                  {readingSessions.map((session) => {
+                    const pagesInSession = Math.max(0, session.end_page - session.start_page);
+                    const durationMins = session.duration_seconds
+                      ? Math.round(session.duration_seconds / 60)
+                      : null;
+                    const sessionDate = new Date(session.started_at);
+
+                    return (
+                      <div
+                        key={session.id}
+                        className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-primary">
+                              +{pagesInSession} {pagesInSession === 1 ? "página lida" : "páginas lidas"}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              • da pág. {session.start_page} à {session.end_page}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {sessionDate.toLocaleDateString("pt-BR", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            {durationMins !== null && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" /> {durationMins} min
+                              </span>
+                            )}
+                          </div>
+
+                          {session.notes && (
+                            <p className="text-xs text-slate-600 dark:text-slate-300 italic pt-1 border-l-2 border-primary/30 pl-2">
+                              &ldquo;{session.notes}&rdquo;
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm("Deseja excluir esta sessão de leitura?")) {
+                              await api.deleteReadingSession(session.id);
+                              await loadBookData();
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors self-end sm:self-center"
+                          title="Excluir sessão"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -2077,6 +2228,19 @@ export default function BookDetailPage() {
             onClose={() => setIsCollectionsModalOpen(false)}
             onChanged={loadBookData}
           />
+
+          {/* Modal para Registro de Sessão de Leitura */}
+          {userBook && (
+            <ReadingSessionModal
+              isOpen={isSessionModalOpen}
+              onClose={() => setIsSessionModalOpen(false)}
+              userBook={userBook}
+              onSuccess={() => {
+                showToast("Sessão de leitura registrada com sucesso!");
+                loadBookData();
+              }}
+            />
+          )}
         </div>
       )}
     </AppShell>

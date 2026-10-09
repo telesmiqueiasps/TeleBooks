@@ -34,6 +34,8 @@ export function BottomNav({
 
   const effectiveTab = pathname.startsWith("/minha-biblioteca")
     ? "library"
+    : pathname.startsWith("/leitura-atual")
+    ? "reading"
     : pathname === "/"
     ? "home"
     : currentTab;
@@ -97,6 +99,8 @@ export function BottomNav({
                     router.push("/");
                   } else if (tab.id === "library" && !pathname.startsWith("/minha-biblioteca")) {
                     router.push("/minha-biblioteca");
+                  } else if (tab.id === "reading" && !pathname.startsWith("/leitura-atual")) {
+                    router.push("/leitura-atual");
                   }
                 }}
                 className={cn(

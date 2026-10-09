@@ -131,6 +131,8 @@ class UserBookRead(UserBookBase):
 class ReadingSessionCreate(BaseModel):
     start_page: int = Field(ge=0)
     end_page: int = Field(ge=0)
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
     duration_seconds: int | None = Field(default=None, ge=0)
     notes: str | None = None
 
@@ -145,8 +147,23 @@ class ReadingSessionRead(BaseModel):
     ended_at: datetime | None = None
     duration_seconds: int | None = None
     notes: str | None = None
+    book_title: str | None = None
+    book_cover_url: str | None = None
+    book_total_pages: int | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReadingOverviewRead(BaseModel):
+    currently_reading_count: int = 0
+    paused_count: int = 0
+    read_count: int = 0
+    want_to_read_count: int = 0
+    total_pages_read: int = 0
+    total_sessions_count: int = 0
+    recent_sessions: list[ReadingSessionRead] = Field(default_factory=list)
+    active_books: list[UserBookRead] = Field(default_factory=list)
 
 
 class UserNoteCreate(BaseModel):

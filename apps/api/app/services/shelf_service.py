@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
@@ -297,26 +297,162 @@ class ShelfService:
         if data.end_page < data.start_page:
             raise ValidationError("A página final não pode ser menor que a página inicial.")
 
+        session_start = data.started_at or datetime.now(UTC)
+
         session = ReadingSession(
             user_book_id=user_book.id,
             user_id=user_id,
             start_page=data.start_page,
             end_page=data.end_page,
+            started_at=session_start,
+            ended_at=data.ended_at,
             duration_seconds=data.duration_seconds,
             notes=data.notes,
         )
         db.add(session)
 
-        # Atualiza a página atual do livro
+        # Atualiza a página atual do livro se avançou
         if data.end_page > user_book.current_page:
             user_book.current_page = data.end_page
-            if user_book.status == BookStatus.WANT_TO_READ:
-                user_book.status = BookStatus.READING
-                user_book.started_at = datetime.now(UTC)
+
+        # Se o livro estava como quero ler ou pausado, e houve leitura, muda para lendo
+        if user_book.status in (BookStatus.WANT_TO_READ, BookStatus.PAUSED):
+            user_book.status = BookStatus.READING
+
+        # Se started_at não foi registrado, define
+        if not user_book.started_at:
+            user_book.started_at = session_start
+
+        # Se completou o livro
+        if user_book.book and user_book.book.page_count and data.end_page >= user_book.book.page_count:
+            user_book.status = BookStatus.READ
+            if not user_book.finished_at:
+                user_book.finished_at = data.ended_at or datetime.now(UTC)
 
         db.commit()
         db.refresh(session)
+
+        # Enriquecimento com metadados do livro
+        if user_book.book:
+            session.book_title = user_book.book.title
+            session.book_cover_url = user_book.book.cover_url or user_book.book.thumbnail_url
+            session.book_total_pages = user_book.book.page_count
+
         return session
+
+    @staticmethod
+    def list_reading_sessions(
+        db: Session,
+        user_id: uuid.UUID,
+        user_book_id: uuid.UUID | None = None,
+        limit: int = 50,
+    ) -> list[ReadingSession]:
+        stmt = (
+            select(ReadingSession)
+            .options(
+                selectinload(ReadingSession.user_book).selectinload(UserBook.book)
+            )
+            .where(ReadingSession.user_id == user_id)
+        )
+
+        if user_book_id:
+            stmt = stmt.where(ReadingSession.user_book_id == user_book_id)
+
+        stmt = stmt.order_by(ReadingSession.started_at.desc(), ReadingSession.created_at.desc()).limit(limit)
+        sessions = list(db.execute(stmt).scalars().all())
+
+        for s in sessions:
+            if s.user_book and s.user_book.book:
+                s.book_title = s.user_book.book.title
+                s.book_cover_url = s.user_book.book.cover_url or s.user_book.book.thumbnail_url
+                s.book_total_pages = s.user_book.book.page_count
+
+        return sessions
+
+    @staticmethod
+    def delete_reading_session(
+        db: Session,
+        user_id: uuid.UUID,
+        session_id: uuid.UUID,
+    ) -> None:
+        stmt = select(ReadingSession).where(
+            ReadingSession.id == session_id,
+            ReadingSession.user_id == user_id,
+        )
+        session = db.execute(stmt).scalar_one_or_none()
+        if not session:
+            raise NotFoundError("Sessão de leitura não encontrada.")
+
+        db.delete(session)
+        db.commit()
+
+    @staticmethod
+    def get_active_reading_books(
+        db: Session,
+        user_id: uuid.UUID,
+    ) -> list[UserBook]:
+        stmt = (
+            select(UserBook)
+            .options(
+                selectinload(UserBook.book).selectinload(Book.publisher),
+                selectinload(UserBook.book).selectinload(Book.authors),
+                selectinload(UserBook.book).selectinload(Book.genres),
+                selectinload(UserBook.tags),
+                selectinload(UserBook.collections),
+                selectinload(UserBook.reading_sessions),
+            )
+            .where(
+                UserBook.user_id == user_id,
+                UserBook.status.in_([BookStatus.READING, BookStatus.PAUSED]),
+            )
+            .order_by(
+                case(
+                    (UserBook.status == BookStatus.READING, 0),
+                    (UserBook.status == BookStatus.PAUSED, 1),
+                    else_=2,
+                ),
+                UserBook.updated_at.desc(),
+            )
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def get_reading_overview(
+        db: Session,
+        user_id: uuid.UUID,
+    ) -> dict:
+        status_counts_stmt = (
+            select(UserBook.status, func.count(UserBook.id))
+            .where(UserBook.user_id == user_id)
+            .group_by(UserBook.status)
+        )
+        status_rows = db.execute(status_counts_stmt).all()
+        counts_map = {row[0]: row[1] for row in status_rows}
+
+        session_stats_stmt = (
+            select(
+                func.count(ReadingSession.id),
+                func.coalesce(func.sum(ReadingSession.end_page - ReadingSession.start_page), 0),
+            )
+            .where(ReadingSession.user_id == user_id)
+        )
+        session_stats_row = db.execute(session_stats_stmt).one()
+        total_sessions = session_stats_row[0] or 0
+        total_pages_read = int(session_stats_row[1] or 0)
+
+        active_books = ShelfService.get_active_reading_books(db, user_id)
+        recent_sessions = ShelfService.list_reading_sessions(db, user_id, limit=20)
+
+        return {
+            "currently_reading_count": counts_map.get(BookStatus.READING, 0),
+            "paused_count": counts_map.get(BookStatus.PAUSED, 0),
+            "read_count": counts_map.get(BookStatus.READ, 0),
+            "want_to_read_count": counts_map.get(BookStatus.WANT_TO_READ, 0),
+            "total_pages_read": total_pages_read,
+            "total_sessions_count": total_sessions,
+            "recent_sessions": recent_sessions,
+            "active_books": active_books,
+        }
 
     @staticmethod
     def list_user_notes(db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID) -> list[UserNote]:

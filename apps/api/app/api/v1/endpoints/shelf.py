@@ -13,6 +13,7 @@ from app.schemas.shelf import (
     CollectionRead,
     CollectionReorder,
     CollectionUpdate,
+    ReadingOverviewRead,
     ReadingSessionCreate,
     ReadingSessionRead,
     UserBookCreate,
@@ -323,6 +324,65 @@ def set_book_tags(
     )
     return UserBookRead.model_validate(ub)
 
+# ==============================================================================
+# Sessões e Fluxo de Leitura (Reading Sessions & Overview)
+# ==============================================================================
+@router.get(
+    "/reading/overview",
+    response_model=ReadingOverviewRead,
+    summary="Resumo geral de leitura do usuário (livros em andamento, métricas e sessões)",
+)
+def get_reading_overview(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    return ShelfService.get_reading_overview(db=db, user_id=user_uuid)
+
+
+@router.get(
+    "/reading/active",
+    response_model=list[UserBookRead],
+    summary="Listar livros com leitura em andamento ou pausados",
+)
+def get_active_readings(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    books = ShelfService.get_active_reading_books(db=db, user_id=user_uuid)
+    return [UserBookRead.model_validate(b) for b in books]
+
+
+@router.get(
+    "/sessions",
+    response_model=list[ReadingSessionRead],
+    summary="Listar sessões de leitura recentes do usuário",
+)
+def list_all_reading_sessions(
+    limit: int = Query(default=30, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    sessions = ShelfService.list_reading_sessions(db=db, user_id=user_uuid, limit=limit)
+    return [ReadingSessionRead.model_validate(s) for s in sessions]
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir uma sessão de leitura",
+)
+def delete_reading_session(
+    session_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    ShelfService.delete_reading_session(db=db, user_id=user_uuid, session_id=session_id)
+    return None
+
 
 @router.get(
     "/{user_book_id}",
@@ -375,6 +435,24 @@ def remove_book_from_shelf(
     return None
 
 
+@router.get(
+    "/{user_book_id}/sessions",
+    response_model=list[ReadingSessionRead],
+    summary="Listar sessões de leitura de um exemplar na estante",
+)
+def list_book_reading_sessions(
+    user_book_id: uuid.UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    sessions = ShelfService.list_reading_sessions(
+        db=db, user_id=user_uuid, user_book_id=user_book_id, limit=limit
+    )
+    return [ReadingSessionRead.model_validate(s) for s in sessions]
+
+
 @router.post(
     "/{user_book_id}/sessions",
     response_model=ReadingSessionRead,
@@ -392,7 +470,7 @@ def record_reading_session(
         db=db,
         user_id=user_uuid,
         user_book_id=user_book_id,
-        session_data=session_in,
+        data=session_in,
     )
     return ReadingSessionRead.model_validate(session)
 

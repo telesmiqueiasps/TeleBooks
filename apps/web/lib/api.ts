@@ -5,6 +5,8 @@ import type {
   Collection,
   Genre,
   Publisher,
+  ReadingOverview,
+  ReadingSession,
   UserBook,
   UserNote,
   UserQuote,
@@ -104,6 +106,15 @@ export interface UserTagCreateParams {
 export interface UserTagUpdateParams {
   name?: string;
   color?: string | null;
+}
+
+export interface ReadingSessionCreateParams {
+  start_page: number;
+  end_page: number;
+  started_at?: string | null;
+  ended_at?: string | null;
+  duration_seconds?: number | null;
+  notes?: string | null;
 }
 
 async function getHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
@@ -685,6 +696,60 @@ export const api = {
       {
         method: "PUT",
         body: JSON.stringify(tagIds),
+      },
+      true
+    );
+  },
+
+  // ============================================================================
+  // Sessões e Fluxo de Leitura (Reading Sessions & Overview)
+  // ============================================================================
+  async getReadingOverview(): Promise<ReadingOverview> {
+    return request<ReadingOverview>("/shelf/reading/overview", {}, true);
+  },
+
+  async getActiveReadings(): Promise<UserBook[]> {
+    return request<UserBook[]>("/shelf/reading/active", {}, true);
+  },
+
+  async getReadingSessions(params?: {
+    userBookId?: string;
+    limit?: number;
+  }): Promise<ReadingSession[]> {
+    const limit = params?.limit || 50;
+    if (params?.userBookId) {
+      return request<ReadingSession[]>(
+        `/shelf/${params.userBookId}/sessions?limit=${limit}`,
+        {},
+        true
+      );
+    }
+    return request<ReadingSession[]>(
+      `/shelf/sessions?limit=${limit}`,
+      {},
+      true
+    );
+  },
+
+  async createReadingSession(
+    userBookId: string,
+    payload: ReadingSessionCreateParams
+  ): Promise<ReadingSession> {
+    return request<ReadingSession>(
+      `/shelf/${userBookId}/sessions`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async deleteReadingSession(sessionId: string): Promise<void> {
+    return request<void>(
+      `/shelf/sessions/${sessionId}`,
+      {
+        method: "DELETE",
       },
       true
     );

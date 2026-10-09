@@ -135,7 +135,21 @@ export interface ReadingSession {
   ended_at?: string | null;
   duration_seconds?: number | null;
   notes?: string | null;
+  book_title?: string | null;
+  book_cover_url?: string | null;
+  book_total_pages?: number | null;
   created_at: string;
+}
+
+export interface ReadingOverview {
+  currently_reading_count: number;
+  paused_count: number;
+  read_count: number;
+  want_to_read_count: number;
+  total_pages_read: number;
+  total_sessions_count: number;
+  recent_sessions: ReadingSession[];
+  active_books: UserBook[];
 }
 
 export interface UserNote {
