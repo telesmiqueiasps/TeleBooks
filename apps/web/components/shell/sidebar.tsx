@@ -64,16 +64,17 @@ export function Sidebar({
     .toUpperCase();
 
   return (
-    <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0B0F1A] h-screen sticky top-0 p-4 justify-between select-none">
+    <aside className="hidden md:flex flex-col w-64 shrink-0 bg-gradient-to-b from-[#006CEB] via-[#007BFF] to-[#0057C2] text-white border-r border-[#0062CC]/50 dark:border-[#004DB3]/60 h-screen sticky top-0 p-4 justify-between select-none shadow-xl shadow-[#007BFF]/10 z-20">
       <div className="space-y-6">
         {/* Brand Header */}
         <Link href="/" className="flex items-center px-2 pt-2 transition-transform hover:scale-[1.02]">
-          <Logo size="md" />
+          <Logo size="md" theme="dark" />
         </Link>
 
         {/* Navigation Links */}
         <nav className="space-y-1">
           <NavItem
+            variant="brand"
             label="Início"
             icon={<Home className="h-4 w-4" />}
             active={isHomeActive}
@@ -83,6 +84,7 @@ export function Sidebar({
             }}
           />
           <NavItem
+            variant="brand"
             label="Minha Biblioteca"
             icon={<Library className="h-4 w-4" />}
             active={isLibraryActive}
@@ -93,24 +95,28 @@ export function Sidebar({
             }}
           />
           <NavItem
+            variant="brand"
             label="Estatísticas"
             icon={<BarChart3 className="h-4 w-4" />}
             active={currentTab === "stats"}
             onClick={() => onSelectTab("stats")}
           />
           <NavItem
+            variant="brand"
             label="Listas"
             icon={<List className="h-4 w-4" />}
             active={currentTab === "lists"}
             onClick={() => onSelectTab("lists")}
           />
           <NavItem
+            variant="brand"
             label="Comunidade"
             icon={<Users className="h-4 w-4" />}
             active={currentTab === "community"}
             onClick={() => onSelectTab("community")}
           />
           <NavItem
+            variant="brand"
             label="Configurações"
             icon={<Settings className="h-4 w-4" />}
             active={currentTab === "settings"}
@@ -120,22 +126,22 @@ export function Sidebar({
       </div>
 
       {/* Footer / Profile & Theme */}
-      <div className="space-y-3 pt-4 border-t border-[#E2E8F0] dark:border-[#1E293B]">
+      <div className="space-y-3 pt-4 border-t border-white/20">
         {/* Theme Toggle */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex items-center justify-between w-full px-3.5 py-2 rounded-full text-xs font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
+          className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-full text-xs font-semibold text-white/90 hover:bg-white/15 transition-colors"
         >
           <span className="flex items-center gap-2.5">
             {theme === "dark" ? (
-              <Moon className="h-4 w-4 text-[#007BFF]" />
+              <Moon className="h-4 w-4 text-blue-200" />
             ) : (
-              <Sun className="h-4 w-4 text-amber-500" />
+              <Sun className="h-4 w-4 text-amber-300" />
             )}
             <span>Tema {theme === "dark" ? "Escuro" : "Claro"}</span>
           </span>
-          <span className="text-[10px] uppercase font-semibold text-[#94A3B8]">
+          <span className="text-[10px] uppercase font-bold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">
             Alternar
           </span>
         </button>
@@ -146,15 +152,15 @@ export function Sidebar({
             <div className="flex-1 min-w-0">
               <Dropdown>
                 <DropdownTrigger className="w-full">
-                  <div className="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
+                  <div className="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full hover:bg-white/15 transition-colors w-full text-left">
+                    <div className="h-8 w-8 rounded-full bg-white text-[#006CEB] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#0F172A] dark:text-white truncate">
+                      <p className="text-xs font-bold text-white truncate">
                         {displayName}
                       </p>
-                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
+                      <p className="text-[11px] text-blue-100/80 truncate">
                         @{displayUsername}
                       </p>
                     </div>
@@ -187,7 +193,7 @@ export function Sidebar({
               onClick={handleSignOut}
               title="Encerrar Sessão (Logout)"
               aria-label="Encerrar Sessão (Logout)"
-              className="p-2.5 rounded-full border border-transparent hover:border-red-200 dark:hover:border-red-900/50 text-[#64748B] dark:text-[#94A3B8] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
+              className="p-2.5 rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors shrink-0"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -195,7 +201,7 @@ export function Sidebar({
         ) : (
           <Link
             href="/login"
-            className="flex items-center justify-center gap-2 w-full p-2.5 rounded-xl border border-[#e5e0d8] dark:border-[#272b35] bg-white dark:bg-[#181b22] text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-[#faf8f5] dark:hover:bg-[#202530] transition-colors"
+            className="flex items-center justify-center gap-2 w-full p-2.5 rounded-full bg-white text-[#006CEB] hover:bg-white/90 text-xs font-bold shadow-md transition-all"
           >
             <LogIn className="h-4 w-4" />
             <span>Entrar / Cadastrar</span>

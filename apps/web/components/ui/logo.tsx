@@ -219,7 +219,9 @@ export function Logo({
             )}
           >
             <span>Tele</span>
-            <span className="text-[#007BFF]">Books</span>
+            <span className={theme === "dark" ? "text-blue-200" : "text-[#007BFF]"}>
+              Books
+            </span>
           </div>
 
           {/* Slogan oficial */}
