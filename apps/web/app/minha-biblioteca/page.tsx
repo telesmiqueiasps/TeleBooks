@@ -20,6 +20,11 @@ import {
   BookMarked,
   FilterX,
   Compass,
+  Folder,
+  Tag,
+  Clock,
+  Users,
+  FolderPlus,
 } from "lucide-react";
 import {
   Button,
@@ -32,9 +37,11 @@ import type {
   Author,
   Book,
   BookStatus,
+  Collection,
   Genre,
   Publisher,
   UserBook,
+  UserTag,
 } from "@telebooks/types";
 
 import { AppShell } from "../../components/shell/app-shell";
@@ -49,10 +56,19 @@ import {
 } from "../../components/shelf/shelf-filters";
 import { BookshelfView } from "../../components/shelf/bookshelf-view";
 import { ShelfListView } from "../../components/shelf/shelf-list-view";
+import { CollectionsManagerModal } from "../../components/shelf/collections-manager-modal";
 
 import { BookDetailsModal } from "../../components/catalog/book-details-modal";
 import { BookFormModal } from "../../components/catalog/book-form-modal";
 import { ShelfConnectionModal } from "../../components/shelf/shelf-connection-modal";
+
+interface BookGroup {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  description?: string;
+  books: UserBook[];
+}
 
 export default function MinhaBibliotecaPage() {
   const router = useRouter();
@@ -68,9 +84,13 @@ export default function MinhaBibliotecaPage() {
     author_id: undefined,
     publisher_id: undefined,
     genre_id: undefined,
+    collection_id: undefined,
+    tag_id: undefined,
+    personal_color: undefined,
     min_rating: undefined,
     sort_by: "updated_at_desc",
     page_size: 18,
+    groupBy: "none",
   });
 
   // Paginação
@@ -87,6 +107,8 @@ export default function MinhaBibliotecaPage() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [tags, setTags] = useState<UserTag[]>([]);
 
   // Modais
   const [detailsBook, setDetailsBook] = useState<Book | null>(null);
@@ -97,6 +119,7 @@ export default function MinhaBibliotecaPage() {
 
   const [isBookFormOpen, setIsBookFormOpen] = useState(false);
   const [bookToEdit, setBookToEdit] = useState<Book | null>(null);
+  const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
 
   // Redirecionamento de segurança para login se não autenticado
   useEffect(() => {
@@ -106,33 +129,42 @@ export default function MinhaBibliotecaPage() {
   }, [user, isAuthLoading, router]);
 
   // Carrega entidades para os seletores de filtros
-  useEffect(() => {
-    async function loadAuxiliaryData() {
-      try {
-        const [authorsRes, publishersRes, genresRes] = await Promise.allSettled([
+  const loadAuxiliaryData = useCallback(async () => {
+    try {
+      const [authorsRes, publishersRes, genresRes, collectionsRes, tagsRes] =
+        await Promise.allSettled([
           api.getAuthors({ page_size: 100 }),
           api.getPublishers({ page_size: 100 }),
           api.getGenres({ page_size: 100 }),
+          api.getCollections(),
+          api.getUserTags(),
         ]);
 
-        if (authorsRes.status === "fulfilled") {
-          setAuthors(authorsRes.value.items || []);
-        }
-        if (publishersRes.status === "fulfilled") {
-          setPublishers(publishersRes.value.items || []);
-        }
-        if (genresRes.status === "fulfilled") {
-          setGenres(genresRes.value.items || []);
-        }
-      } catch {
-        // Falha silenciosa no carregamento de metadados
+      if (authorsRes.status === "fulfilled") {
+        setAuthors(authorsRes.value.items || []);
       }
+      if (publishersRes.status === "fulfilled") {
+        setPublishers(publishersRes.value.items || []);
+      }
+      if (genresRes.status === "fulfilled") {
+        setGenres(genresRes.value.items || []);
+      }
+      if (collectionsRes.status === "fulfilled") {
+        setCollections(collectionsRes.value || []);
+      }
+      if (tagsRes.status === "fulfilled") {
+        setTags(tagsRes.value || []);
+      }
+    } catch {
+      // Falha silenciosa no carregamento de metadados
     }
+  }, []);
 
+  useEffect(() => {
     if (user) {
       loadAuxiliaryData();
     }
-  }, [user]);
+  }, [user, loadAuxiliaryData]);
 
   // Carregamento principal dos livros da estante
   const loadShelf = useCallback(async () => {
@@ -162,6 +194,9 @@ export default function MinhaBibliotecaPage() {
         author_id: filters.author_id,
         publisher_id: filters.publisher_id,
         genre_id: filters.genre_id,
+        collection_id: filters.collection_id,
+        tag_id: filters.tag_id,
+        personal_color: filters.personal_color,
         min_rating: filters.min_rating,
         sort_by: filters.sort_by,
         page: currentPage,
@@ -232,8 +267,141 @@ export default function MinhaBibliotecaPage() {
       rating: userBook.rating ? Number(userBook.rating) : undefined,
       isFavorite: userBook.favorite,
       isInShelf: true,
+      personalColor: userBook.personal_color,
+      tags: userBook.tags,
+      collections: userBook.collections,
     };
   };
+
+  // Agrupamento de Livros
+  const groupedBooks = useMemo<BookGroup[]>(() => {
+    if (filters.groupBy === "none") return [];
+
+    if (filters.groupBy === "collection") {
+      const groups: BookGroup[] = [];
+      const booksWithCollectionIds = new Set<string>();
+
+      collections.forEach((col) => {
+        const booksInCol = userBooks.filter((ub) =>
+          ub.collections?.some((c) => c.id === col.id)
+        );
+        if (booksInCol.length > 0) {
+          booksInCol.forEach((b) => booksWithCollectionIds.add(b.id));
+          groups.push({
+            id: col.id,
+            title: col.name,
+            icon: <Folder className="w-4 h-4 text-[#007BFF]" />,
+            description: col.description || undefined,
+            books: booksInCol,
+          });
+        }
+      });
+
+      const uncategorized = userBooks.filter(
+        (ub) => !booksWithCollectionIds.has(ub.id)
+      );
+      if (uncategorized.length > 0) {
+        groups.push({
+          id: "uncategorized",
+          title: "Sem Coleção Atribuída",
+          icon: <BookMarked className="w-4 h-4 text-slate-400" />,
+          description: "Livros da sua estante ainda não organizados em coleções",
+          books: uncategorized,
+        });
+      }
+      return groups;
+    }
+
+    if (filters.groupBy === "status") {
+      const statusOrder: {
+        status: BookStatus;
+        label: string;
+        icon: React.ReactNode;
+      }[] = [
+        {
+          status: "reading",
+          label: "Lendo Atualmente",
+          icon: <BookOpen className="w-4 h-4 text-blue-500" />,
+        },
+        {
+          status: "want_to_read",
+          label: "Quero Ler",
+          icon: <BookmarkCheck className="w-4 h-4 text-amber-500" />,
+        },
+        {
+          status: "read",
+          label: "Lidos & Concluídos",
+          icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+        },
+        {
+          status: "paused",
+          label: "Leituras Pausadas",
+          icon: <Clock className="w-4 h-4 text-purple-500" />,
+        },
+        {
+          status: "abandoned",
+          label: "Abandonados",
+          icon: <FilterX className="w-4 h-4 text-rose-500" />,
+        },
+      ];
+
+      const groups: BookGroup[] = [];
+      statusOrder.forEach(({ status, label, icon }) => {
+        const booksInStatus = userBooks.filter((ub) => ub.status === status);
+        if (booksInStatus.length > 0) {
+          groups.push({
+            id: status,
+            title: label,
+            icon,
+            books: booksInStatus,
+          });
+        }
+      });
+      return groups;
+    }
+
+    if (filters.groupBy === "author") {
+      const map = new Map<string, UserBook[]>();
+      userBooks.forEach((ub) => {
+        const authorName =
+          ub.book?.authors && ub.book.authors.length > 0
+            ? ub.book.authors.map((a) => a.name).join(", ")
+            : "Autor Desconhecido";
+        if (!map.has(authorName)) map.set(authorName, []);
+        map.get(authorName)!.push(ub);
+      });
+
+      return Array.from(map.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([authorName, books]) => ({
+          id: authorName,
+          title: authorName,
+          icon: <Users className="w-4 h-4 text-[#007BFF]" />,
+          books,
+        }));
+    }
+
+    if (filters.groupBy === "genre") {
+      const map = new Map<string, UserBook[]>();
+      userBooks.forEach((ub) => {
+        const genreName =
+          ub.book?.genres?.[0]?.name || "Sem Gênero Literário";
+        if (!map.has(genreName)) map.set(genreName, []);
+        map.get(genreName)!.push(ub);
+      });
+
+      return Array.from(map.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([genreName, books]) => ({
+          id: genreName,
+          title: genreName,
+          icon: <Tag className="w-4 h-4 text-[#007BFF]" />,
+          books,
+        }));
+    }
+
+    return [];
+  }, [filters.groupBy, userBooks, collections]);
 
   // Ações de usuário
   const handleOpenDetails = (item: BookItem) => {
@@ -295,10 +463,6 @@ export default function MinhaBibliotecaPage() {
     () => userBooks.filter((b) => b.status === "reading").length,
     [userBooks]
   );
-  const readCount = useMemo(
-    () => userBooks.filter((b) => b.status === "read").length,
-    [userBooks]
-  );
 
   const hasAnyFilterActive =
     Boolean(filters.q) ||
@@ -306,6 +470,9 @@ export default function MinhaBibliotecaPage() {
     Boolean(filters.author_id) ||
     Boolean(filters.publisher_id) ||
     Boolean(filters.genre_id) ||
+    Boolean(filters.collection_id) ||
+    Boolean(filters.tag_id) ||
+    Boolean(filters.personal_color) ||
     filters.min_rating !== undefined;
 
   return (
@@ -332,14 +499,24 @@ export default function MinhaBibliotecaPage() {
             </p>
           </div>
 
-          {/* Badges de Contagem e Botão Adicionar */}
-          <div className="flex items-center gap-2.5 sm:self-center">
+          {/* Badges de Contagem e Botões de Ação */}
+          <div className="flex items-center gap-2 sm:self-center flex-wrap">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
               <span>{totalItems} no acervo</span>
               {readingCount > 0 && (
                 <span className="text-[#007BFF]">• {readingCount} lendo</span>
               )}
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCollectionsModalOpen(true)}
+              leftIcon={<FolderPlus className="w-4 h-4 text-[#007BFF]" />}
+              className="rounded-full text-xs px-3.5"
+            >
+              Coleções & Tags
+            </Button>
 
             <Button
               variant="primary"
@@ -353,7 +530,7 @@ export default function MinhaBibliotecaPage() {
           </div>
         </div>
 
-        {/* Barra de Busca, Filtros, Ordenação e Alternador de Modos */}
+        {/* Barra de Busca, Filtros, Ordenação, Agrupamento e Modos de Exibição */}
         <ShelfFilters
           filters={filters}
           onChange={handleFilterChange}
@@ -362,6 +539,9 @@ export default function MinhaBibliotecaPage() {
           authors={authors}
           publishers={publishers}
           genres={genres}
+          collections={collections}
+          tags={tags}
+          onOpenCollectionsManager={() => setIsCollectionsModalOpen(true)}
           totalBooks={totalItems}
         />
 
@@ -378,7 +558,7 @@ export default function MinhaBibliotecaPage() {
           </div>
         )}
 
-        {/* CONTEÚDO PRINCIPAL (3 MODOS: GRID, LISTA, ESTANTE) */}
+        {/* CONTEÚDO PRINCIPAL (MODOS: GRID, LISTA, ESTANTE) */}
         {isLoading ? (
           // Skeletons de Carregamento
           viewMode === "grid" ? (
@@ -432,9 +612,13 @@ export default function MinhaBibliotecaPage() {
                     author_id: undefined,
                     publisher_id: undefined,
                     genre_id: undefined,
+                    collection_id: undefined,
+                    tag_id: undefined,
+                    personal_color: undefined,
                     min_rating: undefined,
                     sort_by: "updated_at_desc",
                     page_size: 18,
+                    groupBy: "none",
                   })
                 }
                 className="rounded-full text-xs"
@@ -479,8 +663,79 @@ export default function MinhaBibliotecaPage() {
               </div>
             </div>
           )
+        ) : filters.groupBy !== "none" ? (
+          // =========================================================================
+          // EXIBIÇÃO AGRUPADA (POR COLEÇÃO, STATUS, AUTOR OU GÊNERO)
+          // =========================================================================
+          <div className="space-y-10 sm:space-y-12">
+            {groupedBooks.map((group) => (
+              <div key={group.id} className="space-y-4">
+                {/* Cabeçalho da Seção Agrupada */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/40 dark:border-blue-900/40">
+                      {group.icon}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                          {group.title}
+                        </h2>
+                        <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                          {group.books.length} {group.books.length === 1 ? "livro" : "livros"}
+                        </span>
+                      </div>
+                      {group.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {group.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Livros do Grupo no Modo Escolhido */}
+                {viewMode === "grid" && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+                    {group.books.map((userBook) => (
+                      <BookCard
+                        key={userBook.id}
+                        book={toBookItem(userBook)}
+                        onOpenDetails={handleOpenDetails}
+                        onUpdateProgress={handleUpdateProgress}
+                        onToggleFavorite={handleToggleFavorite}
+                        onRemoveFromShelf={handleRemoveFromShelf}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {viewMode === "list" && (
+                  <ShelfListView
+                    books={group.books}
+                    onOpenDetails={handleOpenDetails}
+                    onUpdateProgress={handleUpdateProgress}
+                    onToggleFavorite={handleToggleFavorite}
+                    onRemoveFromShelf={handleRemoveFromShelf}
+                  />
+                )}
+
+                {viewMode === "bookshelf" && (
+                  <BookshelfView
+                    books={group.books}
+                    onOpenDetails={handleOpenDetails}
+                    onUpdateProgress={handleUpdateProgress}
+                    onToggleFavorite={handleToggleFavorite}
+                    onRemoveFromShelf={handleRemoveFromShelf}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
-          // Exibição dos Livros Conforme Modo Escolhido
+          // =========================================================================
+          // EXIBIÇÃO LINEAR PADRÃO (SEM AGRUPAMENTO)
+          // =========================================================================
           <>
             {viewMode === "grid" && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
@@ -552,7 +807,6 @@ export default function MinhaBibliotecaPage() {
                   <div className="flex items-center gap-1">
                     {[...Array(totalPages)].map((_, idx) => {
                       const pageNum = idx + 1;
-                      // Exibe páginas relevantes se houver muitas páginas
                       if (
                         pageNum === 1 ||
                         pageNum === totalPages ||
@@ -580,7 +834,7 @@ export default function MinhaBibliotecaPage() {
                         return (
                           <span
                             key={pageNum}
-                            className="px-1 text-slate-400 dark:text-slate-600"
+                            className="w-6 text-center text-slate-400 font-bold"
                           >
                             ...
                           </span>
@@ -606,9 +860,7 @@ export default function MinhaBibliotecaPage() {
         )}
       </div>
 
-      {/* MODAIS INTEGRADOS */}
-
-      {/* Modal de Detalhes Bibliográficos */}
+      {/* Modal de Ficha Rápida do Livro */}
       <BookDetailsModal
         isOpen={Boolean(detailsBook)}
         onClose={() => {
@@ -617,15 +869,11 @@ export default function MinhaBibliotecaPage() {
         }}
         book={detailsBook}
         userBook={detailsUserBook}
-        onOpenShelfModal={(book, ub) => {
-          setShelfModalBook(book);
+        onOpenShelfModal={(b, ub) => {
+          setShelfModalBook(b);
           setShelfModalUserBook(ub || null);
           setDetailsBook(null);
-        }}
-        onOpenEditModal={(book) => {
-          setBookToEdit(book);
-          setIsBookFormOpen(true);
-          setDetailsBook(null);
+          setDetailsUserBook(null);
         }}
       />
 
@@ -640,6 +888,7 @@ export default function MinhaBibliotecaPage() {
         existingUserBook={shelfModalUserBook}
         onSuccess={() => {
           loadShelf();
+          loadAuxiliaryData();
           setShelfModalBook(null);
           setShelfModalUserBook(null);
         }}
@@ -655,8 +904,19 @@ export default function MinhaBibliotecaPage() {
         bookToEdit={bookToEdit}
         onSuccess={() => {
           loadShelf();
+          loadAuxiliaryData();
           setIsBookFormOpen(false);
           setBookToEdit(null);
+        }}
+      />
+
+      {/* Modal de Gestão de Coleções e Tags */}
+      <CollectionsManagerModal
+        isOpen={isCollectionsModalOpen}
+        onClose={() => setIsCollectionsModalOpen(false)}
+        onChanged={() => {
+          loadAuxiliaryData();
+          loadShelf();
         }}
       />
     </AppShell>

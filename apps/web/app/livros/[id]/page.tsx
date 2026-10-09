@@ -36,6 +36,9 @@ import {
   AlertCircle,
   HelpCircle,
   X,
+  Folder,
+  Tag,
+  Palette,
 } from "lucide-react";
 import {
   Button,
@@ -48,14 +51,20 @@ import {
 import type {
   Book,
   BookStatus,
+  Collection,
   UserBook,
   UserNote,
   UserQuote,
+  UserTag,
 } from "@telebooks/types";
 import { AppShell } from "../../../components/shell/app-shell";
 import { useAuth } from "../../../components/auth/auth-provider";
 import { api } from "../../../lib/api";
 import { BookFormModal } from "../../../components/catalog/book-form-modal";
+import {
+  PERSONAL_COLOR_PALETTE,
+  CollectionsManagerModal,
+} from "../../../components/shelf/collections-manager-modal";
 
 const STATUS_CONFIG: Record<
   BookStatus,
@@ -125,6 +134,11 @@ export default function BookDetailPage() {
   // Modal de edição de dados bibliográficos
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  // Estados de Coleções e Tags Pessoais
+  const [userCollections, setUserCollections] = useState<Collection[]>([]);
+  const [userTags, setUserTags] = useState<UserTag[]>([]);
+  const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
+
   // Estados do formulário de Nota
   const [isNoteFormOpen, setIsNoteFormOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
@@ -158,13 +172,18 @@ export default function BookDetailPage() {
     setApiError(null);
 
     try {
-      const [bookData, userBookData] = await Promise.all([
-        api.getBook(bookId),
-        api.getShelfByBookId(bookId),
-      ]);
+      const [bookData, userBookData, collectionsData, tagsData] =
+        await Promise.all([
+          api.getBook(bookId),
+          api.getShelfByBookId(bookId),
+          api.getCollections().catch(() => []),
+          api.getUserTags().catch(() => []),
+        ]);
 
       setBook(bookData);
       setUserBook(userBookData);
+      setUserCollections(collectionsData || []);
+      setUserTags(tagsData || []);
       setQuickNotesText(userBookData?.private_notes || "");
 
       // Se o usuário tem o livro na estante, carrega notas e citações
@@ -395,6 +414,64 @@ export default function BookDetailPage() {
       showToast("Erro ao remover da estante");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Alterar cor pessoal da lombada
+  const handlePersonalColorChange = async (color: string | null) => {
+    if (!userBook) return;
+    const prev = userBook.personal_color;
+    setUserBook((b) => (b ? { ...b, personal_color: color } : null));
+
+    try {
+      const updated = await api.updateShelfBook(userBook.id, {
+        personal_color: color,
+      });
+      setUserBook(updated);
+      showToast(
+        color ? "Cor da lombada personalizada!" : "Cor restaurada para o padrão"
+      );
+    } catch {
+      setUserBook((b) => (b ? { ...b, personal_color: prev } : null));
+      showToast("Erro ao atualizar cor");
+    }
+  };
+
+  // Associar / Desassociar de Coleção
+  const handleToggleCollection = async (collectionId: string) => {
+    if (!userBook) return;
+    const currentCollectionIds = userBook.collections?.map((c) => c.id) || [];
+    const nextCollectionIds = currentCollectionIds.includes(collectionId)
+      ? currentCollectionIds.filter((id) => id !== collectionId)
+      : [...currentCollectionIds, collectionId];
+
+    try {
+      const updated = await api.updateShelfBook(userBook.id, {
+        collection_ids: nextCollectionIds,
+      });
+      setUserBook(updated);
+      showToast("Coleções do exemplar atualizadas!");
+    } catch {
+      showToast("Erro ao atualizar coleções");
+    }
+  };
+
+  // Associar / Desassociar de Tag
+  const handleToggleTag = async (tagId: string) => {
+    if (!userBook) return;
+    const currentTagIds = userBook.tags?.map((t) => t.id) || [];
+    const nextTagIds = currentTagIds.includes(tagId)
+      ? currentTagIds.filter((id) => id !== tagId)
+      : [...currentTagIds, tagId];
+
+    try {
+      const updated = await api.updateShelfBook(userBook.id, {
+        tag_ids: nextTagIds,
+      });
+      setUserBook(updated);
+      showToast("Tags do exemplar atualizadas!");
+    } catch {
+      showToast("Erro ao atualizar tags");
     }
   };
 
@@ -668,6 +745,15 @@ export default function BookDetailPage() {
                   className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/35 via-black/15 to-transparent pointer-events-none"
                   aria-hidden="true"
                 />
+
+                {/* Cor Pessoal da Lombada */}
+                {userBook?.personal_color && (
+                  <div
+                    className="absolute inset-y-0 left-0 w-2.5 z-10 shadow-md"
+                    style={{ backgroundColor: userBook.personal_color }}
+                    title="Cor pessoal da lombada"
+                  />
+                )}
 
                 {/* Vinco da Dobra da Capa */}
                 <div
@@ -1040,6 +1126,176 @@ export default function BookDetailPage() {
                       </span>
                     </div>
                   )}
+
+                  {/* =========================================================================
+                      ORGANIZAÇÃO PESSOAL: COR DA LOMBADA, COLEÇÕES E TAGS
+                  ========================================================================= */}
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                    {/* Cor da Lombada */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Palette className="w-3.5 h-3.5 text-primary" />
+                          <span>Cor Pessoal da Lombada</span>
+                        </label>
+                        {userBook.personal_color && (
+                          <button
+                            type="button"
+                            onClick={() => handlePersonalColorChange(null)}
+                            className="text-[11px] text-primary hover:underline font-medium"
+                          >
+                            Restaurar Padrão
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handlePersonalColorChange(null)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                            !userBook.personal_color
+                              ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs"
+                              : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                          }`}
+                        >
+                          Padrão
+                        </button>
+                        {PERSONAL_COLOR_PALETTE.map((c) => {
+                          const isSelected =
+                            userBook.personal_color?.toLowerCase() === c.hex.toLowerCase();
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => handlePersonalColorChange(c.hex)}
+                              className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center ${
+                                isSelected
+                                  ? "scale-125 ring-2 ring-offset-2 ring-primary shadow-sm"
+                                  : "hover:scale-110 opacity-75 hover:opacity-100"
+                              }`}
+                              style={{ backgroundColor: c.hex }}
+                              title={c.name}
+                            >
+                              {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Coleções do Usuário */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Folder className="w-3.5 h-3.5 text-primary" />
+                          <span>Minhas Coleções</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsCollectionsModalOpen(true)}
+                          className="text-[11px] text-primary hover:underline font-medium"
+                        >
+                          Gerenciar Coleções
+                        </button>
+                      </div>
+
+                      {userCollections.length === 0 ? (
+                        <div className="text-xs text-slate-400">
+                          Você ainda não possui coleções criadas.{" "}
+                          <button
+                            type="button"
+                            onClick={() => setIsCollectionsModalOpen(true)}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            Criar primeira coleção
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {userCollections.map((col) => {
+                            const isInCollection =
+                              userBook.collections?.some((c) => c.id === col.id) ?? false;
+                            return (
+                              <button
+                                key={col.id}
+                                type="button"
+                                onClick={() => handleToggleCollection(col.id)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                                  isInCollection
+                                    ? "bg-blue-500/10 text-primary border-blue-500/40 font-semibold"
+                                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                <Folder className="w-3 h-3" />
+                                <span>{col.name}</span>
+                                {isInCollection && (
+                                  <Check className="w-3 h-3 text-primary stroke-[2.5]" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tags Pessoais */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-primary" />
+                          <span>Minhas Tags</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsCollectionsModalOpen(true)}
+                          className="text-[11px] text-primary hover:underline font-medium"
+                        >
+                          Gerenciar Tags
+                        </button>
+                      </div>
+
+                      {userTags.length === 0 ? (
+                        <div className="text-xs text-slate-400">
+                          Nenhuma tag criada ainda.{" "}
+                          <button
+                            type="button"
+                            onClick={() => setIsCollectionsModalOpen(true)}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            Criar tags
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {userTags.map((tag) => {
+                            const hasTag =
+                              userBook.tags?.some((t) => t.id === tag.id) ?? false;
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={() => handleToggleTag(tag.id)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                                  hasTag
+                                    ? "bg-blue-500/10 text-primary border-blue-500/40 font-semibold"
+                                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: tag.color || "#007BFF" }}
+                                />
+                                <span>#{tag.name}</span>
+                                {hasTag && (
+                                  <Check className="w-3 h-3 text-primary stroke-[2.5]" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1814,6 +2070,13 @@ export default function BookDetailPage() {
               }}
             />
           )}
+
+          {/* Modal de Gestão de Coleções e Tags */}
+          <CollectionsManagerModal
+            isOpen={isCollectionsModalOpen}
+            onClose={() => setIsCollectionsModalOpen(false)}
+            onChanged={loadBookData}
+          />
         </div>
       )}
     </AppShell>

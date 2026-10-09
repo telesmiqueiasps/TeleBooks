@@ -13,6 +13,7 @@ import {
   Calendar,
   Layers,
   ExternalLink,
+  Folder,
 } from "lucide-react";
 import type { UserBook } from "@telebooks/types";
 import {
@@ -143,6 +144,13 @@ export function ShelfListView({
                     className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
                     loading="lazy"
                   />
+                  {userBook.personal_color && (
+                    <div
+                      className="absolute top-0 bottom-0 left-0 w-1.5 z-10"
+                      style={{ backgroundColor: userBook.personal_color }}
+                      title="Cor da lombada"
+                    />
+                  )}
                   {item.isFavorite && (
                     <div className="absolute top-1 right-1 h-4 w-4 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-rose-400">
                       <Heart className="h-2.5 w-2.5 fill-current" />
@@ -159,7 +167,7 @@ export function ShelfListView({
                     {item.author}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                     {userBook.book?.publisher && (
                       <span className="flex items-center gap-1">
                         <Building2 className="w-3 h-3" />
@@ -174,6 +182,26 @@ export function ShelfListView({
                         {userBook.book.genres[0].name}
                       </span>
                     )}
+
+                    {userBook.collections && userBook.collections[0] && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[10px] text-[#007BFF] font-medium border border-blue-200/50 dark:border-blue-900/40">
+                        <Folder className="w-2.5 h-2.5" />
+                        <span className="truncate max-w-[100px]">{userBook.collections[0].name}</span>
+                      </span>
+                    )}
+
+                    {userBook.tags && userBook.tags.slice(0, 2).map((t) => (
+                      <span
+                        key={t.id}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: t.color || "#007BFF" }}
+                        />
+                        #{t.name}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>

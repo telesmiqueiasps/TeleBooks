@@ -15,10 +15,24 @@ import {
   Star,
   Heart,
   ChevronDown,
+  Folder,
+  Tag,
+  Palette,
+  Layers,
+  Sparkles,
+  Settings,
 } from "lucide-react";
-import type { Author, Publisher, Genre, BookStatus } from "@telebooks/types";
+import type {
+  Author,
+  Publisher,
+  Genre,
+  Collection,
+  UserTag,
+} from "@telebooks/types";
+import { PERSONAL_COLOR_PALETTE } from "./collections-manager-modal";
 
 export type ViewMode = "grid" | "list" | "bookshelf";
+export type GroupByOption = "none" | "collection" | "status" | "author" | "genre";
 
 export interface ShelfFilterValues {
   q: string;
@@ -26,9 +40,13 @@ export interface ShelfFilterValues {
   author_id?: string;
   publisher_id?: string;
   genre_id?: string;
+  collection_id?: string;
+  tag_id?: string;
+  personal_color?: string;
   min_rating?: number;
   sort_by: string;
   page_size: number;
+  groupBy: GroupByOption;
 }
 
 export interface ShelfFiltersProps {
@@ -39,6 +57,9 @@ export interface ShelfFiltersProps {
   authors: Author[];
   publishers: Publisher[];
   genres: Genre[];
+  collections?: Collection[];
+  tags?: UserTag[];
+  onOpenCollectionsManager?: () => void;
   totalBooks?: number;
 }
 
@@ -62,6 +83,14 @@ export const STATUS_PILLS = [
   { id: "abandoned", label: "Abandonados" },
 ];
 
+export const GROUP_BY_OPTIONS: { id: GroupByOption; label: string }[] = [
+  { id: "none", label: "Sem Agrupamento" },
+  { id: "collection", label: "Por Coleção" },
+  { id: "status", label: "Por Status de Leitura" },
+  { id: "author", label: "Por Autor" },
+  { id: "genre", label: "Por Gênero Literário" },
+];
+
 export function ShelfFilters({
   filters,
   onChange,
@@ -70,6 +99,9 @@ export function ShelfFilters({
   authors,
   publishers,
   genres,
+  collections = [],
+  tags = [],
+  onOpenCollectionsManager,
   totalBooks,
 }: ShelfFiltersProps) {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -79,6 +111,9 @@ export function ShelfFilters({
     filters.author_id,
     filters.publisher_id,
     filters.genre_id,
+    filters.collection_id,
+    filters.tag_id,
+    filters.personal_color,
     filters.min_rating,
   ].filter(Boolean).length;
 
@@ -94,6 +129,10 @@ export function ShelfFilters({
     onChange({ ...filters, sort_by });
   };
 
+  const handleGroupByChange = (groupBy: GroupByOption) => {
+    onChange({ ...filters, groupBy });
+  };
+
   const clearAllFilters = () => {
     onChange({
       ...filters,
@@ -102,6 +141,9 @@ export function ShelfFilters({
       author_id: undefined,
       publisher_id: undefined,
       genre_id: undefined,
+      collection_id: undefined,
+      tag_id: undefined,
+      personal_color: undefined,
       min_rating: undefined,
     });
   };
@@ -112,12 +154,20 @@ export function ShelfFilters({
     Boolean(filters.author_id) ||
     Boolean(filters.publisher_id) ||
     Boolean(filters.genre_id) ||
+    Boolean(filters.collection_id) ||
+    Boolean(filters.tag_id) ||
+    Boolean(filters.personal_color) ||
     filters.min_rating !== undefined;
 
-  // Busca nomes das entidades selecionadas para os chips
+  // Nomes das entidades selecionadas para os chips
   const selectedAuthor = authors.find((a) => a.id === filters.author_id)?.name;
   const selectedPublisher = publishers.find((p) => p.id === filters.publisher_id)?.name;
   const selectedGenre = genres.find((g) => g.id === filters.genre_id)?.name;
+  const selectedCollection = collections.find((c) => c.id === filters.collection_id)?.name;
+  const selectedTag = tags.find((t) => t.id === filters.tag_id)?.name;
+  const selectedColorName = PERSONAL_COLOR_PALETTE.find(
+    (c) => c.hex.toLowerCase() === filters.personal_color?.toLowerCase()
+  )?.name;
 
   return (
     <div className="space-y-4">
@@ -144,8 +194,26 @@ export function ShelfFilters({
           )}
         </div>
 
-        {/* Grupo de Ações: Ordenação, Botão de Filtros e Modos de Visualização */}
+        {/* Grupo de Ações: Ordenação, Agrupamento, Filtros e Modos de Visualização */}
         <div className="flex items-center gap-2 justify-between sm:justify-end overflow-x-auto pb-1 sm:pb-0">
+          {/* Seletor de Agrupamento */}
+          <div className="relative shrink-0">
+            <select
+              value={filters.groupBy}
+              onChange={(e) => handleGroupByChange(e.target.value as GroupByOption)}
+              className="appearance-none pl-8 pr-7 py-2 rounded-full text-xs font-medium bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none focus:border-[#007BFF] transition-all cursor-pointer shadow-sm"
+              title="Agrupar livros da biblioteca"
+            >
+              {GROUP_BY_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#007BFF] pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+          </div>
+
           {/* Seletor de Ordenação */}
           <div className="relative shrink-0">
             <select
@@ -182,6 +250,19 @@ export function ShelfFilters({
             )}
           </button>
 
+          {/* Botão para Gerenciar Coleções & Organização */}
+          {onOpenCollectionsManager && (
+            <button
+              type="button"
+              onClick={onOpenCollectionsManager}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:text-[#007BFF] transition-all shadow-sm shrink-0"
+              title="Gerenciar Coleções e Tags"
+            >
+              <Folder className="w-3.5 h-3.5 text-[#007BFF]" />
+              <span className="hidden sm:inline">Coleções & Tags</span>
+            </button>
+          )}
+
           {/* Alternador dos 3 Modos de Visualização (Grid, Lista e Estante) */}
           <div className="flex items-center p-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shrink-0">
             <button
@@ -211,7 +292,7 @@ export function ShelfFilters({
             <button
               type="button"
               onClick={() => onViewModeChange("bookshelf")}
-              title="Modo Estante"
+              title="Modo Estante 3D"
               className={`p-1.5 rounded-full transition-all ${
                 viewMode === "bookshelf"
                   ? "bg-white dark:bg-[#0F172A] text-[#007BFF] shadow-sm"
@@ -236,7 +317,7 @@ export function ShelfFilters({
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                 isActive
                   ? "bg-[#007BFF] text-white shadow-sm shadow-[#007BFF]/25 font-semibold"
-                  : "bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-white shadow-xs"
+                  : "bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-white shadow-2xs"
               }`}
             >
               {pill.id === "favorite" && (
@@ -258,7 +339,7 @@ export function ShelfFilters({
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
             <span className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-[#007BFF]" />
-              <span>Filtros Específicos</span>
+              <span>Filtros Específicos da Estante</span>
             </span>
             {activeAdvancedCount > 0 && (
               <button
@@ -269,6 +350,9 @@ export function ShelfFilters({
                     author_id: undefined,
                     publisher_id: undefined,
                     genre_id: undefined,
+                    collection_id: undefined,
+                    tag_id: undefined,
+                    personal_color: undefined,
                     min_rating: undefined,
                   })
                 }
@@ -280,6 +364,50 @@ export function ShelfFilters({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {/* Filtro por Coleção */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Folder className="w-3 h-3 text-[#007BFF]" />
+                <span>Coleção</span>
+              </label>
+              <select
+                value={filters.collection_id || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, collection_id: e.target.value || undefined })
+                }
+                className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007BFF]"
+              >
+                <option value="">Todas as Coleções</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.book_count !== undefined ? `(${c.book_count})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por Tag */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Tag className="w-3 h-3 text-[#007BFF]" />
+                <span>Tag Pessoal</span>
+              </label>
+              <select
+                value={filters.tag_id || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, tag_id: e.target.value || undefined })
+                }
+                className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007BFF]"
+              >
+                <option value="">Todas as Tags</option>
+                {tags.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    #{t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtro por Autor */}
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -296,27 +424,6 @@ export function ShelfFilters({
                 {authors.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro por Editora */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Editora
-              </label>
-              <select
-                value={filters.publisher_id || ""}
-                onChange={(e) =>
-                  onChange({ ...filters, publisher_id: e.target.value || undefined })
-                }
-                className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007BFF]"
-              >
-                <option value="">Todas as Editoras</option>
-                {publishers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
                   </option>
                 ))}
               </select>
@@ -343,6 +450,27 @@ export function ShelfFilters({
               </select>
             </div>
 
+            {/* Filtro por Editora */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Editora
+              </label>
+              <select
+                value={filters.publisher_id || ""}
+                onChange={(e) =>
+                  onChange({ ...filters, publisher_id: e.target.value || undefined })
+                }
+                className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007BFF]"
+              >
+                <option value="">Todas as Editoras</option>
+                {publishers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtro por Avaliação Mínima */}
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
@@ -363,6 +491,52 @@ export function ShelfFilters({
                 <option value="4">4 Estrelas ou mais (★★★★☆)</option>
                 <option value="3">3 Estrelas ou mais (★★★☆☆)</option>
               </select>
+            </div>
+
+            {/* Filtro por Cor Pessoal */}
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Palette className="w-3 h-3 text-[#007BFF]" />
+                <span>Cor da Lombada</span>
+              </label>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...filters, personal_color: undefined })}
+                  className={`px-2 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                    !filters.personal_color
+                      ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs"
+                      : "bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                  }`}
+                >
+                  Todas as cores
+                </button>
+                {PERSONAL_COLOR_PALETTE.map((c) => {
+                  const isSelected =
+                    filters.personal_color?.toLowerCase() === c.hex.toLowerCase();
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() =>
+                        onChange({
+                          ...filters,
+                          personal_color: isSelected ? undefined : c.hex,
+                        })
+                      }
+                      className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center ${
+                        isSelected
+                          ? "scale-125 ring-2 ring-offset-2 ring-[#007BFF] shadow-sm"
+                          : "hover:scale-110 opacity-75 hover:opacity-100"
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                      title={`Filtrar por cor: ${c.name}`}
+                    >
+                      {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -399,6 +573,51 @@ export function ShelfFilters({
             </span>
           )}
 
+          {selectedCollection && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-[#007BFF] font-medium">
+              <Folder className="w-3 h-3" />
+              Coleção: {selectedCollection}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filters, collection_id: undefined })}
+                className="hover:text-blue-900 dark:hover:text-blue-200"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {selectedTag && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+              <Tag className="w-3 h-3" />
+              Tag: #{selectedTag}
+              <button
+                type="button"
+                onClick={() => onChange({ ...filters, tag_id: undefined })}
+                className="hover:text-slate-900 dark:hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {filters.personal_color && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: filters.personal_color }}
+              />
+              <span>Cor: {selectedColorName || filters.personal_color}</span>
+              <button
+                type="button"
+                onClick={() => onChange({ ...filters, personal_color: undefined })}
+                className="hover:text-slate-900 dark:hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
           {selectedAuthor && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
               Autor: {selectedAuthor}
@@ -412,12 +631,12 @@ export function ShelfFilters({
             </span>
           )}
 
-          {selectedPublisher && (
+          {selectedGenre && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
-              Editora: {selectedPublisher}
+              Gênero: {selectedGenre}
               <button
                 type="button"
-                onClick={() => onChange({ ...filters, publisher_id: undefined })}
+                onClick={() => onChange({ ...filters, genre_id: undefined })}
                 className="hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-3 h-3" />
@@ -425,12 +644,12 @@ export function ShelfFilters({
             </span>
           )}
 
-          {selectedGenre && (
+          {selectedPublisher && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
-              Gênero: {selectedGenre}
+              Editora: {selectedPublisher}
               <button
                 type="button"
-                onClick={() => onChange({ ...filters, genre_id: undefined })}
+                onClick={() => onChange({ ...filters, publisher_id: undefined })}
                 className="hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-3 h-3" />

@@ -83,6 +83,8 @@ export interface UserBook {
   personal_color?: string | null;
   shelf_position?: number | null;
   private_notes?: string | null;
+  tags?: UserTag[];
+  collections?: Collection[];
   created_at: string;
   updated_at: string;
 }
@@ -93,6 +95,8 @@ export interface Collection {
   name: string;
   description?: string | null;
   is_public: boolean;
+  position?: number;
+  book_count?: number;
   created_at: string;
   updated_at: string;
 }

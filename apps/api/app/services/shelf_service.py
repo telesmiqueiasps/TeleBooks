@@ -7,14 +7,24 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models.catalog import Author, Book, Genre
-from app.models.shelf import BookStatus, ReadingSession, UserBook
+from app.models.shelf import (
+    BookStatus,
+    Collection,
+    ReadingSession,
+    UserBook,
+    UserTag,
+)
 from app.models.social import UserNote, UserQuote
 from app.schemas.shelf import (
+    CollectionCreate,
+    CollectionUpdate,
     ReadingSessionCreate,
     UserBookCreate,
     UserBookUpdate,
     UserNoteCreate,
     UserQuoteCreate,
+    UserTagCreate,
+    UserTagUpdate,
 )
 
 
@@ -29,6 +39,9 @@ class ShelfService:
         author_id: uuid.UUID | None = None,
         publisher_id: uuid.UUID | None = None,
         genre_id: uuid.UUID | None = None,
+        collection_id: uuid.UUID | None = None,
+        tag_id: uuid.UUID | None = None,
+        personal_color: str | None = None,
         min_rating: Decimal | None = None,
         sort_by: str | None = "updated_at_desc",
         page: int = 1,
@@ -41,6 +54,8 @@ class ShelfService:
                 selectinload(UserBook.book).selectinload(Book.publisher),
                 selectinload(UserBook.book).selectinload(Book.authors),
                 selectinload(UserBook.book).selectinload(Book.genres),
+                selectinload(UserBook.tags),
+                selectinload(UserBook.collections),
             )
             .where(UserBook.user_id == user_id)
         )
@@ -75,6 +90,18 @@ class ShelfService:
         if genre_id:
             stmt = stmt.where(Book.genres.any(Genre.id == genre_id))
             count_stmt = count_stmt.where(Book.genres.any(Genre.id == genre_id))
+
+        if collection_id:
+            stmt = stmt.where(UserBook.collections.any(Collection.id == collection_id))
+            count_stmt = count_stmt.where(UserBook.collections.any(Collection.id == collection_id))
+
+        if tag_id:
+            stmt = stmt.where(UserBook.tags.any(UserTag.id == tag_id))
+            count_stmt = count_stmt.where(UserBook.tags.any(UserTag.id == tag_id))
+
+        if personal_color:
+            stmt = stmt.where(UserBook.personal_color == personal_color)
+            count_stmt = count_stmt.where(UserBook.personal_color == personal_color)
 
         if q and q.strip():
             clean_q = f"%{q.strip().lower()}%"
@@ -122,6 +149,8 @@ class ShelfService:
                 selectinload(UserBook.book).selectinload(Book.publisher),
                 selectinload(UserBook.book).selectinload(Book.authors),
                 selectinload(UserBook.book).selectinload(Book.genres),
+                selectinload(UserBook.tags),
+                selectinload(UserBook.collections),
             )
             .where(UserBook.id == user_book_id, UserBook.user_id == user_id)
         )
@@ -142,6 +171,8 @@ class ShelfService:
                 selectinload(UserBook.book).selectinload(Book.publisher),
                 selectinload(UserBook.book).selectinload(Book.authors),
                 selectinload(UserBook.book).selectinload(Book.genres),
+                selectinload(UserBook.tags),
+                selectinload(UserBook.collections),
             )
             .where(UserBook.book_id == book_id, UserBook.user_id == user_id)
         )
@@ -180,6 +211,19 @@ class ShelfService:
             started_at=datetime.now(UTC) if data.status == BookStatus.READING else None,
             finished_at=datetime.now(UTC) if data.status == BookStatus.READ else None,
         )
+
+        if data.tag_ids:
+            tags = db.execute(
+                select(UserTag).where(UserTag.user_id == user_id, UserTag.id.in_(data.tag_ids))
+            ).scalars().all()
+            user_book.tags = list(tags)
+
+        if data.collection_ids:
+            colls = db.execute(
+                select(Collection).where(Collection.user_id == user_id, Collection.id.in_(data.collection_ids))
+            ).scalars().all()
+            user_book.collections = list(colls)
+
         db.add(user_book)
         db.commit()
 
@@ -195,6 +239,26 @@ class ShelfService:
         user_book = ShelfService.get_user_book(db, user_id, user_book_id)
 
         update_dict = update_data.model_dump(exclude_unset=True)
+
+        if "tag_ids" in update_dict:
+            tag_ids = update_dict.pop("tag_ids")
+            if tag_ids is not None:
+                tags = db.execute(
+                    select(UserTag).where(UserTag.user_id == user_id, UserTag.id.in_(tag_ids))
+                ).scalars().all()
+                user_book.tags = list(tags)
+            else:
+                user_book.tags = []
+
+        if "collection_ids" in update_dict:
+            col_ids = update_dict.pop("collection_ids")
+            if col_ids is not None:
+                colls = db.execute(
+                    select(Collection).where(Collection.user_id == user_id, Collection.id.in_(col_ids))
+                ).scalars().all()
+                user_book.collections = list(colls)
+            else:
+                user_book.collections = []
 
         # Transição de status
         if "status" in update_dict and update_dict["status"] != user_book.status:
@@ -326,3 +390,189 @@ class ShelfService:
             raise NotFoundError("Citação não encontrada.")
         db.delete(quote)
         db.commit()
+
+    # --------------------------------------------------------------------------
+    # Gestão de Coleções (Collections)
+    # --------------------------------------------------------------------------
+    @staticmethod
+    def list_collections(db: Session, user_id: uuid.UUID) -> list[Collection]:
+        stmt = (
+            select(Collection)
+            .options(selectinload(Collection.user_books))
+            .where(Collection.user_id == user_id)
+            .order_by(Collection.position.asc(), Collection.created_at.asc())
+        )
+        colls = list(db.execute(stmt).scalars().all())
+        for c in colls:
+            c.book_count = len(c.user_books)
+        return colls
+
+    @staticmethod
+    def get_collection(db: Session, user_id: uuid.UUID, collection_id: uuid.UUID) -> Collection:
+        stmt = (
+            select(Collection)
+            .options(
+                selectinload(Collection.user_books)
+                .selectinload(UserBook.book)
+                .selectinload(Book.authors)
+            )
+            .where(Collection.id == collection_id, Collection.user_id == user_id)
+        )
+        coll = db.execute(stmt).scalar_one_or_none()
+        if not coll:
+            raise NotFoundError(f"Coleção '{collection_id}' não encontrada.")
+        coll.book_count = len(coll.user_books)
+        return coll
+
+    @staticmethod
+    def create_collection(db: Session, user_id: uuid.UUID, data: CollectionCreate) -> Collection:
+        max_pos = db.execute(
+            select(func.coalesce(func.max(Collection.position), -1)).where(Collection.user_id == user_id)
+        ).scalar_one()
+
+        coll = Collection(
+            user_id=user_id,
+            name=data.name.strip(),
+            description=data.description.strip() if data.description else None,
+            is_public=data.is_public,
+            position=max_pos + 1,
+        )
+        db.add(coll)
+        db.commit()
+        db.refresh(coll)
+        coll.book_count = 0
+        return coll
+
+    @staticmethod
+    def update_collection(
+        db: Session, user_id: uuid.UUID, collection_id: uuid.UUID, data: CollectionUpdate
+    ) -> Collection:
+        coll = ShelfService.get_collection(db, user_id, collection_id)
+        update_dict = data.model_dump(exclude_unset=True)
+        for key, val in update_dict.items():
+            setattr(coll, key, val)
+        db.commit()
+        db.refresh(coll)
+        coll.book_count = len(coll.user_books)
+        return coll
+
+    @staticmethod
+    def delete_collection(db: Session, user_id: uuid.UUID, collection_id: uuid.UUID) -> None:
+        coll = ShelfService.get_collection(db, user_id, collection_id)
+        db.delete(coll)
+        db.commit()
+
+    @staticmethod
+    def reorder_collections(
+        db: Session, user_id: uuid.UUID, collection_ids: list[uuid.UUID]
+    ) -> list[Collection]:
+        for idx, cid in enumerate(collection_ids):
+            coll = db.execute(
+                select(Collection).where(Collection.id == cid, Collection.user_id == user_id)
+            ).scalar_one_or_none()
+            if coll:
+                coll.position = idx
+        db.commit()
+        return ShelfService.list_collections(db, user_id)
+
+    @staticmethod
+    def add_book_to_collection(
+        db: Session, user_id: uuid.UUID, collection_id: uuid.UUID, user_book_id: uuid.UUID
+    ) -> None:
+        coll = ShelfService.get_collection(db, user_id, collection_id)
+        ub = ShelfService.get_user_book(db, user_id, user_book_id)
+        if ub not in coll.user_books:
+            coll.user_books.append(ub)
+            db.commit()
+
+    @staticmethod
+    def remove_book_from_collection(
+        db: Session, user_id: uuid.UUID, collection_id: uuid.UUID, user_book_id: uuid.UUID
+    ) -> None:
+        coll = ShelfService.get_collection(db, user_id, collection_id)
+        ub = ShelfService.get_user_book(db, user_id, user_book_id)
+        if ub in coll.user_books:
+            coll.user_books.remove(ub)
+            db.commit()
+
+    # --------------------------------------------------------------------------
+    # Gestão de Tags Pessoais (User Tags)
+    # --------------------------------------------------------------------------
+    @staticmethod
+    def list_tags(db: Session, user_id: uuid.UUID) -> list[UserTag]:
+        stmt = (
+            select(UserTag)
+            .where(UserTag.user_id == user_id)
+            .order_by(UserTag.name.asc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def create_tag(db: Session, user_id: uuid.UUID, data: UserTagCreate) -> UserTag:
+        clean_name = data.name.strip().lstrip("#")
+        existing = db.execute(
+            select(UserTag).where(UserTag.user_id == user_id, func.lower(UserTag.name) == clean_name.lower())
+        ).scalar_one_or_none()
+        if existing:
+            raise ConflictError(f"Tag '{clean_name}' já existe.")
+
+        tag = UserTag(
+            user_id=user_id,
+            name=clean_name,
+            color=data.color,
+        )
+        db.add(tag)
+        db.commit()
+        db.refresh(tag)
+        return tag
+
+    @staticmethod
+    def update_tag(
+        db: Session, user_id: uuid.UUID, tag_id: uuid.UUID, data: UserTagUpdate
+    ) -> UserTag:
+        stmt = select(UserTag).where(UserTag.id == tag_id, UserTag.user_id == user_id)
+        tag = db.execute(stmt).scalar_one_or_none()
+        if not tag:
+            raise NotFoundError("Tag não encontrada.")
+
+        if data.name is not None:
+            clean_name = data.name.strip().lstrip("#")
+            existing = db.execute(
+                select(UserTag).where(
+                    UserTag.user_id == user_id,
+                    UserTag.id != tag_id,
+                    func.lower(UserTag.name) == clean_name.lower(),
+                )
+            ).scalar_one_or_none()
+            if existing:
+                raise ConflictError(f"Tag '{clean_name}' já existe.")
+            tag.name = clean_name
+
+        if data.color is not None:
+            tag.color = data.color
+
+        db.commit()
+        db.refresh(tag)
+        return tag
+
+    @staticmethod
+    def delete_tag(db: Session, user_id: uuid.UUID, tag_id: uuid.UUID) -> None:
+        stmt = select(UserTag).where(UserTag.id == tag_id, UserTag.user_id == user_id)
+        tag = db.execute(stmt).scalar_one_or_none()
+        if not tag:
+            raise NotFoundError("Tag não encontrada.")
+        db.delete(tag)
+        db.commit()
+
+    @staticmethod
+    def set_user_book_tags(
+        db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID, tag_ids: list[uuid.UUID]
+    ) -> UserBook:
+        user_book = ShelfService.get_user_book(db, user_id, user_book_id)
+        tags = db.execute(
+            select(UserTag).where(UserTag.user_id == user_id, UserTag.id.in_(tag_ids))
+        ).scalars().all()
+        user_book.tags = list(tags)
+        db.commit()
+        db.refresh(user_book)
+        return user_book

@@ -23,6 +23,8 @@ class UserBookCreate(UserBookBase):
     book_id: uuid.UUID
     purchase_date: date | None = None
     purchase_price: Decimal | None = Field(default=None, ge=0)
+    tag_ids: list[uuid.UUID] | None = None
+    collection_ids: list[uuid.UUID] | None = None
 
 
 class UserBookUpdate(BaseModel):
@@ -38,6 +40,68 @@ class UserBookUpdate(BaseModel):
     purchase_price: Decimal | None = Field(default=None, ge=0)
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    tag_ids: list[uuid.UUID] | None = None
+    collection_ids: list[uuid.UUID] | None = None
+
+
+# ==============================================================================
+# Tags Personalizadas do Usuário (User Tags)
+# ==============================================================================
+class UserTagBase(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    color: str | None = Field(default=None, max_length=7)
+
+
+class UserTagCreate(UserTagBase):
+    pass
+
+
+class UserTagUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=50)
+    color: str | None = Field(default=None, max_length=7)
+
+
+class UserTagRead(UserTagBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# Coleções do Usuário (Collections)
+# ==============================================================================
+class CollectionBase(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = None
+    is_public: bool = False
+
+
+class CollectionCreate(CollectionBase):
+    pass
+
+
+class CollectionUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = None
+    is_public: bool | None = None
+    position: int | None = None
+
+
+class CollectionReorder(BaseModel):
+    collection_ids: list[uuid.UUID]
+
+
+class CollectionRead(CollectionBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    position: int = 0
+    book_count: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserBookRead(UserBookBase):
@@ -49,6 +113,8 @@ class UserBookRead(UserBookBase):
     purchase_price: Decimal | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    tags: list[UserTagRead] = Field(default_factory=list)
+    collections: list[CollectionRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

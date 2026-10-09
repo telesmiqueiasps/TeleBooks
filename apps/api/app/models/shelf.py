@@ -107,6 +107,11 @@ class UserBook(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         secondary="user_book_tags",
         back_populates="user_books",
     )
+    collections: Mapped[list["Collection"]] = relationship(
+        "Collection",
+        secondary="user_collections",
+        back_populates="user_books",
+    )
 
 
 class Collection(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -124,6 +129,11 @@ class Collection(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     profile: Mapped["Profile"] = relationship("Profile", back_populates="collections")
+    user_books: Mapped[list["UserBook"]] = relationship(
+        "UserBook",
+        secondary="user_collections",
+        back_populates="collections",
+    )
 
 
 class UserCollection(Base):

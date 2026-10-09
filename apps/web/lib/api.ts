@@ -2,11 +2,13 @@ import type {
   Author,
   Book,
   BookStatus,
+  Collection,
   Genre,
   Publisher,
   UserBook,
   UserNote,
   UserQuote,
+  UserTag,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -51,6 +53,8 @@ export interface UserBookCreateParams {
   finished_at?: string | null;
   purchase_date?: string | null;
   purchase_price?: number | null;
+  tag_ids?: string[];
+  collection_ids?: string[];
 }
 
 export interface FileUploadResult {
@@ -74,6 +78,32 @@ export interface UserBookUpdateParams {
   finished_at?: string | null;
   purchase_date?: string | null;
   purchase_price?: number | null;
+  tag_ids?: string[];
+  collection_ids?: string[];
+}
+
+export interface CollectionCreateParams {
+  name: string;
+  description?: string | null;
+  is_public?: boolean;
+  position?: number;
+}
+
+export interface CollectionUpdateParams {
+  name?: string;
+  description?: string | null;
+  is_public?: boolean;
+  position?: number;
+}
+
+export interface UserTagCreateParams {
+  name: string;
+  color?: string | null;
+}
+
+export interface UserTagUpdateParams {
+  name?: string;
+  color?: string | null;
 }
 
 async function getHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
@@ -360,6 +390,9 @@ export const api = {
     author_id?: string;
     publisher_id?: string;
     genre_id?: string;
+    collection_id?: string;
+    tag_id?: string;
+    personal_color?: string;
     min_rating?: number;
     sort_by?: string;
     page?: number;
@@ -374,6 +407,11 @@ export const api = {
     if (params?.publisher_id)
       searchParams.set("publisher_id", params.publisher_id);
     if (params?.genre_id) searchParams.set("genre_id", params.genre_id);
+    if (params?.collection_id)
+      searchParams.set("collection_id", params.collection_id);
+    if (params?.tag_id) searchParams.set("tag_id", params.tag_id);
+    if (params?.personal_color)
+      searchParams.set("personal_color", params.personal_color);
     if (params?.min_rating !== undefined)
       searchParams.set("min_rating", params.min_rating.toString());
     if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
@@ -495,6 +533,158 @@ export const api = {
       `/shelf/quotes/${quoteId}`,
       {
         method: "DELETE",
+      },
+      true
+    );
+  },
+
+  // ============================================================================
+  // Coleções Pessoais (Collections)
+  // ============================================================================
+  async getCollections(params?: {
+    is_public?: boolean;
+  }): Promise<Collection[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.is_public !== undefined) {
+      searchParams.set("is_public", params.is_public.toString());
+    }
+    const qs = searchParams.toString();
+    return request<Collection[]>(
+      `/shelf/collections${qs ? `?${qs}` : ""}`,
+      {},
+      true
+    );
+  },
+
+  async getCollection(id: string): Promise<Collection> {
+    return request<Collection>(`/shelf/collections/${id}`, {}, true);
+  },
+
+  async createCollection(
+    payload: CollectionCreateParams
+  ): Promise<Collection> {
+    return request<Collection>(
+      "/shelf/collections",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async updateCollection(
+    id: string,
+    payload: CollectionUpdateParams
+  ): Promise<Collection> {
+    return request<Collection>(
+      `/shelf/collections/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async deleteCollection(id: string): Promise<void> {
+    return request<void>(
+      `/shelf/collections/${id}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  async reorderCollections(collectionIds: string[]): Promise<Collection[]> {
+    return request<Collection[]>(
+      "/shelf/collections/reorder",
+      {
+        method: "PUT",
+        body: JSON.stringify({ collection_ids: collectionIds }),
+      },
+      true
+    );
+  },
+
+  async addBookToCollection(
+    collectionId: string,
+    userBookId: string
+  ): Promise<void> {
+    return request<void>(
+      `/shelf/collections/${collectionId}/books/${userBookId}`,
+      {
+        method: "POST",
+      },
+      true
+    );
+  },
+
+  async removeBookFromCollection(
+    collectionId: string,
+    userBookId: string
+  ): Promise<void> {
+    return request<void>(
+      `/shelf/collections/${collectionId}/books/${userBookId}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  // ============================================================================
+  // Tags Pessoais (User Tags)
+  // ============================================================================
+  async getUserTags(): Promise<UserTag[]> {
+    return request<UserTag[]>("/shelf/tags", {}, true);
+  },
+
+  async createUserTag(payload: UserTagCreateParams): Promise<UserTag> {
+    return request<UserTag>(
+      "/shelf/tags",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async updateUserTag(
+    id: string,
+    payload: UserTagUpdateParams
+  ): Promise<UserTag> {
+    return request<UserTag>(
+      `/shelf/tags/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async deleteUserTag(id: string): Promise<void> {
+    return request<void>(
+      `/shelf/tags/${id}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  async setUserBookTags(
+    userBookId: string,
+    tagIds: string[]
+  ): Promise<UserTag[]> {
+    return request<UserTag[]>(
+      `/shelf/${userBookId}/tags`,
+      {
+        method: "PUT",
+        body: JSON.stringify(tagIds),
       },
       true
     );

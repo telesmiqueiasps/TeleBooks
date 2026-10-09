@@ -26,6 +26,9 @@ export interface BookItem {
   rating?: number;
   isFavorite?: boolean;
   isInShelf?: boolean;
+  personalColor?: string | null;
+  tags?: Array<{ id: string; name: string; color?: string | null }>;
+  collections?: Array<{ id: string; name: string }>;
 }
 
 export interface BookCardProps {
@@ -75,6 +78,15 @@ export function BookCard({
           <div className="absolute top-2.5 right-2.5 z-20 h-6 w-6 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-rose-400">
             <Heart className="h-3.5 w-3.5 fill-current" />
           </div>
+        )}
+
+        {/* Personal Color Accent Strip along Spine */}
+        {book.personalColor && (
+          <div
+            className="absolute top-0 bottom-0 left-0 w-1.5 z-10 shadow-xs"
+            style={{ backgroundColor: book.personalColor }}
+            title="Cor pessoal da lombada"
+          />
         )}
 
         {/* Floating Quick Action Trigger */}
@@ -178,6 +190,29 @@ export function BookCard({
             </div>
           ) : null}
         </div>
+
+        {/* User Tags Chips */}
+        {book.tags && book.tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 pt-0.5 overflow-hidden">
+            {book.tags.slice(0, 2).map((t) => (
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate max-w-[90px]"
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: t.color || "#007BFF" }}
+                />
+                #{t.name}
+              </span>
+            ))}
+            {book.tags.length > 2 && (
+              <span className="text-[10px] text-slate-400 font-medium">
+                +{book.tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
