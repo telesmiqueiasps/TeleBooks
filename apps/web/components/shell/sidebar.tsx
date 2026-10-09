@@ -115,7 +115,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
+          className="flex items-center justify-between w-full px-3.5 py-2 rounded-full text-xs font-medium text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
         >
           <span className="flex items-center gap-2.5">
             {theme === "dark" ? (
@@ -136,7 +136,7 @@ export function Sidebar({
             <div className="flex-1 min-w-0">
               <Dropdown>
                 <DropdownTrigger className="w-full">
-                  <div className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
+                  <div className="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors w-full text-left">
                     <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-semibold text-xs shrink-0 shadow-sm">
                       {initials}
                     </div>
@@ -177,7 +177,7 @@ export function Sidebar({
               onClick={handleSignOut}
               title="Encerrar Sessão (Logout)"
               aria-label="Encerrar Sessão (Logout)"
-              className="p-2 rounded-xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 text-[#64748B] dark:text-[#94A3B8] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
+              className="p-2.5 rounded-full border border-transparent hover:border-red-200 dark:hover:border-red-900/50 text-[#64748B] dark:text-[#94A3B8] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shrink-0"
             >
               <LogOut className="h-4 w-4" />
             </button>

@@ -45,6 +45,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!error && data) {
         setProfile(data as Profile);
+      } else if (error && (error.code === "PGRST116" || error.message?.includes("0 rows"))) {
+        // Usuário novo autenticado via OAuth: cria perfil automaticamente se ainda não existir
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          const meta = userData.user.user_metadata || {};
+          const emailPrefix = userData.user.email?.split("@")[0] || "leitor";
+          const fallbackUsername = (
+            meta.username ||
+            emailPrefix.replace(/[^a-zA-Z0-9_]/g, "_")
+          ).toLowerCase();
+
+          const initialProfile = {
+            id: userData.user.id,
+            username: fallbackUsername,
+            full_name: meta.full_name || meta.name || null,
+            avatar_url: meta.avatar_url || meta.picture || null,
+          };
+
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .upsert(initialProfile)
+            .select()
+            .single();
+
+          if (newProfile) {
+            setProfile(newProfile as Profile);
+          }
+        }
       }
     } catch {
       // Falha silenciosa se offline ou tabela inacessível
@@ -163,7 +191,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async (redirectTo?: string) => {
     try {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const targetNext = redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : "";
+      const targetNext =
+        redirectTo && redirectTo !== "/"
+          ? `?next=${encodeURIComponent(redirectTo)}`
+          : "";
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

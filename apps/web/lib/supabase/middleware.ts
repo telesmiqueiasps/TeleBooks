@@ -51,6 +51,14 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/configuracoes") ||
     path.startsWith("/minha-biblioteca");
 
+  // Se a requisição contiver um código de autorização OAuth (ex: redirecionamento do Supabase/Google)
+  // mas não estiver na rota de callback, redireciona para o callback para trocar o código pela sessão
+  if (request.nextUrl.searchParams.has("code") && !path.startsWith("/auth/callback")) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
   // Se o usuário tentar acessar rota protegida sem estar autenticado
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();

@@ -537,16 +537,16 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex p-1 bg-slate-200/70 dark:bg-[#1E293B] rounded-xl">
+              <div className="flex p-1 bg-slate-200/70 dark:bg-[#1E293B] rounded-full border border-slate-300/50 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
                     setViewMode("shelf");
                     setCurrentPage(1);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     viewMode === "shelf"
-                      ? "bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white shadow-sm"
+                      ? "bg-white dark:bg-[#0F172A] text-[#007BFF] dark:text-[#38BDF8] shadow-sm"
                       : "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white"
                   }`}
                 >
@@ -559,9 +559,9 @@ export default function HomePage() {
                     setViewMode("catalog");
                     setCurrentPage(1);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     viewMode === "catalog"
-                      ? "bg-white dark:bg-[#0F172A] text-[#0F172A] dark:text-white shadow-sm"
+                      ? "bg-white dark:bg-[#0F172A] text-[#007BFF] dark:text-[#38BDF8] shadow-sm"
                       : "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white"
                   }`}
                 >
@@ -573,7 +573,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={loadData}
-                className="p-2 text-[#64748B] hover:text-[#0F172A] dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
+                className="p-2 text-[#64748B] hover:text-[#0F172A] dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
                 title="Recarregar"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />

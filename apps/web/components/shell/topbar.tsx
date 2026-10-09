@@ -62,16 +62,16 @@ export function Topbar({
 
       {/* Global Search Input */}
       <div className="flex-1 max-w-md relative hidden sm:block">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af] pointer-events-none" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af] pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Buscar livros, autores, editoras..."
-          className="w-full rounded-xl border border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] pl-10 pr-12 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#f8fafc] placeholder:text-[#9ca3af] dark:placeholder:text-[#64748b] transition-all focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20"
+          className="w-full rounded-full border border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] pl-11 pr-12 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#f8fafc] placeholder:text-[#9ca3af] dark:placeholder:text-[#64748b] transition-all focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20"
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 pointer-events-none">
-          <kbd className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#f0ebe1] dark:bg-[#252a35] text-[#6b7280] dark:text-[#9ca3af] border border-[#e0dad0] dark:border-[#313744]">
+        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 pointer-events-none">
+          <kbd className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#f0ebe1] dark:bg-[#252a35] text-[#6b7280] dark:text-[#9ca3af] border border-[#e0dad0] dark:border-[#313744]">
             ⌘K
           </kbd>
         </div>
@@ -82,7 +82,7 @@ export function Topbar({
         {/* Notification Bell */}
         <button
           type="button"
-          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
           title="Notificações"
         >
           <Bell className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function Topbar({
         <button
           type="button"
           onClick={toggleTheme}
-          className="h-9 w-9 flex items-center justify-center rounded-xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
           aria-label="Alternar tema"
           title={`Tema: ${theme === "dark" ? "Escuro" : "Claro"}`}
         >
@@ -109,7 +109,7 @@ export function Topbar({
           onClick={onAddBookClick}
           variant="primary"
           size="sm"
-          className="gap-1.5 text-xs sm:text-sm h-9 px-3 sm:px-4"
+          className="gap-1.5 text-xs sm:text-sm h-9 px-3.5 sm:px-4 rounded-full shadow-sm shadow-[#007BFF]/25"
           leftIcon={<Plus className="h-4 w-4" />}
         >
           <span className="hidden xs:inline">Adicionar Livro</span>
@@ -128,10 +128,10 @@ export function Topbar({
                 <div
                   role="button"
                   tabIndex={0}
-                  className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors cursor-pointer"
+                  className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors cursor-pointer"
                   title="Menu do Perfil"
                 >
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                     {initials}
                   </div>
                   <span className="hidden md:inline text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] max-w-[100px] truncate">
@@ -181,7 +181,7 @@ export function Topbar({
               disabled={isLoggingOut}
               title="Encerrar Sessão (Logout)"
               aria-label="Encerrar Sessão (Logout)"
-              className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 rounded-xl border border-red-200/80 dark:border-red-900/50 bg-red-50/70 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all duration-150 active:scale-95 text-xs font-semibold select-none"
+              className="h-9 px-3 flex items-center gap-1.5 rounded-full border border-red-200/80 dark:border-red-900/50 bg-red-50/70 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all duration-150 active:scale-95 text-xs font-semibold select-none"
             >
               {isLoggingOut ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -195,7 +195,7 @@ export function Topbar({
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="h-9 px-3 rounded-xl bg-[#007BFF] hover:bg-[#0066D6] text-white text-xs font-semibold shadow-sm transition-colors"
+            className="h-9 px-4 rounded-full bg-[#007BFF] hover:bg-[#0066D6] text-white text-xs font-semibold shadow-sm transition-colors"
           >
             Entrar
           </button>
