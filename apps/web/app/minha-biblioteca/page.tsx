@@ -798,8 +798,9 @@ export default function MinhaBibliotecaPage() {
                     type="button"
                     disabled={currentPage <= 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
+                    className="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs active:scale-95"
                     title="Página Anterior"
+                    aria-label="Página Anterior"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -817,7 +818,7 @@ export default function MinhaBibliotecaPage() {
                             key={pageNum}
                             type="button"
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded-full font-semibold text-xs transition-all ${
+                            className={`min-h-[40px] min-w-[40px] rounded-full font-semibold text-xs flex items-center justify-center transition-all active:scale-95 ${
                               currentPage === pageNum
                                 ? "bg-[#007BFF] text-white shadow-sm shadow-[#007BFF]/25"
                                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -848,8 +849,9 @@ export default function MinhaBibliotecaPage() {
                     type="button"
                     disabled={currentPage >= totalPages}
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
+                    className="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs active:scale-95"
                     title="Próxima Página"
+                    aria-label="Próxima Página"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>

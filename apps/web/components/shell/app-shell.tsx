@@ -48,7 +48,7 @@ export function AppShell({
           onSearchChange={onSearchChange}
         />
 
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-12">
+        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-28 sm:pb-32 md:pb-12">
           {children}
         </main>
       </div>

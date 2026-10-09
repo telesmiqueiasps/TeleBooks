@@ -33,9 +33,11 @@ export function BottomNav({
   ];
 
   const effectiveTab = pathname.startsWith("/minha-biblioteca")
-    ? "library"
+    ? (pathname.includes("groupBy=collection") ? "collections" : "library")
     : pathname.startsWith("/leitura-atual")
     ? "reading"
+    : pathname.startsWith("/dashboard")
+    ? "stats"
     : pathname === "/"
     ? "home"
     : currentTab;
@@ -101,10 +103,14 @@ export function BottomNav({
                     router.push("/minha-biblioteca");
                   } else if (tab.id === "reading" && !pathname.startsWith("/leitura-atual")) {
                     router.push("/leitura-atual");
+                  } else if (tab.id === "collections") {
+                    router.push("/minha-biblioteca?groupBy=collection");
+                  } else if (tab.id === "stats" && !pathname.startsWith("/dashboard")) {
+                    router.push("/dashboard");
                   }
                 }}
                 className={cn(
-                  "relative flex-1 flex flex-col items-center justify-center h-full transition-all duration-200 select-none group",
+                  "relative flex-1 flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
                   isActive
                     ? "opacity-100"
                     : "opacity-75 hover:opacity-100 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"

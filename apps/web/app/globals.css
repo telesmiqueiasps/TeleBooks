@@ -29,12 +29,42 @@
   --accent-foreground: #ffffff;
 }
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   color: var(--foreground);
   background-color: var(--background);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Suporte completo a Safe Areas (Notches, Home Indicator no iOS/Android) */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+.pl-safe {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+}
+.pr-safe {
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+.top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+
+/* Utilitário para touch targets recomendados (min 44x44px) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Efeito sutil de lombada de livro para capas */

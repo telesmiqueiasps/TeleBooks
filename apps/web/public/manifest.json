@@ -1,33 +1,96 @@
 {
+  "id": "/",
   "name": "TeleBooks",
   "short_name": "TeleBooks",
   "description": "Sua biblioteca, do seu jeito. Mais que livros, é sobre pessoas.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
   "background_color": "#0B0F1A",
   "theme_color": "#007BFF",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": [
+    "books",
+    "lifestyle",
+    "productivity",
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "Minha Biblioteca",
+      "short_name": "Biblioteca",
+      "description": "Acesse sua estante e coleção de livros",
+      "url": "/minha-biblioteca",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Leitura Atual",
+      "short_name": "Lendo",
+      "description": "Acompanhe seu progresso de leitura atual",
+      "url": "/leitura-atual",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Estatísticas & Painel",
+      "short_name": "Métricas",
+      "description": "Veja suas estatísticas e metas de leitura",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
-      "src": "/icone.png",
-      "sizes": "192x192 512x512",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icone.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     },
     {
       "src": "/icone.ico",
       "sizes": "48x48 32x32 16x16",
       "type": "image/x-icon"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
     }
   ]
 }
