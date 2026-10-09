@@ -1,29 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, Inter, Caveat } from "next/font/google";
 import { ThemeProvider } from "../components/theme-provider";
 import { AuthProvider } from "../components/auth/auth-provider";
 import "./globals.css";
-
-const sora = Sora({
-  subsets: ["latin"],
-  variable: "--font-sora",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-caveat",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "TeleBooks — Sua biblioteca, do seu jeito",
@@ -56,11 +34,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="pt-BR"
-      className={`${sora.variable} ${inter.variable} ${caveat.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-sans antialiased bg-background text-foreground selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900/40 dark:selection:text-blue-100">
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
