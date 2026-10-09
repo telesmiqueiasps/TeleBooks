@@ -73,9 +73,18 @@ async function getHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
 
   try {
     const supabase = createClient();
-    const {
+    let {
       data: { session },
     } = await supabase.auth.getSession();
+
+    // Se o token estiver expirado ou expirar nos próximos 30 segundos, tenta renovar proativamente
+    if (session?.expires_at && session.expires_at <= Math.floor(Date.now() / 1000) + 30) {
+      const { data } = await supabase.auth.refreshSession();
+      if (data.session) {
+        session = data.session;
+      }
+    }
+
     if (session?.access_token) {
       headers["Authorization"] = `Bearer ${session.access_token}`;
     } else if (requireAuth) {
