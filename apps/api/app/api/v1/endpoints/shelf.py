@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
@@ -27,6 +28,12 @@ router = APIRouter()
 def list_shelf_books(
     status: BookStatus | None = Query(default=None, description="Filtrar por status de leitura"),
     favorite: bool | None = Query(default=None, description="Filtrar por favoritos"),
+    q: str | None = Query(default=None, description="Busca por título, autor ou ISBN"),
+    author_id: uuid.UUID | None = Query(default=None, description="Filtrar por autor"),
+    publisher_id: uuid.UUID | None = Query(default=None, description="Filtrar por editora"),
+    genre_id: uuid.UUID | None = Query(default=None, description="Filtrar por gênero"),
+    min_rating: Decimal | None = Query(default=None, description="Avaliação mínima (0-5)"),
+    sort_by: str | None = Query(default="updated_at_desc", description="Critério de ordenação"),
     page: int = Query(default=1, ge=1, description="Número da página"),
     page_size: int = Query(default=20, ge=1, le=100, description="Itens por página"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -38,6 +45,12 @@ def list_shelf_books(
         user_id=user_uuid,
         status=status,
         favorite=favorite,
+        q=q,
+        author_id=author_id,
+        publisher_id=publisher_id,
+        genre_id=genre_id,
+        min_rating=min_rating,
+        sort_by=sort_by,
         page=page,
         page_size=page_size,
     )

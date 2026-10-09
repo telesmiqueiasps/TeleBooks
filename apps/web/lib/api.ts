@@ -344,15 +344,29 @@ export const api = {
   // Estante Pessoal: Vínculos do Usuário (UserBooks)
   // ============================================================================
   async getShelf(params?: {
+    q?: string;
     status?: BookStatus;
     favorite?: boolean;
+    author_id?: string;
+    publisher_id?: string;
+    genre_id?: string;
+    min_rating?: number;
+    sort_by?: string;
     page?: number;
     page_size?: number;
   }): Promise<PaginatedResult<UserBook>> {
     const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set("q", params.q);
     if (params?.status) searchParams.set("status", params.status);
     if (params?.favorite !== undefined)
       searchParams.set("favorite", params.favorite.toString());
+    if (params?.author_id) searchParams.set("author_id", params.author_id);
+    if (params?.publisher_id)
+      searchParams.set("publisher_id", params.publisher_id);
+    if (params?.genre_id) searchParams.set("genre_id", params.genre_id);
+    if (params?.min_rating !== undefined)
+      searchParams.set("min_rating", params.min_rating.toString());
+    if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
     if (params?.page) searchParams.set("page", params.page.toString());
     if (params?.page_size)
       searchParams.set("page_size", params.page_size.toString());

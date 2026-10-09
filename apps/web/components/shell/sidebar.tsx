@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   BookOpen,
   BookmarkCheck,
@@ -45,6 +45,7 @@ export function Sidebar({
   readingCount = 2,
 }: SidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { user, profile, signOut } = useAuth();
 
@@ -52,6 +53,9 @@ export function Sidebar({
     await signOut();
     router.push("/login");
   };
+
+  const isHomeActive = pathname === "/" && (currentTab === "home" || !currentTab);
+  const isLibraryActive = pathname.startsWith("/minha-biblioteca") || currentTab === "library";
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || "Leitor";
   const displayUsername = profile?.username || user?.user_metadata?.username || "leitor";
@@ -72,15 +76,21 @@ export function Sidebar({
           <NavItem
             label="Início"
             icon={<Home className="h-4 w-4" />}
-            active={currentTab === "home"}
-            onClick={() => onSelectTab("home")}
+            active={isHomeActive}
+            onClick={() => {
+              onSelectTab("home");
+              if (pathname !== "/") router.push("/");
+            }}
           />
           <NavItem
             label="Minha Biblioteca"
             icon={<Library className="h-4 w-4" />}
-            active={currentTab === "library"}
+            active={isLibraryActive}
             badge={bookCount}
-            onClick={() => onSelectTab("library")}
+            onClick={() => {
+              onSelectTab("library");
+              if (!pathname.startsWith("/minha-biblioteca")) router.push("/minha-biblioteca");
+            }}
           />
           <NavItem
             label="Estatísticas"

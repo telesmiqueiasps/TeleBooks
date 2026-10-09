@@ -12,6 +12,8 @@ export interface AppShellProps {
   onSearchChange?: (query: string) => void;
   bookCount?: number;
   readingCount?: number;
+  currentTab?: string;
+  onSelectTab?: (tab: string) => void;
 }
 
 export function AppShell({
@@ -21,15 +23,19 @@ export function AppShell({
   onSearchChange = () => {},
   bookCount,
   readingCount,
+  currentTab: controlledTab,
+  onSelectTab: controlledOnSelectTab,
 }: AppShellProps) {
-  const [currentTab, setCurrentTab] = useState("home");
+  const [internalTab, setInternalTab] = useState("home");
+  const currentTab = controlledTab ?? internalTab;
+  const onSelectTab = controlledOnSelectTab ?? setInternalTab;
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Desktop Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={onSelectTab}
         bookCount={bookCount}
         readingCount={readingCount}
       />
@@ -50,7 +56,7 @@ export function AppShell({
       {/* Mobile Bottom Navigation */}
       <BottomNav
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={onSelectTab}
         readingCount={readingCount}
       />
     </div>

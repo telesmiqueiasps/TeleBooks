@@ -1,11 +1,12 @@
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
-from app.models.catalog import Book
+from app.models.catalog import Author, Book, Genre
 from app.models.shelf import BookStatus, ReadingSession, UserBook
 from app.schemas.shelf import ReadingSessionCreate, UserBookCreate, UserBookUpdate
 
@@ -17,32 +18,87 @@ class ShelfService:
         user_id: uuid.UUID,
         status: BookStatus | None = None,
         favorite: bool | None = None,
+        q: str | None = None,
+        author_id: uuid.UUID | None = None,
+        publisher_id: uuid.UUID | None = None,
+        genre_id: uuid.UUID | None = None,
+        min_rating: Decimal | None = None,
+        sort_by: str | None = "updated_at_desc",
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[UserBook], int]:
         stmt = (
             select(UserBook)
+            .join(UserBook.book)
             .options(
                 selectinload(UserBook.book).selectinload(Book.publisher),
                 selectinload(UserBook.book).selectinload(Book.authors),
                 selectinload(UserBook.book).selectinload(Book.genres),
             )
             .where(UserBook.user_id == user_id)
-            .order_by(UserBook.updated_at.desc())
+        )
+
+        count_stmt = (
+            select(func.count(func.distinct(UserBook.id)))
+            .select_from(UserBook)
+            .join(UserBook.book)
+            .where(UserBook.user_id == user_id)
         )
 
         if status:
             stmt = stmt.where(UserBook.status == status)
+            count_stmt = count_stmt.where(UserBook.status == status)
 
         if favorite is not None:
             stmt = stmt.where(UserBook.favorite == favorite)
-
-        # Contagem total
-        count_stmt = select(func.count()).select_from(UserBook).where(UserBook.user_id == user_id)
-        if status:
-            count_stmt = count_stmt.where(UserBook.status == status)
-        if favorite is not None:
             count_stmt = count_stmt.where(UserBook.favorite == favorite)
+
+        if min_rating is not None:
+            stmt = stmt.where(UserBook.rating >= min_rating)
+            count_stmt = count_stmt.where(UserBook.rating >= min_rating)
+
+        if publisher_id:
+            stmt = stmt.where(Book.publisher_id == publisher_id)
+            count_stmt = count_stmt.where(Book.publisher_id == publisher_id)
+
+        if author_id:
+            stmt = stmt.where(Book.authors.any(Author.id == author_id))
+            count_stmt = count_stmt.where(Book.authors.any(Author.id == author_id))
+
+        if genre_id:
+            stmt = stmt.where(Book.genres.any(Genre.id == genre_id))
+            count_stmt = count_stmt.where(Book.genres.any(Genre.id == genre_id))
+
+        if q and q.strip():
+            clean_q = f"%{q.strip().lower()}%"
+            search_filter = or_(
+                func.lower(Book.title).like(clean_q),
+                func.lower(Book.subtitle).like(clean_q),
+                Book.isbn10.like(f"%{q.strip()}%"),
+                Book.isbn13.like(f"%{q.strip()}%"),
+                Book.authors.any(func.lower(Author.name).like(clean_q)),
+            )
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+
+        # Ordenação
+        if sort_by == "title_asc":
+            stmt = stmt.order_by(Book.title.asc(), UserBook.updated_at.desc())
+        elif sort_by == "title_desc":
+            stmt = stmt.order_by(Book.title.desc(), UserBook.updated_at.desc())
+        elif sort_by == "rating_desc":
+            stmt = stmt.order_by(UserBook.rating.desc().nulls_last(), UserBook.updated_at.desc())
+        elif sort_by == "rating_asc":
+            stmt = stmt.order_by(UserBook.rating.asc().nulls_last(), UserBook.updated_at.desc())
+        elif sort_by == "pages_desc":
+            stmt = stmt.order_by(Book.page_count.desc().nulls_last(), UserBook.updated_at.desc())
+        elif sort_by == "created_at_desc":
+            stmt = stmt.order_by(UserBook.created_at.desc())
+        elif sort_by == "progress_desc":
+            stmt = stmt.order_by(UserBook.current_page.desc(), UserBook.updated_at.desc())
+        else:
+            stmt = stmt.order_by(UserBook.updated_at.desc())
+
         total = db.execute(count_stmt).scalar_one()
 
         offset = (page - 1) * page_size

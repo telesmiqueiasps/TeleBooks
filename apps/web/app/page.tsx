@@ -30,6 +30,7 @@ import {
 } from "@telebooks/ui";
 import type { Book, BookStatus, UserBook } from "@telebooks/types";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../components/shell/app-shell";
 import { BookCard, BookItem } from "../components/book-card";
@@ -570,14 +571,24 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={loadData}
-                className="p-2 text-[#64748B] hover:text-[#0F172A] dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
-                title="Recarregar"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/minha-biblioteca"
+                  className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-[#007BFF] hover:underline px-2.5 py-1 rounded-full hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                >
+                  <span>Ver Biblioteca Completa</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="p-2 text-[#64748B] hover:text-[#0F172A] dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
+                  title="Recarregar"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                </button>
+              </div>
             </div>
           </div>
 

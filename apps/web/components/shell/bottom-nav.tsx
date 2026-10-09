@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Home, Library, BookmarkCheck, FolderHeart, BarChart3 } from "lucide-react";
 import { cn } from "@telebooks/ui";
 
@@ -15,6 +16,9 @@ export function BottomNav({
   onSelectTab,
   readingCount = 2,
 }: BottomNavProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const tabs = [
     { id: "home", label: "Início", icon: Home },
     { id: "library", label: "Biblioteca", icon: Library },
@@ -28,7 +32,13 @@ export function BottomNav({
     { id: "stats", label: "Métricas", icon: BarChart3 },
   ];
 
-  const activeIndex = tabs.findIndex((t) => t.id === currentTab);
+  const effectiveTab = pathname.startsWith("/minha-biblioteca")
+    ? "library"
+    : pathname === "/"
+    ? "home"
+    : currentTab;
+
+  const activeIndex = tabs.findIndex((t) => t.id === effectiveTab);
   const safeIndex = activeIndex >= 0 ? activeIndex : 0;
   const activeTabObj = tabs[safeIndex];
   const ActiveIcon = activeTabObj?.icon || Home;
@@ -81,7 +91,14 @@ export function BottomNav({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => onSelectTab(tab.id)}
+                onClick={() => {
+                  onSelectTab(tab.id);
+                  if (tab.id === "home" && pathname !== "/") {
+                    router.push("/");
+                  } else if (tab.id === "library" && !pathname.startsWith("/minha-biblioteca")) {
+                    router.push("/minha-biblioteca");
+                  }
+                }}
                 className={cn(
                   "relative flex-1 flex flex-col items-center justify-center h-full transition-all duration-200 select-none group",
                   isActive
