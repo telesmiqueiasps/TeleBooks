@@ -4,7 +4,6 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  LogIn,
   Mail,
   Lock,
   Eye,
@@ -19,7 +18,65 @@ import { GoogleIcon } from "../../../components/auth/google-button";
 import { useAuth } from "../../../components/auth/auth-provider";
 
 /**
- * Modal simples e elegante para recuperação de senha
+ * Ilustração minimalista de planta e livros para a interseção do cartão
+ */
+function MinimalistPlantIllustration() {
+  return (
+    <div className="relative w-20 h-24 select-none pointer-events-none">
+      <svg
+        viewBox="0 0 80 96"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full drop-shadow-[0_8px_12px_rgba(0,0,0,0.15)]"
+      >
+        {/* Sombra suave projetada sobre o cartão branco */}
+        <ellipse cx="40" cy="91" rx="28" ry="4" fill="#000000" fillOpacity="0.12" />
+
+        {/* Vaso minimalista branco em cerâmica */}
+        <path
+          d="M22 62 L26 88 C26 90 28 92 31 92 L49 92 C52 92 54 90 54 88 L58 62 C59 58 57 56 53 56 L27 56 C23 56 21 58 22 62 Z"
+          fill="#FFFFFF"
+        />
+        {/* Detalhe sutil de relevo/sombra no vaso */}
+        <path
+          d="M49 56 L53 56 C57 56 59 58 58 62 L54 88 C54 90 52 92 49 92 L47 92 L51 62 Z"
+          fill="#E2E8F0"
+        />
+
+        {/* Folha central ereta (verde menta / sálvia) */}
+        <path
+          d="M40 56 C34 42 34 22 40 8 C46 22 46 42 40 56 Z"
+          fill="#34D399"
+        />
+        {/* Nervura central da folha */}
+        <path
+          d="M40 18 L40 56"
+          stroke="#059669"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+
+        {/* Folha esquerda levemente inclinada */}
+        <path
+          d="M33 56 C24 45 22 28 28 16 C34 27 36 43 33 56 Z"
+          fill="#10B981"
+        />
+
+        {/* Folha direita menor */}
+        <path
+          d="M47 56 C53 47 55 34 50 24 C45 33 44 47 47 56 Z"
+          fill="#6EE7B7"
+        />
+
+        {/* Pequeno broto / detalhe azul da marca */}
+        <circle cx="40" cy="56" r="3" fill="#007BFF" />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Modal minimalista para recuperação de senha
  */
 function ForgotPasswordModal({
   isOpen,
@@ -57,39 +114,38 @@ function ForgotPasswordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] shadow-2xl text-[#0F172A] dark:text-[#F8FAFC]">
+      <div className="relative w-full max-w-sm p-6 rounded-3xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-2xl text-[#0F172A] dark:text-[#F8FAFC]">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-[#64748B] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#1E293B] transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           aria-label="Fechar"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#007BFF]/10 text-[#007BFF] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-[#007BFF]/10 text-[#007BFF] flex items-center justify-center shrink-0">
             <Lock className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold">Recuperar Senha</h3>
-            <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-              Enviaremos um link de recuperação para seu e-mail
+            <h3 className="text-base font-bold">Recuperar Senha</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Enviaremos um link para seu e-mail
             </p>
           </div>
         </div>
 
         {success ? (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs flex items-start gap-2.5">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs flex items-start gap-2.5">
               <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
               <span>
-                Link de recuperação enviado com sucesso para <strong>{email}</strong>.
-                Verifique sua caixa de entrada.
+                Link enviado para <strong>{email}</strong>. Verifique sua caixa de entrada.
               </span>
             </div>
             <button
               onClick={onClose}
-              className="w-full h-11 rounded-xl bg-[#007BFF] text-white text-sm font-semibold hover:bg-[#0066D6] transition-colors"
+              className="w-full h-11 rounded-full bg-[#007BFF] text-white text-xs font-bold hover:bg-[#0066D6] transition-colors"
             >
               Voltar ao Login
             </button>
@@ -97,47 +153,38 @@ function ForgotPasswordModal({
         ) : (
           <form onSubmit={handleReset} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs flex items-start gap-2">
+              <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-medium text-[#475569] dark:text-[#94A3B8] mb-1.5">
-                Endereço de E-mail
-              </label>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-3.5 h-4 w-4 text-[#94A3B8] pointer-events-none" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu.email@exemplo.com"
-                  className="w-full h-11 pl-10 pr-3 rounded-xl border border-[#CBD5E1] dark:border-[#334155] bg-slate-50 dark:bg-[#0B0F1A] text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20 transition-all"
-                  required
-                />
-              </div>
+            <div className="relative flex items-center">
+              <Mail className="absolute left-4 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Seu e-mail"
+                className="w-full h-11 pl-11 pr-4 rounded-full bg-slate-100/80 dark:bg-slate-800/80 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#007BFF]/30 font-medium"
+                required
+              />
             </div>
 
             <div className="flex gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-11 rounded-xl border border-[#CBD5E1] dark:border-[#334155] text-xs font-semibold hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors"
+                className="flex-1 h-11 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 h-11 rounded-xl bg-[#007BFF] hover:bg-[#0066D6] text-white text-xs font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-1 h-11 rounded-full bg-[#007BFF] hover:bg-[#0066D6] text-white text-xs font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <span>Enviar Link</span>
-                )}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Enviar</span>}
               </button>
             </div>
           </form>
@@ -204,133 +251,121 @@ function LoginForm() {
 
   return (
     <>
-      <div className="w-full rounded-2xl sm:rounded-3xl border border-[#E2E8F0] dark:border-[#1E293B] shadow-xl bg-white dark:bg-[#0F172A] p-6 sm:p-8">
-        <div className="space-y-1 mb-6 text-center sm:text-left">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-[#F8FAFC]">
-            Acesse sua biblioteca
+      <div className="w-full flex flex-col justify-between">
+        <div className="mb-5">
+          <h2 className="text-2xl font-extrabold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight">
+            Login
           </h2>
-          <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8]">
-            Entre com sua conta Google ou use seu e-mail e senha.
-          </p>
         </div>
 
         {error && (
-          <div className="mb-5 flex items-start gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
+          <div className="mb-4 flex items-start gap-2.5 p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Botão Oficial Google OAuth */}
+        {/* Formulário de Email e Senha */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Campo Email estilo pill */}
+          <div className="relative flex items-center">
+            <Mail className="absolute left-4 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+              className="w-full h-12 pl-11 pr-4 rounded-full bg-slate-100/90 dark:bg-slate-800/80 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 border border-transparent focus:border-[#007BFF] focus:bg-white dark:focus:bg-[#0B0F1A] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 transition-all font-medium"
+            />
+          </div>
+
+          {/* Campo Senha estilo pill */}
+          <div className="space-y-1.5">
+            <div className="relative flex items-center">
+              <Lock className="absolute left-4 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                className="w-full h-12 pl-11 pr-11 rounded-full bg-slate-100/90 dark:bg-slate-800/80 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 border border-transparent focus:border-[#007BFF] focus:bg-white dark:focus:bg-[#0B0F1A] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 transition-all font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {/* Link Esqueceu a Senha alinhado à direita */}
+            <div className="flex justify-end pr-3">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-[#007BFF] dark:hover:text-[#38BDF8] transition-colors"
+              >
+                Esqueceu a senha?
+              </button>
+            </div>
+          </div>
+
+          {/* Botão Entrar estilo pill azul */}
+          <button
+            type="submit"
+            disabled={isLoading || isGoogleLoading}
+            className="w-full h-12 rounded-full bg-[#007BFF] hover:bg-[#0066D6] text-white text-sm font-bold shadow-md shadow-[#007BFF]/25 hover:shadow-lg hover:shadow-[#007BFF]/30 active:scale-[0.99] transition-all flex items-center justify-center gap-2 select-none mt-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <span>Entrar</span>
+            )}
+          </button>
+        </form>
+
+        {/* Divisor minimalista "ou continue com" */}
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-white dark:bg-[#0F172A] px-3 text-slate-400 font-medium text-[11px]">
+              ou entre com
+            </span>
+          </div>
+        </div>
+
+        {/* Botão Oficial Google OAuth estilo pill */}
         <button
           type="button"
           onClick={handleGoogleLogin}
           disabled={isLoading || isGoogleLoading}
-          className="w-full h-12 flex items-center justify-center gap-3 px-4 rounded-xl border border-[#CBD5E1] dark:border-[#334155] bg-white dark:bg-[#1E293B] hover:bg-slate-50 dark:hover:bg-[#283548] text-[#0F172A] dark:text-[#F8FAFC] text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 active:scale-[0.99] disabled:opacity-60 select-none"
+          className="w-full h-12 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 text-slate-800 dark:text-slate-100 text-sm font-semibold shadow-sm transition-all flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-60 select-none"
         >
           {isGoogleLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-[#007BFF]" />
           ) : (
             <GoogleIcon className="h-5 w-5 shrink-0" />
           )}
-          <span>Entrar com o Google</span>
+          <span>Entrar com Google</span>
         </button>
 
-        {/* Divisor */}
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-[#E2E8F0] dark:border-[#1E293B]" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white dark:bg-[#0F172A] px-3 text-[#94A3B8] font-medium tracking-wider text-[11px]">
-              ou continue com e-mail
-            </span>
-          </div>
-        </div>
-
-        {/* Formulário de Email e Senha */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-[#475569] dark:text-[#94A3B8] mb-1.5">
-              Endereço de E-mail
-            </label>
-            <div className="relative flex items-center">
-              <Mail className="absolute left-3.5 h-4 w-4 text-[#94A3B8] pointer-events-none" />
-              <input
-                type="email"
-                placeholder="seu.email@exemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-[#CBD5E1] dark:border-[#334155] bg-slate-50/70 dark:bg-[#0B0F1A] text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20 transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-medium text-[#475569] dark:text-[#94A3B8]">
-                Sua Senha
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(true)}
-                className="text-[11px] sm:text-xs text-[#007BFF] hover:underline font-medium"
-              >
-                Esqueceu a senha?
-              </button>
-            </div>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3.5 h-4 w-4 text-[#94A3B8] pointer-events-none" />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                className="w-full h-11 pl-10 pr-10 rounded-xl border border-[#CBD5E1] dark:border-[#334155] bg-slate-50/70 dark:bg-[#0B0F1A] text-sm text-[#0F172A] dark:text-[#F8FAFC] placeholder:text-[#94A3B8] outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 p-1 text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F8FAFC] transition-colors"
-                aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading || isGoogleLoading}
-            className="w-full h-12 flex items-center justify-center gap-2 px-4 rounded-xl bg-[#007BFF] hover:bg-[#0066D6] text-white text-sm font-semibold shadow-sm shadow-[#007BFF]/25 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/30 active:scale-[0.99] disabled:opacity-60 select-none mt-2"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            ) : (
-              <>
-                <LogIn className="h-4 w-4" />
-                <span>Entrar no TeleBooks</span>
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="mt-6 pt-4 border-t border-[#E2E8F0] dark:border-[#1E293B] text-center">
-          <p className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-            Ainda não tem uma conta?{" "}
+        {/* Link para Cadastro */}
+        <div className="mt-5 text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Não tem uma conta?{" "}
             <Link
               href="/cadastro"
-              className="font-semibold text-[#007BFF] hover:text-[#0066D6] hover:underline"
+              className="font-bold text-[#007BFF] hover:text-[#0066D6] hover:underline"
             >
-              Cadastre-se gratuitamente
+              Cadastre-se
             </Link>
           </p>
         </div>
@@ -347,32 +382,60 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-[#f8fafc] dark:bg-[#0B0F1A] transition-colors">
-      <div className="w-full max-w-md space-y-6">
-        {/* Brand Header com a Logo Oficial */}
-        <div className="flex flex-col items-center text-center space-y-3">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center transition-transform hover:scale-[1.02] focus:outline-none"
-            aria-label="Ir para a página inicial"
-          >
-            <Logo size="lg" showSlogan priority />
-          </Link>
-          <p className="text-xs text-[#64748b] dark:text-[#94a3b8] font-sans">
-            Sua biblioteca pessoal, do seu jeito.
-          </p>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#EDF3FA] dark:bg-[#060B14] p-0 sm:p-6 transition-colors">
+      {/* Moldura centralizada moderna (perfeita para PC e Mobile/PWA) */}
+      <div className="w-full min-h-screen sm:min-h-0 sm:max-w-[400px] md:max-w-[420px] bg-white dark:bg-[#0F172A] sm:rounded-[36px] shadow-2xl sm:border sm:border-slate-200/80 dark:sm:border-slate-800/80 overflow-hidden flex flex-col transition-all">
+        {/* ======================================================= */}
+        {/* CABEÇALHO COM A COR OFICIAL TELEBOOKS                   */}
+        {/* ======================================================= */}
+        <div className="relative bg-gradient-to-br from-[#006CEB] via-[#007BFF] to-[#0057C2] px-6 sm:px-8 pt-10 sm:pt-10 pb-14 text-white overflow-hidden select-none">
+          {/* Forma orgânica curva decorativa no canto superior esquerdo */}
+          <div className="absolute -top-10 -left-10 w-36 h-36 rounded-full bg-white/10 blur-sm pointer-events-none" />
+          <div className="absolute top-0 left-0 w-28 h-28 rounded-br-[60px] bg-white/[0.07] pointer-events-none" />
+
+          {/* Marca TeleBooks no topo */}
+          <div className="relative z-10 flex items-center justify-between mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 transition-transform hover:scale-[1.02] focus:outline-none"
+            >
+              <Logo variant="icon" size="sm" />
+              <span className="font-display font-extrabold text-lg tracking-tight text-white">
+                Tele<span className="text-blue-200">Books</span>
+              </span>
+            </Link>
+          </div>
+
+          {/* Saudação de boas-vindas */}
+          <div className="relative z-10 max-w-[240px]">
+            <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
+              Olá!
+            </h1>
+            <p className="text-xs sm:text-sm font-medium text-blue-100/90 mt-1 leading-snug">
+              Sua biblioteca, do seu jeito.
+            </p>
+          </div>
+
+          {/* Ilustração minimalista de planta sobreposta à junção do cartão */}
+          <div className="absolute right-5 bottom-0 z-10 translate-y-3">
+            <MinimalistPlantIllustration />
+          </div>
         </div>
 
-        {/* Card de Login */}
-        <Suspense
-          fallback={
-            <div className="w-full h-80 rounded-2xl sm:rounded-3xl border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] p-8 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-[#007BFF]" />
-            </div>
-          }
-        >
-          <LoginForm />
-        </Suspense>
+        {/* ======================================================= */}
+        {/* CARTÃO INFERIOR (FOLHA BRANCA COM CANTOS ARREDONDADOS)   */}
+        {/* ======================================================= */}
+        <div className="relative z-20 -mt-6 rounded-t-[32px] sm:rounded-t-[36px] bg-white dark:bg-[#0F172A] px-6 sm:px-8 pt-7 pb-8 flex-1 flex flex-col justify-between shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+          <Suspense
+            fallback={
+              <div className="w-full h-64 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[#007BFF]" />
+              </div>
+            }
+          >
+            <LoginForm />
+          </Suspense>
+        </div>
       </div>
     </div>
   );
