@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Star, MoreVertical, BookOpen, BookmarkCheck, Heart, Trash2, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Star, MoreVertical, BookOpen, BookmarkCheck, Heart, Trash2, Plus, ExternalLink } from "lucide-react";
 import {
   Badge,
   BadgeVariant,
@@ -44,6 +45,7 @@ export function BookCard({
   onAddToShelf,
   onRemoveFromShelf,
 }: BookCardProps) {
+  const router = useRouter();
   const percent =
     book.pages > 0 && book.currentPage !== undefined
       ? Math.min(100, Math.round((book.currentPage / book.pages) * 100))
@@ -88,10 +90,16 @@ export function BookCard({
             </DropdownTrigger>
             <DropdownMenu align="left" className="w-48">
               <DropdownItem
+                icon={<ExternalLink className="h-3.5 w-3.5" />}
+                onClick={() => router.push(`/livros/${book.bookId}`)}
+              >
+                Abrir Página Completa
+              </DropdownItem>
+              <DropdownItem
                 icon={<BookOpen className="h-3.5 w-3.5" />}
                 onClick={() => onOpenDetails?.(book)}
               >
-                Ver Ficha do Livro
+                Ver Ficha Rápida
               </DropdownItem>
 
               {book.isInShelf ? (

@@ -81,3 +81,43 @@ class ReadingSessionRead(BaseModel):
     notes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserNoteCreate(BaseModel):
+    content: str = Field(min_length=1)
+    page_number: int | None = Field(default=None, ge=0)
+    chapter: str | None = None
+    is_spoiler: bool = False
+
+
+class UserNoteRead(BaseModel):
+    id: uuid.UUID
+    user_book_id: uuid.UUID
+    user_id: uuid.UUID
+    content: str
+    page_number: int | None = None
+    chapter: str | None = None
+    is_spoiler: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserQuoteCreate(BaseModel):
+    content: str = Field(min_length=1)
+    page_number: int | None = Field(default=None, ge=0)
+    author_comment: str | None = None
+
+
+class UserQuoteRead(BaseModel):
+    id: uuid.UUID
+    user_book_id: uuid.UUID
+    user_id: uuid.UUID
+    content: str
+    page_number: int | None = None
+    author_comment: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

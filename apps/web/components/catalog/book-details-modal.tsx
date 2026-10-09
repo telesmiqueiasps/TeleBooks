@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   BookOpen,
   Calendar,
@@ -11,6 +12,8 @@ import {
   Edit3,
   Trash2,
   BookmarkCheck,
+  ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import { Modal, Button, Badge, BadgeVariant } from "@telebooks/ui";
 import type { Book, UserBook } from "@telebooks/types";
@@ -213,9 +216,19 @@ export function BookDetailsModal({
             </button>
           </div>
 
-          <Button variant="outline" onClick={onClose}>
-            Fechar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/livros/${book.id}`}
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007BFF] text-white hover:bg-blue-600 transition-all shadow-xs"
+            >
+              <span>Ver Página Completa</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Button variant="outline" onClick={onClose}>
+              Fechar
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

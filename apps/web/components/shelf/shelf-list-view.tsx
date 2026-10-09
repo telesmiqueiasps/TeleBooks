@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import {
   Star,
   Heart,
@@ -11,6 +12,7 @@ import {
   Building2,
   Calendar,
   Layers,
+  ExternalLink,
 } from "lucide-react";
 import type { UserBook } from "@telebooks/types";
 import {
@@ -40,6 +42,7 @@ export function ShelfListView({
   onRemoveFromShelf,
   isLoading = false,
 }: ShelfListViewProps) {
+  const router = useRouter();
   const toBookItem = (userBook: UserBook): BookItem => {
     const book = userBook.book;
     const authorName =
@@ -252,6 +255,12 @@ export function ShelfListView({
                     </div>
                   </DropdownTrigger>
                   <DropdownMenu align="right" className="w-48">
+                    <DropdownItem
+                      icon={<ExternalLink className="w-4 h-4" />}
+                      onClick={() => router.push(`/livros/${item.bookId}`)}
+                    >
+                      Abrir Página Completa
+                    </DropdownItem>
                     <DropdownItem
                       icon={<BookOpen className="w-4 h-4" />}
                       onClick={() => onOpenDetails(item)}

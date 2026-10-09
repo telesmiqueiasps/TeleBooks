@@ -8,7 +8,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models.catalog import Author, Book, Genre
 from app.models.shelf import BookStatus, ReadingSession, UserBook
-from app.schemas.shelf import ReadingSessionCreate, UserBookCreate, UserBookUpdate
+from app.models.social import UserNote, UserQuote
+from app.schemas.shelf import (
+    ReadingSessionCreate,
+    UserBookCreate,
+    UserBookUpdate,
+    UserNoteCreate,
+    UserQuoteCreate,
+)
 
 
 class ShelfService:
@@ -246,3 +253,76 @@ class ShelfService:
         db.commit()
         db.refresh(session)
         return session
+
+    @staticmethod
+    def list_user_notes(db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID) -> list[UserNote]:
+        ShelfService.get_user_book(db, user_id, user_book_id)
+        stmt = (
+            select(UserNote)
+            .where(UserNote.user_id == user_id, UserNote.user_book_id == user_book_id)
+            .order_by(UserNote.created_at.desc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def create_user_note(
+        db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID, data: UserNoteCreate
+    ) -> UserNote:
+        ShelfService.get_user_book(db, user_id, user_book_id)
+        note = UserNote(
+            user_id=user_id,
+            user_book_id=user_book_id,
+            content=data.content,
+            page_number=data.page_number,
+            chapter=data.chapter,
+            is_spoiler=data.is_spoiler,
+        )
+        db.add(note)
+        db.commit()
+        db.refresh(note)
+        return note
+
+    @staticmethod
+    def delete_user_note(db: Session, user_id: uuid.UUID, note_id: uuid.UUID) -> None:
+        stmt = select(UserNote).where(UserNote.id == note_id, UserNote.user_id == user_id)
+        note = db.execute(stmt).scalar_one_or_none()
+        if not note:
+            raise NotFoundError("Nota não encontrada.")
+        db.delete(note)
+        db.commit()
+
+    @staticmethod
+    def list_user_quotes(db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID) -> list[UserQuote]:
+        ShelfService.get_user_book(db, user_id, user_book_id)
+        stmt = (
+            select(UserQuote)
+            .where(UserQuote.user_id == user_id, UserQuote.user_book_id == user_book_id)
+            .order_by(UserQuote.created_at.desc())
+        )
+        return list(db.execute(stmt).scalars().all())
+
+    @staticmethod
+    def create_user_quote(
+        db: Session, user_id: uuid.UUID, user_book_id: uuid.UUID, data: UserQuoteCreate
+    ) -> UserQuote:
+        ShelfService.get_user_book(db, user_id, user_book_id)
+        quote = UserQuote(
+            user_id=user_id,
+            user_book_id=user_book_id,
+            content=data.content,
+            page_number=data.page_number,
+            author_comment=data.author_comment,
+        )
+        db.add(quote)
+        db.commit()
+        db.refresh(quote)
+        return quote
+
+    @staticmethod
+    def delete_user_quote(db: Session, user_id: uuid.UUID, quote_id: uuid.UUID) -> None:
+        stmt = select(UserQuote).where(UserQuote.id == quote_id, UserQuote.user_id == user_id)
+        quote = db.execute(stmt).scalar_one_or_none()
+        if not quote:
+            raise NotFoundError("Citação não encontrada.")
+        db.delete(quote)
+        db.commit()

@@ -14,6 +14,10 @@ from app.schemas.shelf import (
     UserBookCreate,
     UserBookRead,
     UserBookUpdate,
+    UserNoteCreate,
+    UserNoteRead,
+    UserQuoteCreate,
+    UserQuoteRead,
 )
 from app.services.shelf_service import ShelfService
 
@@ -162,3 +166,101 @@ def record_reading_session(
         session_data=session_in,
     )
     return ReadingSessionRead.model_validate(session)
+
+
+@router.get(
+    "/{user_book_id}/notes",
+    response_model=list[UserNoteRead],
+    summary="Listar notas pessoais do leitor para o livro",
+)
+def list_notes(
+    user_book_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    notes = ShelfService.list_user_notes(db=db, user_id=user_uuid, user_book_id=user_book_id)
+    return [UserNoteRead.model_validate(n) for n in notes]
+
+
+@router.post(
+    "/{user_book_id}/notes",
+    response_model=UserNoteRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar nota pessoal para o livro",
+)
+def create_note(
+    user_book_id: uuid.UUID,
+    note_in: UserNoteCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    note = ShelfService.create_user_note(
+        db=db, user_id=user_uuid, user_book_id=user_book_id, data=note_in
+    )
+    return UserNoteRead.model_validate(note)
+
+
+@router.delete(
+    "/notes/{note_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir nota pessoal",
+)
+def delete_note(
+    note_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    ShelfService.delete_user_note(db=db, user_id=user_uuid, note_id=note_id)
+    return None
+
+
+@router.get(
+    "/{user_book_id}/quotes",
+    response_model=list[UserQuoteRead],
+    summary="Listar citações favoritas do livro",
+)
+def list_quotes(
+    user_book_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    quotes = ShelfService.list_user_quotes(db=db, user_id=user_uuid, user_book_id=user_book_id)
+    return [UserQuoteRead.model_validate(q) for q in quotes]
+
+
+@router.post(
+    "/{user_book_id}/quotes",
+    response_model=UserQuoteRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar citação favorita do livro",
+)
+def create_quote(
+    user_book_id: uuid.UUID,
+    quote_in: UserQuoteCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    quote = ShelfService.create_user_quote(
+        db=db, user_id=user_uuid, user_book_id=user_book_id, data=quote_in
+    )
+    return UserQuoteRead.model_validate(quote)
+
+
+@router.delete(
+    "/quotes/{quote_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir citação",
+)
+def delete_quote(
+    quote_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    ShelfService.delete_user_quote(db=db, user_id=user_uuid, quote_id=quote_id)
+    return None

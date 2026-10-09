@@ -5,6 +5,8 @@ import type {
   Genre,
   Publisher,
   UserBook,
+  UserNote,
+  UserQuote,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -45,6 +47,10 @@ export interface UserBookCreateParams {
   personal_color?: string | null;
   shelf_position?: number | null;
   private_notes?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  purchase_date?: string | null;
+  purchase_price?: number | null;
 }
 
 export interface FileUploadResult {
@@ -64,6 +70,10 @@ export interface UserBookUpdateParams {
   personal_color?: string | null;
   shelf_position?: number | null;
   private_notes?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  purchase_date?: string | null;
+  purchase_price?: number | null;
 }
 
 async function getHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
@@ -415,6 +425,74 @@ export const api = {
   async removeFromShelf(userBookId: string): Promise<void> {
     return request<void>(
       `/shelf/${userBookId}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  // --------------------------------------------------------------------------
+  // Notas e Citações do Usuário
+  // --------------------------------------------------------------------------
+  async getUserNotes(userBookId: string): Promise<UserNote[]> {
+    return request<UserNote[]>(`/shelf/${userBookId}/notes`, {}, true);
+  },
+
+  async createUserNote(
+    userBookId: string,
+    payload: {
+      content: string;
+      page_number?: number | null;
+      chapter?: string | null;
+      is_spoiler?: boolean;
+    }
+  ): Promise<UserNote> {
+    return request<UserNote>(
+      `/shelf/${userBookId}/notes`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async deleteUserNote(noteId: string): Promise<void> {
+    return request<void>(
+      `/shelf/notes/${noteId}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
+  },
+
+  async getUserQuotes(userBookId: string): Promise<UserQuote[]> {
+    return request<UserQuote[]>(`/shelf/${userBookId}/quotes`, {}, true);
+  },
+
+  async createUserQuote(
+    userBookId: string,
+    payload: {
+      content: string;
+      page_number?: number | null;
+      author_comment?: string | null;
+    }
+  ): Promise<UserQuote> {
+    return request<UserQuote>(
+      `/shelf/${userBookId}/quotes`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async deleteUserQuote(quoteId: string): Promise<void> {
+    return request<void>(
+      `/shelf/quotes/${quoteId}`,
       {
         method: "DELETE",
       },
