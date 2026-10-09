@@ -166,6 +166,35 @@ class ReadingOverviewRead(BaseModel):
     active_books: list[UserBookRead] = Field(default_factory=list)
 
 
+class GenreStatRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+    book_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardRead(BaseModel):
+    total_books: int = 0
+    total_authors: int = 0
+    total_publishers: int = 0
+    read_books_count: int = 0
+    reading_books_count: int = 0
+    paused_books_count: int = 0
+    want_to_read_books_count: int = 0
+    abandoned_books_count: int = 0
+    total_pages_read: int = 0
+    total_sessions_count: int = 0
+    total_reading_minutes: int = 0
+    average_rating: float | None = None
+    completion_rate_percent: float = 0.0
+    active_readings: list[UserBookRead] = Field(default_factory=list)
+    recently_added_books: list[UserBookRead] = Field(default_factory=list)
+    recent_sessions: list[ReadingSessionRead] = Field(default_factory=list)
+    top_genres: list[GenreStatRead] = Field(default_factory=list)
+
+
 class UserNoteCreate(BaseModel):
     content: str = Field(min_length=1)
     page_number: int | None = Field(default=None, ge=0)

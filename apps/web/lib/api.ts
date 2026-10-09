@@ -3,6 +3,7 @@ import type {
   Book,
   BookStatus,
   Collection,
+  DashboardSummary,
   Genre,
   Publisher,
   ReadingOverview,
@@ -699,6 +700,13 @@ export const api = {
       },
       true
     );
+  },
+
+  // ============================================================================
+  // Dashboard Analítico & Estatísticas Agregadas
+  // ============================================================================
+  async getDashboard(): Promise<DashboardSummary> {
+    return request<DashboardSummary>("/shelf/dashboard", {}, true);
   },
 
   // ============================================================================

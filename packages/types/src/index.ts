@@ -152,6 +152,33 @@ export interface ReadingOverview {
   active_books: UserBook[];
 }
 
+export interface GenreStat {
+  id: string;
+  name: string;
+  slug: string;
+  book_count: number;
+}
+
+export interface DashboardSummary {
+  total_books: number;
+  total_authors: number;
+  total_publishers: number;
+  read_books_count: number;
+  reading_books_count: number;
+  paused_books_count: number;
+  want_to_read_books_count: number;
+  abandoned_books_count: number;
+  total_pages_read: number;
+  total_sessions_count: number;
+  total_reading_minutes: number;
+  average_rating: number | null;
+  completion_rate_percent: number;
+  active_readings: UserBook[];
+  recently_added_books: UserBook[];
+  recent_sessions: ReadingSession[];
+  top_genres: GenreStat[];
+}
+
 export interface UserNote {
   id: string;
   user_book_id: string;

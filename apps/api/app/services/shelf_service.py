@@ -6,7 +6,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
-from app.models.catalog import Author, Book, Genre
+from app.models.catalog import Author, Book, BookAuthor, BookGenre, Genre
 from app.models.shelf import (
     BookStatus,
     Collection,
@@ -452,6 +452,133 @@ class ShelfService:
             "total_sessions_count": total_sessions,
             "recent_sessions": recent_sessions,
             "active_books": active_books,
+        }
+
+    @staticmethod
+    def get_dashboard_summary(db: Session, user_id: uuid.UUID) -> dict:
+        # 1. Total de livros cadastrados na estante
+        total_books = db.execute(
+            select(func.count(UserBook.id)).where(UserBook.user_id == user_id)
+        ).scalar_one() or 0
+
+        # 2. Total de autores distintos presentes na estante
+        total_authors = db.execute(
+            select(func.count(func.distinct(BookAuthor.author_id)))
+            .select_from(UserBook)
+            .join(Book, UserBook.book_id == Book.id)
+            .join(BookAuthor, Book.id == BookAuthor.book_id)
+            .where(UserBook.user_id == user_id)
+        ).scalar_one() or 0
+
+        # 3. Total de editoras distintas presentes na estante
+        total_publishers = db.execute(
+            select(func.count(func.distinct(Book.publisher_id)))
+            .select_from(UserBook)
+            .join(Book, UserBook.book_id == Book.id)
+            .where(UserBook.user_id == user_id, Book.publisher_id.is_not(None))
+        ).scalar_one() or 0
+
+        # 4. Contagem agregada por status
+        status_stmt = (
+            select(UserBook.status, func.count(UserBook.id))
+            .where(UserBook.user_id == user_id)
+            .group_by(UserBook.status)
+        )
+        status_map = dict(db.execute(status_stmt).all())
+        read_books = status_map.get(BookStatus.READ, 0)
+        reading_books = status_map.get(BookStatus.READING, 0)
+        paused_books = status_map.get(BookStatus.PAUSED, 0)
+        want_to_read_books = status_map.get(BookStatus.WANT_TO_READ, 0)
+        abandoned_books = status_map.get(BookStatus.ABANDONED, 0)
+
+        # 5. Total de páginas lidas e tempo a partir de sessões
+        session_stats_stmt = select(
+            func.count(ReadingSession.id),
+            func.coalesce(func.sum(ReadingSession.end_page - ReadingSession.start_page), 0),
+            func.coalesce(func.sum(ReadingSession.duration_seconds), 0),
+        ).where(ReadingSession.user_id == user_id)
+        session_stats_row = db.execute(session_stats_stmt).one()
+        total_sessions = session_stats_row[0] or 0
+        total_pages_read = int(session_stats_row[1] or 0)
+        total_reading_minutes = int((session_stats_row[2] or 0) // 60)
+
+        # 6. Avaliação média pessoal dos livros avaliados
+        avg_rating_val = db.execute(
+            select(func.avg(UserBook.rating)).where(
+                UserBook.user_id == user_id, UserBook.rating.is_not(None)
+            )
+        ).scalar_one()
+        average_rating = round(float(avg_rating_val), 1) if avg_rating_val is not None else None
+
+        # 7. Taxa percentual de conclusão da estante
+        completion_rate = (
+            round((read_books / total_books) * 100, 1) if total_books > 0 else 0.0
+        )
+
+        # 8. Livros com leitura em andamento (leituras ativas / recentes)
+        all_active = ShelfService.get_active_reading_books(db, user_id)
+        active_readings = all_active[:4]
+
+        # 9. Livros adicionados recentemente pelo usuário à estante (máx 6)
+        recent_books_stmt = (
+            select(UserBook)
+            .options(
+                selectinload(UserBook.book).selectinload(Book.authors),
+                selectinload(UserBook.book).selectinload(Book.publisher),
+                selectinload(UserBook.book).selectinload(Book.genres),
+                selectinload(UserBook.tags),
+                selectinload(UserBook.collections),
+            )
+            .where(UserBook.user_id == user_id)
+            .order_by(UserBook.created_at.desc())
+            .limit(6)
+        )
+        recently_added = list(db.execute(recent_books_stmt).scalars().all())
+
+        # 10. Sessões de leitura mais recentes (máx 5)
+        recent_sessions = ShelfService.list_reading_sessions(db, user_id, limit=5)
+
+        # 11. Top gêneros mais frequentes na estante do usuário
+        top_genres_stmt = (
+            select(
+                Genre.id,
+                Genre.name,
+                Genre.slug,
+                func.count(UserBook.id).label("book_count"),
+            )
+            .select_from(UserBook)
+            .join(Book, UserBook.book_id == Book.id)
+            .join(BookGenre, Book.id == BookGenre.book_id)
+            .join(Genre, BookGenre.genre_id == Genre.id)
+            .where(UserBook.user_id == user_id)
+            .group_by(Genre.id, Genre.name, Genre.slug)
+            .order_by(func.count(UserBook.id).desc())
+            .limit(5)
+        )
+        genre_rows = db.execute(top_genres_stmt).all()
+        top_genres = [
+            {"id": row[0], "name": row[1], "slug": row[2], "book_count": int(row[3])}
+            for row in genre_rows
+        ]
+
+        return {
+            "total_books": total_books,
+            "total_authors": total_authors,
+            "total_publishers": total_publishers,
+            "read_books_count": read_books,
+            "reading_books_count": reading_books,
+            "paused_books_count": paused_books,
+            "want_to_read_books_count": want_to_read_books,
+            "abandoned_books_count": abandoned_books,
+            "total_pages_read": total_pages_read,
+            "total_sessions_count": total_sessions,
+            "total_reading_minutes": total_reading_minutes,
+            "average_rating": average_rating,
+            "completion_rate_percent": completion_rate,
+            "active_readings": active_readings,
+            "recently_added_books": recently_added,
+            "recent_sessions": recent_sessions,
+            "top_genres": top_genres,
         }
 
     @staticmethod

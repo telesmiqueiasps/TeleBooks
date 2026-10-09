@@ -13,6 +13,7 @@ from app.schemas.shelf import (
     CollectionRead,
     CollectionReorder,
     CollectionUpdate,
+    DashboardRead,
     ReadingOverviewRead,
     ReadingSessionCreate,
     ReadingSessionRead,
@@ -323,6 +324,22 @@ def set_book_tags(
         db=db, user_id=user_uuid, user_book_id=user_book_id, tag_ids=tag_ids
     )
     return UserBookRead.model_validate(ub)
+
+# ==============================================================================
+# Dashboard Analítico e Estatísticas Agregadas do Leitor
+# ==============================================================================
+@router.get(
+    "/dashboard",
+    response_model=DashboardRead,
+    summary="Dashboard analítico agregado do leitor (total de livros, autores, editoras, lidos, em andamento, páginas e recentes)",
+)
+def get_user_dashboard(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_uuid = uuid.UUID(current_user.id)
+    return ShelfService.get_dashboard_summary(db=db, user_id=user_uuid)
+
 
 # ==============================================================================
 # Sessões e Fluxo de Leitura (Reading Sessions & Overview)
