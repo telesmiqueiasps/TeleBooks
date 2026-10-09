@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.core.errors import AppException, UnauthorizedError
+from app.core.errors import UnauthorizedError
 
 logger = logging.getLogger(__name__)
 
