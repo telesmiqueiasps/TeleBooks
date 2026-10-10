@@ -1,9 +1,13 @@
 import type {
   Author,
   Book,
+  BookImportConfirmRequest,
+  BookImportConfirmResponse,
+  BookSearchQueryParams,
   BookStatus,
   Collection,
   DashboardSummary,
+  ExternalBookItem,
   Genre,
   Publisher,
   ReadingOverview,
@@ -255,6 +259,41 @@ export const api = {
     return request<void>(`/books/${id}`, {
       method: "DELETE",
     });
+  },
+
+  // ============================================================================
+  // Integração Externa: Busca Bibliográfica & Importação (Google Books, Open Library)
+  // ============================================================================
+  async searchExternalBooks(
+    params: BookSearchQueryParams
+  ): Promise<ExternalBookItem[]> {
+    const searchParams = new URLSearchParams();
+    if (params.q) searchParams.set("q", params.q);
+    if (params.title) searchParams.set("title", params.title);
+    if (params.author) searchParams.set("author", params.author);
+    if (params.isbn) searchParams.set("isbn", params.isbn);
+    if (params.provider) searchParams.set("provider", params.provider);
+    if (params.limit) searchParams.set("limit", params.limit.toString());
+
+    const qs = searchParams.toString();
+    return request<ExternalBookItem[]>(
+      `/books/search/external${qs ? `?${qs}` : ""}`,
+      {},
+      true
+    );
+  },
+
+  async confirmImportBook(
+    payload: BookImportConfirmRequest
+  ): Promise<BookImportConfirmResponse> {
+    return request<BookImportConfirmResponse>(
+      "/books/import/confirm",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
   },
 
   // ============================================================================

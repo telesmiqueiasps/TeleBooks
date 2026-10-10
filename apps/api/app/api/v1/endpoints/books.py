@@ -5,8 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_optional_user
 from app.core.security import CurrentUser
+from app.schemas.book_search import (
+    BookImportConfirmRequest,
+    BookImportConfirmResponse,
+    ExternalBookItem,
+)
 from app.schemas.catalog import BookCreate, BookRead, BookUpdate
 from app.schemas.common import PaginatedResponse
+from app.services.book_integration_service import book_integration_service
 from app.services.catalog_service import CatalogService
 
 router = APIRouter()
@@ -15,7 +21,7 @@ router = APIRouter()
 @router.get(
     "",
     response_model=PaginatedResponse[BookRead],
-    summary="Listar e pesquisar livros do catálogo",
+    summary="Listar e pesquisar livros do catálogo local",
 )
 def list_books(
     q: str | None = Query(default=None, description="Busca textual por título, subtítulo ou ISBN"),
@@ -40,6 +46,81 @@ def list_books(
     return PaginatedResponse.create(items=book_items, total=total, page=page, page_size=page_size)
 
 
+# ==============================================================================
+# Integração Externa (Busca por Título, Autor, ISBN e Importação/Reutilização)
+# ==============================================================================
+@router.get(
+    "/search/external",
+    response_model=list[ExternalBookItem],
+    summary="Buscar livros em provedores externos (Google Books, Open Library)",
+)
+async def search_external_books(
+    q: str | None = Query(default=None, description="Termo geral de busca"),
+    title: str | None = Query(default=None, description="Buscar por título"),
+    author: str | None = Query(default=None, description="Buscar por autor"),
+    isbn: str | None = Query(default=None, description="Buscar por código ISBN"),
+    provider: str | None = Query(
+        default=None,
+        description="Identificador do provedor ('google_books' ou 'open_library')",
+    ),
+    limit: int = Query(default=12, ge=1, le=40, description="Limite de resultados"),
+    db: Session = Depends(get_db),
+    current_user: CurrentUser | None = Depends(get_optional_user),
+):
+    """
+    Pesquisa externa com suporte a busca por Título, Autor e ISBN.
+    O serviço correlaciona automaticamente cada resultado com o banco de dados
+    do TeleBooks, identificando se já existe no catálogo ou na estante do leitor.
+    """
+    return await book_integration_service.search_external_books(
+        db=db,
+        query=q,
+        title=title,
+        author=author,
+        isbn=isbn,
+        provider_name=provider,
+        limit=limit,
+        current_user=current_user,
+    )
+
+
+@router.post(
+    "/import/confirm",
+    response_model=BookImportConfirmResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Confirmar importação de livro externo (cria novo ou reutiliza existente sem duplicar)",
+)
+def confirm_import_book(
+    payload: BookImportConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser | None = Depends(get_optional_user),
+):
+    """
+    Fluxo de confirmação pelo usuário:
+    - Se o livro já existir (por ISBN13, ISBN10 ou Título+Autor), REUTILIZA o registro.
+    - Se for inédito, cria no catálogo com autores e editora resolvidos.
+    - Se add_to_shelf=True e usuário logado, vincula à estante pessoal.
+    """
+    return book_integration_service.confirm_or_reuse_book(
+        db=db,
+        payload=payload,
+        current_user=current_user,
+    )
+
+
+@router.get(
+    "/isbn/{isbn}",
+    response_model=BookRead,
+    summary="Buscar livro local por ISBN (10 ou 13 dígitos)",
+)
+def get_book_by_isbn(
+    isbn: str,
+    db: Session = Depends(get_db),
+):
+    book = CatalogService.get_book_by_isbn(db=db, isbn=isbn)
+    return BookRead.model_validate(book)
+
+
 @router.get(
     "/{book_id}",
     response_model=BookRead,
@@ -53,24 +134,11 @@ def get_book(
     return BookRead.model_validate(book)
 
 
-@router.get(
-    "/isbn/{isbn}",
-    response_model=BookRead,
-    summary="Buscar livro por ISBN (10 ou 13 dígitos)",
-)
-def get_book_by_isbn(
-    isbn: str,
-    db: Session = Depends(get_db),
-):
-    book = CatalogService.get_book_by_isbn(db=db, isbn=isbn)
-    return BookRead.model_validate(book)
-
-
 @router.post(
     "",
     response_model=BookRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Cadastrar novo livro no catálogo global",
+    summary="Cadastrar novo livro no catálogo global manualmente",
 )
 def create_book(
     book_in: BookCreate,

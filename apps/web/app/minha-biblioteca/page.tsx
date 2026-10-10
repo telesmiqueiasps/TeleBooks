@@ -25,6 +25,7 @@ import {
   Clock,
   Users,
   FolderPlus,
+  Globe,
 } from "lucide-react";
 import {
   Button,
@@ -60,6 +61,7 @@ import { CollectionsManagerModal } from "../../components/shelf/collections-mana
 
 import { BookDetailsModal } from "../../components/catalog/book-details-modal";
 import { BookFormModal } from "../../components/catalog/book-form-modal";
+import { BookSearchImportModal } from "../../components/catalog/book-search-import-modal";
 import { ShelfConnectionModal } from "../../components/shelf/shelf-connection-modal";
 
 interface BookGroup {
@@ -118,6 +120,7 @@ export default function MinhaBibliotecaPage() {
   const [shelfModalUserBook, setShelfModalUserBook] = useState<UserBook | null>(null);
 
   const [isBookFormOpen, setIsBookFormOpen] = useState(false);
+  const [isSearchImportModalOpen, setIsSearchImportModalOpen] = useState(false);
   const [bookToEdit, setBookToEdit] = useState<Book | null>(null);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
 
@@ -480,7 +483,7 @@ export default function MinhaBibliotecaPage() {
       currentTab="library"
       bookCount={totalItems}
       readingCount={readingCount}
-      onAddBookClick={() => setIsBookFormOpen(true)}
+      onAddBookClick={() => setIsSearchImportModalOpen(true)}
     >
       <div className="space-y-6 sm:space-y-8 select-none">
         {/* Cabeçalho Editorial da Biblioteca */}
@@ -521,11 +524,21 @@ export default function MinhaBibliotecaPage() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsBookFormOpen(true)}
-              leftIcon={<Plus className="w-4 h-4 stroke-[2.5]" />}
+              onClick={() => setIsSearchImportModalOpen(true)}
+              leftIcon={<Globe className="w-4 h-4 stroke-[2.2]" />}
               className="rounded-full shadow-sm shadow-[#007BFF]/25 font-semibold text-xs px-4"
             >
-              Adicionar Livro
+              Buscar Online (ISBN/Título)
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBookFormOpen(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="rounded-full text-xs px-3.5"
+            >
+              Manual
             </Button>
           </div>
         </div>
@@ -644,22 +657,21 @@ export default function MinhaBibliotecaPage() {
                 <Button
                   variant="primary"
                   size="sm"
+                  onClick={() => setIsSearchImportModalOpen(true)}
+                  leftIcon={<Globe className="w-4 h-4" />}
+                  className="rounded-full text-xs w-full sm:w-auto font-bold"
+                >
+                  Buscar Online (ISBN/Título)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIsBookFormOpen(true)}
                   leftIcon={<Plus className="w-4 h-4" />}
                   className="rounded-full text-xs w-full sm:w-auto"
                 >
-                  Cadastrar Livro
+                  Cadastrar Manualmente
                 </Button>
-                <Link href="/" className="w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<Compass className="w-4 h-4" />}
-                    className="rounded-full text-xs w-full"
-                  >
-                    Explorar Catálogo
-                  </Button>
-                </Link>
               </div>
             </div>
           )
@@ -896,6 +908,17 @@ export default function MinhaBibliotecaPage() {
         }}
       />
 
+      {/* Modal de Busca Externa & Importação Inteligente */}
+      <BookSearchImportModal
+        isOpen={isSearchImportModalOpen}
+        onClose={() => setIsSearchImportModalOpen(false)}
+        onSuccess={() => {
+          loadShelf();
+          loadAuxiliaryData();
+        }}
+        onOpenManualForm={() => setIsBookFormOpen(true)}
+      />
+
       {/* Modal de Cadastro / Edição de Livro */}
       <BookFormModal
         isOpen={isBookFormOpen}
@@ -904,6 +927,7 @@ export default function MinhaBibliotecaPage() {
           setBookToEdit(null);
         }}
         bookToEdit={bookToEdit}
+        onOpenSearchModal={() => setIsSearchImportModalOpen(true)}
         onSuccess={() => {
           loadShelf();
           loadAuxiliaryData();

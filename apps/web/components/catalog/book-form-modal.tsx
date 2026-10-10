@@ -21,6 +21,7 @@ export interface BookFormModalProps {
   onClose: () => void;
   bookToEdit?: Book | null;
   onSuccess?: (book: Book) => void;
+  onOpenSearchModal?: () => void;
 }
 
 export function BookFormModal({
@@ -28,6 +29,7 @@ export function BookFormModal({
   onClose,
   bookToEdit,
   onSuccess,
+  onOpenSearchModal,
 }: BookFormModalProps) {
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -194,6 +196,25 @@ export function BookFormModal({
           <div className="p-3 text-sm bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             {error}
+          </div>
+        )}
+
+        {!bookToEdit && onOpenSearchModal && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-200/80 dark:border-blue-900/40 text-xs">
+            <div className="flex items-center gap-2.5 text-blue-900 dark:text-blue-200">
+              <Sparkles className="w-4 h-4 text-[#007BFF] shrink-0" />
+              <span>Deseja preencher automaticamente buscando por ISBN, título ou autor?</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenSearchModal();
+              }}
+              className="px-3.5 py-1.5 rounded-full bg-[#007BFF] hover:bg-[#0066D6] text-white font-bold text-xs shrink-0 transition-colors shadow-xs"
+            >
+              Buscar Online
+            </button>
           </div>
         )}
 

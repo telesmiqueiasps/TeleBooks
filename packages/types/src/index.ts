@@ -247,3 +247,63 @@ export interface ApiErrorResponse {
   detail: string;
   code?: string;
 }
+
+/** Item retornado pela camada de busca externa (Google Books, Open Library) */
+export interface ExternalBookItem {
+  provider: string;
+  external_id: string;
+  title: string;
+  subtitle?: string | null;
+  authors: string[];
+  publisher?: string | null;
+  published_date?: string | null;
+  description?: string | null;
+  isbn10?: string | null;
+  isbn13?: string | null;
+  page_count?: number | null;
+  language?: string | null;
+  categories: string[];
+  cover_url?: string | null;
+  thumbnail_url?: string | null;
+  is_already_in_catalog: boolean;
+  existing_book_id?: string | null;
+  is_on_user_shelf: boolean;
+  user_book_id?: string | null;
+  user_book_status?: BookStatus | null;
+}
+
+export interface BookSearchQueryParams {
+  q?: string;
+  title?: string;
+  author?: string;
+  isbn?: string;
+  provider?: "google_books" | "open_library";
+  limit?: number;
+}
+
+export interface BookImportConfirmRequest {
+  title: string;
+  subtitle?: string | null;
+  authors: string[];
+  publisher?: string | null;
+  description?: string | null;
+  isbn10?: string | null;
+  isbn13?: string | null;
+  page_count?: number | null;
+  publication_date?: string | null;
+  published_date_raw?: string | null;
+  language?: string;
+  cover_url?: string | null;
+  thumbnail_url?: string | null;
+  genres?: string[];
+  add_to_shelf?: boolean;
+  shelf_status?: BookStatus;
+}
+
+export interface BookImportConfirmResponse {
+  book: Book;
+  reused: boolean;
+  already_on_shelf: boolean;
+  user_book_id?: string | null;
+  message: string;
+}

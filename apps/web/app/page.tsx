@@ -26,6 +26,7 @@ import {
   AlertCircle,
   RefreshCw,
   Compass,
+  Globe,
 } from "lucide-react";
 import {
   Button,
@@ -45,6 +46,7 @@ import { AppShell } from "../components/shell/app-shell";
 import { useAuth } from "../components/auth/auth-provider";
 import { api } from "../lib/api";
 import { BookFormModal } from "../components/catalog/book-form-modal";
+import { BookSearchImportModal } from "../components/catalog/book-search-import-modal";
 import { ReadingSessionModal } from "../components/shelf/reading-session-modal";
 
 const STATUS_LABELS: Record<
@@ -88,6 +90,7 @@ export default function DashboardPage() {
 
   // Modais de Ação Rápida
   const [isBookFormOpen, setIsBookFormOpen] = useState(false);
+  const [isSearchImportModalOpen, setIsSearchImportModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [sessionTargetBook, setSessionTargetBook] = useState<UserBook | null>(null);
 
@@ -142,7 +145,7 @@ export default function DashboardPage() {
       currentTab="home"
       bookCount={dashboard?.total_books || 0}
       readingCount={dashboard?.reading_books_count || 0}
-      onAddBookClick={() => setIsBookFormOpen(true)}
+      onAddBookClick={() => setIsSearchImportModalOpen(true)}
     >
       <div className="space-y-8 select-none">
         {/* =========================================================================
@@ -183,11 +186,21 @@ export default function DashboardPage() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsBookFormOpen(true)}
-              leftIcon={<Plus className="w-4 h-4 stroke-[2.5]" />}
+              onClick={() => setIsSearchImportModalOpen(true)}
+              leftIcon={<Globe className="w-4 h-4 stroke-[2.2]" />}
               className="rounded-full shadow-sm shadow-[#007BFF]/25 font-semibold text-xs px-4 bg-[#007BFF] hover:bg-[#006CEB]"
             >
-              Adicionar Livro
+              Buscar Online (ISBN)
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBookFormOpen(true)}
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="rounded-full text-xs px-3"
+            >
+              Manual
             </Button>
           </div>
         </div>
@@ -803,10 +816,21 @@ export default function DashboardPage() {
         ) : null}
       </div>
 
-      {/* Modal para Adicionar Livro */}
+      {/* Modal para Buscar Online & Importar Livro */}
+      <BookSearchImportModal
+        isOpen={isSearchImportModalOpen}
+        onClose={() => setIsSearchImportModalOpen(false)}
+        onSuccess={() => {
+          loadDashboard();
+        }}
+        onOpenManualForm={() => setIsBookFormOpen(true)}
+      />
+
+      {/* Modal para Adicionar Livro Manual */}
       <BookFormModal
         isOpen={isBookFormOpen}
         onClose={() => setIsBookFormOpen(false)}
+        onOpenSearchModal={() => setIsSearchImportModalOpen(true)}
         onSuccess={() => {
           loadDashboard();
           setIsBookFormOpen(false);
