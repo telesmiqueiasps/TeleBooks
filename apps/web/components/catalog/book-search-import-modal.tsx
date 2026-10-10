@@ -23,6 +23,8 @@ import {
   ExternalLink,
   Plus,
   Loader2,
+  Camera,
+  ScanLine,
 } from "lucide-react";
 import { Modal, Button, Input, Badge } from "@telebooks/ui";
 import type {
@@ -32,6 +34,7 @@ import type {
   BookImportConfirmResponse,
 } from "@telebooks/types";
 import { api } from "../../lib/api";
+import { IsbnScannerModal } from "./isbn-scanner-modal";
 
 export interface BookSearchImportModalProps {
   isOpen: boolean;
@@ -52,7 +55,8 @@ export function BookSearchImportModal({
   const [filterTitle, setFilterTitle] = useState("");
   const [filterAuthor, setFilterAuthor] = useState("");
   const [filterIsbn, setFilterIsbn] = useState("");
-  const [provider, setProvider] = useState<"google_books" | "open_library">("google_books");
+  const [provider, setProvider] = useState<"brasil_api" | "google_books" | "open_library">("brasil_api");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Resultados
   const [results, setResults] = useState<ExternalBookItem[]>([]);
@@ -89,6 +93,41 @@ export function BookSearchImportModal({
     onClose();
   };
 
+  const executeSearch = async (params: {
+    cleanQ?: string;
+    cleanTitle?: string;
+    cleanAuthor?: string;
+    cleanIsbn?: string;
+    targetProvider?: "brasil_api" | "google_books" | "open_library";
+  }) => {
+    try {
+      setIsSearching(true);
+      setSearchError(null);
+      setHasSearched(true);
+      setSelectedItem(null);
+
+      const items = await api.searchExternalBooks({
+        q: params.cleanQ || undefined,
+        title: params.cleanTitle || undefined,
+        author: params.cleanAuthor || undefined,
+        isbn: params.cleanIsbn || undefined,
+        provider: params.targetProvider || provider,
+        limit: 14,
+      });
+
+      setResults(items);
+      if (items.length === 0) {
+        setSearchError("Nenhum livro localizado para os termos informados. Verifique o código ISBN ou tente outro provedor.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao pesquisar livros externos.";
+      setSearchError(msg);
+      setResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -102,29 +141,24 @@ export function BookSearchImportModal({
       return;
     }
 
-    try {
-      setIsSearching(true);
-      setSearchError(null);
-      setHasSearched(true);
-      setSelectedItem(null);
+    await executeSearch({
+      cleanQ,
+      cleanTitle,
+      cleanAuthor,
+      cleanIsbn,
+    });
+  };
 
-      const items = await api.searchExternalBooks({
-        q: cleanQ || undefined,
-        title: cleanTitle || undefined,
-        author: cleanAuthor || undefined,
-        isbn: cleanIsbn || undefined,
-        provider: provider,
-        limit: 14,
-      });
+  const handleBarcodeScanned = async (scannedIsbn: string) => {
+    setIsScannerOpen(false);
+    setQuery(scannedIsbn);
+    setFilterIsbn(scannedIsbn);
 
-      setResults(items);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao pesquisar livros externos.";
-      setSearchError(msg);
-      setResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+    // Dispara a busca imediata
+    await executeSearch({
+      cleanIsbn: scannedIsbn,
+      targetProvider: provider,
+    });
   };
 
   const handleSelectBook = (item: ExternalBookItem) => {
@@ -207,18 +241,27 @@ export function BookSearchImportModal({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Digite o título, nome do autor ou código ISBN (ex: 9788535914849)..."
-                    className="w-full h-11 pl-10 pr-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20 transition-all"
+                    className="w-full h-11 pl-10 pr-12 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    title="Ler código de barras ISBN com a câmera do celular ou webcam"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-xl text-slate-400 hover:text-[#007BFF] hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <select
                     value={provider}
-                    onChange={(e) => setProvider(e.target.value as "google_books" | "open_library")}
+                    onChange={(e) => setProvider(e.target.value as "brasil_api" | "google_books" | "open_library")}
                     className="h-11 px-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#007BFF]"
                   >
-                    <option value="google_books">Google Books</option>
-                    <option value="open_library">Open Library</option>
+                    <option value="brasil_api">🇧🇷 Brasil (CBL / Mercado Nacional)</option>
+                    <option value="google_books">🌐 Google Books (Mundial)</option>
+                    <option value="open_library">📚 Open Library (Acervo Aberto)</option>
                   </select>
 
                   <Button
@@ -233,16 +276,27 @@ export function BookSearchImportModal({
                 </div>
               </div>
 
-              {/* Toggle de Busca Avançada */}
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedMode(!advancedMode)}
-                  className="inline-flex items-center gap-1.5 text-slate-500 hover:text-[#007BFF] dark:text-slate-400 dark:hover:text-[#38BDF8] font-medium transition-colors"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>{advancedMode ? "Ocultar filtros avançados" : "Busca avançada por campos separados"}</span>
-                </button>
+              {/* Barra de Ações Rápidas: Scanner por Câmera & Toggle Avançado */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#006CEB] to-[#007BFF] hover:from-[#005AC4] hover:to-[#006CEB] text-white font-semibold shadow-sm shadow-[#007BFF]/20 active:scale-95 transition-all"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" />
+                    <span>Escanear Código de Barras</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedMode(!advancedMode)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-[#007BFF]/40 text-slate-600 hover:text-[#007BFF] dark:text-slate-300 dark:hover:text-[#38BDF8] font-medium transition-colors"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>{advancedMode ? "Ocultar campos separados" : "Busca avançada"}</span>
+                  </button>
+                </div>
 
                 {onOpenManualForm && (
                   <button
@@ -251,7 +305,7 @@ export function BookSearchImportModal({
                       onClose();
                       onOpenManualForm();
                     }}
-                    className="text-[#007BFF] dark:text-[#38BDF8] hover:underline font-medium"
+                    className="text-[#007BFF] dark:text-[#38BDF8] hover:underline font-medium ml-auto"
                   >
                     Cadastrar manualmente
                   </button>
@@ -260,7 +314,7 @@ export function BookSearchImportModal({
 
               {/* Campos Avançados Separados */}
               {advancedMode && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 animate-in fade-in duration-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 animate-in fade-in duration-200">
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       Título
@@ -289,13 +343,23 @@ export function BookSearchImportModal({
                     <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       ISBN (10 ou 13)
                     </label>
-                    <input
-                      type="text"
-                      value={filterIsbn}
-                      onChange={(e) => setFilterIsbn(e.target.value)}
-                      placeholder="Ex: 9788535914849"
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#007BFF]"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={filterIsbn}
+                        onChange={(e) => setFilterIsbn(e.target.value)}
+                        placeholder="Ex: 9788535914849"
+                        className="w-full h-9 pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#007BFF]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsScannerOpen(true)}
+                        title="Ler código com câmera"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-[#007BFF] transition-colors"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -711,6 +775,13 @@ export function BookSearchImportModal({
           </div>
         )}
       </div>
+
+      {/* Modal do Scanner de Código de Barras (Câmera Mobile/Desktop) */}
+      <IsbnScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleBarcodeScanned}
+      />
     </Modal>
   );
 }

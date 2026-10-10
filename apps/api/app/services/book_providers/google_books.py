@@ -141,11 +141,18 @@ class GoogleBooksProvider(BaseBookProvider):
             "q": q_param,
             "maxResults": min(max(limit, 1), 40),
             "printType": "books",
+            "hl": "pt-BR",
+            "country": "BR",
         }
 
         try:
             async with httpx.AsyncClient(timeout=8.0) as client:
                 response = await client.get(self.BASE_URL, params=params)
+                if response.status_code == 429:
+                    logger.warning(
+                        "Google Books API atingiu limite temporário de requisições (429). Acionando provedores alternativos."
+                    )
+                    return []
                 if response.status_code != 200:
                     logger.warning(
                         "Google Books API retornou status %s para query '%s'",
@@ -163,6 +170,14 @@ class GoogleBooksProvider(BaseBookProvider):
                     if parsed:
                         results.append(parsed)
 
+                # Prioriza edições em português brasileiro no topo
+                def _pt_priority(it: ExternalBookItem) -> int:
+                    lang = (it.language or "").lower()
+                    if lang in ("pt", "pt-br", "por"):
+                        return 0
+                    return 1
+
+                results.sort(key=_pt_priority)
                 return results
         except Exception as exc:
             logger.error("Erro ao consultar Google Books API: %s", exc)

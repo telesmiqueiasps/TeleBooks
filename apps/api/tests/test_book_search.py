@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.schemas.book_search import ExternalBookItem
 from app.services.book_integration_service import BookIntegrationService, book_integration_service
+from app.services.book_providers.brasil_api import BrasilApiProvider
 from app.services.book_providers.google_books import GoogleBooksProvider
 from app.services.book_providers.open_library import OpenLibraryProvider
 
@@ -17,6 +18,10 @@ def test_normalize_isbn():
 
 def test_provider_registry():
     service = BookIntegrationService()
+    brasil = service.get_provider("brasil_api")
+    assert isinstance(brasil, BrasilApiProvider)
+    assert brasil.name == "brasil_api"
+
     google = service.get_provider("google_books")
     assert isinstance(google, GoogleBooksProvider)
     assert google.name == "google_books"

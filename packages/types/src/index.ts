@@ -277,7 +277,7 @@ export interface BookSearchQueryParams {
   title?: string;
   author?: string;
   isbn?: string;
-  provider?: "google_books" | "open_library";
+  provider?: "brasil_api" | "google_books" | "open_library";
   limit?: number;
 }
 

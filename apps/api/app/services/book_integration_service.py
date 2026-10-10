@@ -16,6 +16,7 @@ from app.schemas.book_search import (
 )
 from app.schemas.catalog import BookRead, slugify
 from app.services.book_providers.base import BaseBookProvider
+from app.services.book_providers.brasil_api import BrasilApiProvider
 from app.services.book_providers.google_books import GoogleBooksProvider
 from app.services.book_providers.open_library import OpenLibraryProvider
 
@@ -25,12 +26,14 @@ logger = logging.getLogger(__name__)
 class BookIntegrationService:
     """
     Serviço central de integração bibliográfica externa.
-    Isola a comunicação com provedores externos (Google Books, Open Library),
-    implementa fallback transparente e gerencia a criação ou reaproveitamento seguro de livros.
+    Isola a comunicação com provedores externos (BrasilAPI/CBL, Google Books, Open Library),
+    implementa priorização de edições brasileiras, fallback transparente e gerencia
+    a criação ou reaproveitamento seguro de livros.
     """
 
     def __init__(self) -> None:
         self._providers: dict[str, BaseBookProvider] = {
+            "brasil_api": BrasilApiProvider(),
             "google_books": GoogleBooksProvider(),
             "open_library": OpenLibraryProvider(),
         }
@@ -61,32 +64,53 @@ class BookIntegrationService:
     ) -> list[ExternalBookItem]:
         """
         Pesquisa livros externamente e correlaciona com o catálogo local e a estante do leitor.
-        Aplica fallback automático se o provedor principal não retornar resultados.
+        Para buscas por ISBN, prioriza a BrasilAPI (CBL - Câmara Brasileira do Livro)
+        para resgatar a edição brasileira oficial.
+        Aplica fallback automático entre provedores se nada for localizado.
         """
-        primary_provider = self.get_provider(provider_name)
-        results = await primary_provider.search(
-            query=query,
-            title=title,
-            author=author,
-            isbn=isbn,
-            limit=limit,
-        )
+        # 1. Identifica se a busca possui código ISBN (explícito ou termo com 10/13 dígitos)
+        clean_isbn_target = self.normalize_isbn(isbn)
+        if not clean_isbn_target and query:
+            candidate = self.normalize_isbn(query)
+            if candidate and len(candidate) in (10, 13):
+                clean_isbn_target = candidate
 
-        # Fallback para o provedor secundário se nada foi encontrado
+        results: list[ExternalBookItem] = []
+
+        # 2. Se houver ISBN, consulta PRIMEIRO a BrasilAPI (Câmara Brasileira do Livro - CBL)
+        if clean_isbn_target and (not provider_name or provider_name == "brasil_api"):
+            brasil_provider = self._providers["brasil_api"]
+            cbl_item = await brasil_provider.get_by_isbn(clean_isbn_target)
+            if cbl_item:
+                results.append(cbl_item)
+
+        # 3. Se não houver resultados ou a busca for por título/autor/termo textual:
         if not results:
-            fallback_name = (
-                "open_library" if primary_provider.name == "google_books" else "google_books"
+            primary_name = provider_name or "google_books"
+            primary_provider = self.get_provider(primary_name)
+            results = await primary_provider.search(
+                query=query,
+                title=title,
+                author=author,
+                isbn=clean_isbn_target or isbn,
+                limit=limit,
             )
-            fallback_provider = self._providers.get(fallback_name)
-            if fallback_provider:
-                logger.info("Executando fallback bibliográfico para '%s'", fallback_name)
-                results = await fallback_provider.search(
-                    query=query,
-                    title=title,
-                    author=author,
-                    isbn=isbn,
-                    limit=limit,
+
+            # Fallback automático se nada foi retornado
+            if not results:
+                fallback_name = (
+                    "open_library" if primary_provider.name == "google_books" else "google_books"
                 )
+                fallback_provider = self._providers.get(fallback_name)
+                if fallback_provider:
+                    logger.info("Executando fallback bibliográfico para '%s'", fallback_name)
+                    results = await fallback_provider.search(
+                        query=query,
+                        title=title,
+                        author=author,
+                        isbn=clean_isbn_target or isbn,
+                        limit=limit,
+                    )
 
         if not results:
             return []
