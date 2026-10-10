@@ -134,13 +134,48 @@ class CatalogService:
                     f"Já existe um livro cadastrado com o ISBN13 '{book_in.isbn13}'."
                 )
 
-        book_data = book_in.model_dump(exclude={"author_ids", "genre_ids"})
+        book_data = book_in.model_dump(
+            exclude={"author_ids", "author_names", "genre_ids", "publisher_name"}
+        )
+
+        # Resolução de Editora por nome se não fornecido publisher_id
+        if not book_data.get("publisher_id") and book_in.publisher_name:
+            pub_name = book_in.publisher_name.strip()
+            if pub_name:
+                pub = db.execute(
+                    select(Publisher).where(func.lower(Publisher.name) == pub_name.lower())
+                ).scalar_one_or_none()
+                if not pub:
+                    pub = Publisher(name=pub_name)
+                    db.add(pub)
+                    db.flush()
+                book_data["publisher_id"] = pub.id
+
         book = Book(**book_data)
         db.add(book)
         db.flush()
 
-        if book_in.author_ids:
-            for i, author_id in enumerate(book_in.author_ids):
+        # Resolução de Autores (por ID e/ou por Nome)
+        resolved_author_ids: list[uuid.UUID] = (
+            list(book_in.author_ids) if book_in.author_ids else []
+        )
+        if book_in.author_names:
+            for a_name in book_in.author_names:
+                cleaned_name = a_name.strip()
+                if not cleaned_name:
+                    continue
+                author = db.execute(
+                    select(Author).where(func.lower(Author.name) == cleaned_name.lower())
+                ).scalar_one_or_none()
+                if not author:
+                    author = Author(name=cleaned_name)
+                    db.add(author)
+                    db.flush()
+                if author.id not in resolved_author_ids:
+                    resolved_author_ids.append(author.id)
+
+        if resolved_author_ids:
+            for i, author_id in enumerate(resolved_author_ids):
                 db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
 
         if book_in.genre_ids:
@@ -169,14 +204,49 @@ class CatalogService:
                     f"Já existe outro livro com o ISBN13 '{update_dict['isbn13']}'."
                 )
 
-        # Atualiza relações N:N se fornecidas
-        if "author_ids" in update_dict:
-            author_ids = update_dict.pop("author_ids")
-            if author_ids is not None:
-                # Remove relações antigas
-                db.query(BookAuthor).filter(BookAuthor.book_id == book_id).delete()
-                for i, author_id in enumerate(author_ids):
-                    db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
+        # Resolução de Editora se publisher_name foi enviado
+        if "publisher_name" in update_dict:
+            pub_name = update_dict.pop("publisher_name")
+            if pub_name is not None:
+                cleaned_pub = pub_name.strip()
+                if cleaned_pub:
+                    pub = db.execute(
+                        select(Publisher).where(func.lower(Publisher.name) == cleaned_pub.lower())
+                    ).scalar_one_or_none()
+                    if not pub:
+                        pub = Publisher(name=cleaned_pub)
+                        db.add(pub)
+                        db.flush()
+                    update_dict["publisher_id"] = pub.id
+                else:
+                    update_dict["publisher_id"] = None
+
+        # Atualiza relações de autores N:N se fornecidas por IDs ou nomes
+        author_ids = update_dict.pop("author_ids", None)
+        author_names = update_dict.pop("author_names", None)
+        if author_ids is not None or author_names is not None:
+            resolved_author_ids: list[uuid.UUID] = (
+                list(author_ids) if author_ids is not None else []
+            )
+            if author_names:
+                for a_name in author_names:
+                    cleaned_name = a_name.strip()
+                    if not cleaned_name:
+                        continue
+                    author = db.execute(
+                        select(Author).where(func.lower(Author.name) == cleaned_name.lower())
+                    ).scalar_one_or_none()
+                    if not author:
+                        author = Author(name=cleaned_name)
+                        db.add(author)
+                        db.flush()
+                    if author.id not in resolved_author_ids:
+                        resolved_author_ids.append(author.id)
+
+            # Remove relações antigas e insere novas
+            db.query(BookAuthor).filter(BookAuthor.book_id == book_id).delete()
+            for i, author_id in enumerate(resolved_author_ids):
+                db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
 
         if "genre_ids" in update_dict:
             genre_ids = update_dict.pop("genre_ids")

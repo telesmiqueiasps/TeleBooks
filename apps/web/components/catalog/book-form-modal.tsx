@@ -32,13 +32,12 @@ export function BookFormModal({
   onOpenSearchModal,
 }: BookFormModalProps) {
   const [title, setTitle] = useState("");
-  const [subtitle, setSubtitle] = useState("");
+  const [authorsInput, setAuthorsInput] = useState("");
+  const [publisherInput, setPublisherInput] = useState("");
   const [description, setDescription] = useState("");
   const [isbn13, setIsbn13] = useState("");
   const [pageCount, setPageCount] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
-  const [publisherId, setPublisherId] = useState("");
-  const [selectedAuthorIds, setSelectedAuthorIds] = useState<string[]>([]);
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
 
   // Cloudflare R2 Upload state
@@ -59,24 +58,22 @@ export function BookFormModal({
       loadDependencies();
       if (bookToEdit) {
         setTitle(bookToEdit.title);
-        setSubtitle(bookToEdit.subtitle || "");
+        setAuthorsInput(bookToEdit.authors?.map((a) => a.name).join(", ") || "");
+        setPublisherInput(bookToEdit.publisher?.name || "");
         setDescription(bookToEdit.description || "");
         setIsbn13(bookToEdit.isbn13 || "");
         setPageCount(bookToEdit.page_count ? bookToEdit.page_count.toString() : "");
         setCoverUrl(bookToEdit.cover_url || "");
-        setPublisherId(bookToEdit.publisher_id || "");
-        setSelectedAuthorIds(bookToEdit.authors?.map((a) => a.id) || []);
         setSelectedGenreIds(bookToEdit.genres?.map((g) => g.id) || []);
       } else {
         // Reset form
         setTitle("");
-        setSubtitle("");
+        setAuthorsInput("");
+        setPublisherInput("");
         setDescription("");
         setIsbn13("");
         setPageCount("");
         setCoverUrl("");
-        setPublisherId("");
-        setSelectedAuthorIds([]);
         setSelectedGenreIds([]);
       }
       setIsUploadingCover(false);
@@ -132,12 +129,6 @@ export function BookFormModal({
     }
   };
 
-  const handleToggleAuthor = (id: string) => {
-    setSelectedAuthorIds((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
-    );
-  };
-
   const handleToggleGenre = (id: string) => {
     setSelectedGenreIds((prev) =>
       prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
@@ -151,20 +142,55 @@ export function BookFormModal({
       return;
     }
 
+    const authorNames = authorsInput
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (authorNames.length === 0) {
+      setError("Informe ao menos um autor para a obra.");
+      return;
+    }
+
+    const pubName = publisherInput.trim();
+
     setIsSubmitting(true);
     setError(null);
 
+    // Identifica se algum autor ou editora já existe para repassar os IDs quando disponíveis
+    const matchedAuthorIds: string[] = [];
+    for (const name of authorNames) {
+      const found = availableAuthors.find(
+        (a) => a.name.toLowerCase() === name.toLowerCase()
+      );
+      if (found) {
+        matchedAuthorIds.push(found.id);
+      }
+    }
+
+    let matchedPublisherId: string | null = null;
+    if (pubName) {
+      const foundPub = availablePublishers.find(
+        (p) => p.name.toLowerCase() === pubName.toLowerCase()
+      );
+      if (foundPub) {
+        matchedPublisherId = foundPub.id;
+      }
+    }
+
     const payload: BookCreateParams = {
       title: title.trim(),
-      subtitle: subtitle.trim() || null,
+      subtitle: bookToEdit?.subtitle || null,
       description: description.trim() || null,
       isbn13: isbn13.trim() || null,
       page_count: pageCount ? parseInt(pageCount, 10) : null,
       cover_url:
         coverUrl.trim() ||
         "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
-      publisher_id: publisherId || null,
-      author_ids: selectedAuthorIds,
+      publisher_id: matchedPublisherId,
+      publisher_name: pubName || null,
+      author_ids: matchedAuthorIds,
+      author_names: authorNames,
       genre_ids: selectedGenreIds,
     };
 
@@ -218,79 +244,65 @@ export function BookFormModal({
           </div>
         )}
 
-        {/* Título e Subtítulo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-              Título da Obra *
-            </label>
-            <Input
-              placeholder="Ex: O Nome do Vento"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-              Subtítulo (opcional)
-            </label>
-            <Input
-              placeholder="Ex: A Crônica do Matador do Rei: Primeiro Dia"
-              value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Autores */}
+        {/* Título da Obra (sem campo de subtítulo) */}
         <div>
           <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
-            Autores ({selectedAuthorIds.length} selecionados)
+            Título da Obra *
           </label>
-          <div className="flex flex-wrap gap-1.5 p-2.5 max-h-28 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40">
-            {availableAuthors.length === 0 ? (
-              <span className="text-xs text-neutral-500">Nenhum autor disponível.</span>
-            ) : (
-              availableAuthors.map((author) => {
-                const isSelected = selectedAuthorIds.includes(author.id);
-                return (
-                  <button
-                    key={author.id}
-                    type="button"
-                    onClick={() => handleToggleAuthor(author.id)}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
-                      isSelected
-                        ? "bg-[#d97706] text-white border-[#d97706]"
-                        : "bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-neutral-400"
-                    }`}
-                  >
-                    {author.name}
-                  </button>
-                );
-              })
-            )}
-          </div>
+          <Input
+            placeholder="Ex: Dom Casmurro, O Nome do Vento, 1984..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
         </div>
 
-        {/* Editora e Páginas */}
+        {/* Autor(es) - Campo Digitável Livre */}
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+            Autor(es) *
+          </label>
+          <Input
+            list="telebooks-authors-datalist"
+            placeholder="Ex: Machado de Assis (ou separe múltiplos por vírgula)"
+            value={authorsInput}
+            onChange={(e) => setAuthorsInput(e.target.value)}
+            required
+          />
+          {availableAuthors.length > 0 && (
+            <datalist id="telebooks-authors-datalist">
+              {availableAuthors.map((author) => (
+                <option key={author.id} value={author.name} />
+              ))}
+            </datalist>
+          )}
+          <p className="text-[11px] text-neutral-400 mt-1">
+            Campo digitável livre. Caso seja mais de um autor, separe os nomes por vírgula.
+          </p>
+        </div>
+
+        {/* Editora (Campo Digitável Livre), Páginas e ISBN */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
               Editora
             </label>
-            <select
-              value={publisherId}
-              onChange={(e) => setPublisherId(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-[#d97706]"
-            >
-              <option value="">Selecione uma editora...</option>
-              {availablePublishers.map((pub) => (
-                <option key={pub.id} value={pub.id}>
-                  {pub.name}
-                </option>
-              ))}
-            </select>
+            <Input
+              list="telebooks-publishers-datalist"
+              placeholder="Ex: Companhia das Letras, Rocco..."
+              value={publisherInput}
+              onChange={(e) => setPublisherInput(e.target.value)}
+            />
+            {availablePublishers.length > 0 && (
+              <datalist id="telebooks-publishers-datalist">
+                {availablePublishers.map((pub) => (
+                  <option key={pub.id} value={pub.name} />
+                ))}
+              </datalist>
+            )}
+            <p className="text-[11px] text-neutral-400 mt-1">
+              Campo digitável livre.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">

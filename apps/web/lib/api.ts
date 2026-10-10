@@ -42,7 +42,9 @@ export interface BookCreateParams {
   cover_url?: string | null;
   thumbnail_url?: string | null;
   publisher_id?: string | null;
+  publisher_name?: string | null;
   author_ids?: string[];
+  author_names?: string[];
   genre_ids?: string[];
 }
 

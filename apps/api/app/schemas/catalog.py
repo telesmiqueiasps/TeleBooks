@@ -139,7 +139,9 @@ class BookBase(BaseModel):
 
 class BookCreate(BookBase):
     publisher_id: uuid.UUID | None = None
+    publisher_name: str | None = None
     author_ids: list[uuid.UUID] = Field(default_factory=list)
+    author_names: list[str] = Field(default_factory=list)
     genre_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
@@ -155,7 +157,9 @@ class BookUpdate(BaseModel):
     cover_url: str | None = None
     thumbnail_url: str | None = None
     publisher_id: uuid.UUID | None = None
+    publisher_name: str | None = None
     author_ids: list[uuid.UUID] | None = None
+    author_names: list[str] | None = None
     genre_ids: list[uuid.UUID] | None = None
 
 
