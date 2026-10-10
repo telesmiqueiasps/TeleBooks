@@ -1,7 +1,7 @@
 import logging
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
@@ -51,6 +51,35 @@ class BookIntegrationService:
         clean = re.sub(r"[^0-9X]", "", isbn_raw.strip().upper())
         return clean if clean else None
 
+    @staticmethod
+    def parse_publication_date(raw: str | None) -> date | None:
+        """
+        Interpreta formatos de data bibliográfica (ex: '2021-05-12', '1997-06', '2005').
+        Retorna um objeto date ou None se não for interpretável.
+        """
+        if not raw:
+            return None
+        raw_str = raw.strip()
+        # YYYY-MM-DD
+        try:
+            return datetime.strptime(raw_str[:10], "%Y-%m-%d").date()
+        except (ValueError, IndexError):
+            pass
+        # YYYY-MM
+        try:
+            return datetime.strptime(raw_str[:7], "%Y-%m").date()
+        except (ValueError, IndexError):
+            pass
+        # Extrai ano de 4 dígitos (ex: '1997', 'c1984', '2005?')
+        match = re.search(r"(?<!\d)(1[5-9]\d{2}|20\d{2})(?!\d)", raw_str)
+        if match:
+            try:
+                year = int(match.group(1))
+                return date(year, 1, 1)
+            except ValueError:
+                pass
+        return None
+
     async def search_external_books(
         self,
         db: Session,
@@ -66,51 +95,65 @@ class BookIntegrationService:
         Pesquisa livros externamente e correlaciona com o catálogo local e a estante do leitor.
         Para buscas por ISBN, prioriza a BrasilAPI (CBL - Câmara Brasileira do Livro)
         para resgatar a edição brasileira oficial.
-        Aplica fallback automático entre provedores se nada for localizado.
+        Aplica fallback automático entre provedores em cascata se nada for localizado.
         """
-        # 1. Identifica se a busca possui código ISBN (explícito ou termo com 10/13 dígitos)
-        clean_isbn_target = self.normalize_isbn(isbn)
-        if not clean_isbn_target and query:
+        # 1. Identifica se a busca possui código ISBN válido (10 ou 13 dígitos)
+        clean_isbn_target: str | None = None
+        clean_raw_isbn = self.normalize_isbn(isbn)
+        if clean_raw_isbn:
+            if len(clean_raw_isbn) in (10, 13):
+                clean_isbn_target = clean_raw_isbn
+            else:
+                # Código numérico não é um ISBN de 10 ou 13 dígitos (ex: UPC de 12 dígitos)
+                # Não envia para filtro estrito de ISBN; se query não tiver sido fornecida, pesquisa como texto
+                if not query:
+                    query = isbn
+        elif query:
             candidate = self.normalize_isbn(query)
             if candidate and len(candidate) in (10, 13):
                 clean_isbn_target = candidate
 
         results: list[ExternalBookItem] = []
 
-        # 2. Se houver ISBN, consulta PRIMEIRO a BrasilAPI (Câmara Brasileira do Livro - CBL)
+        # 2. Se houver ISBN válido (10 ou 13 dígitos), consulta primeiro a BrasilAPI
         if clean_isbn_target and (not provider_name or provider_name == "brasil_api"):
             brasil_provider = self._providers["brasil_api"]
             cbl_item = await brasil_provider.get_by_isbn(clean_isbn_target)
             if cbl_item:
                 results.append(cbl_item)
 
-        # 3. Se não houver resultados ou a busca for por título/autor/termo textual:
+        # 3. Se não houver resultados (ou a busca for por título/autor/termo textual):
         if not results:
-            primary_name = provider_name or "google_books"
-            primary_provider = self.get_provider(primary_name)
-            results = await primary_provider.search(
-                query=query,
-                title=title,
-                author=author,
-                isbn=clean_isbn_target or isbn,
-                limit=limit,
-            )
+            # Constrói sequência de consulta e fallback em cascata
+            search_sequence: list[str] = []
+            if provider_name and provider_name in self._providers:
+                search_sequence.append(provider_name)
+                for fallback in ("google_books", "open_library", "brasil_api"):
+                    if fallback not in search_sequence:
+                        search_sequence.append(fallback)
+            else:
+                search_sequence = ["google_books", "open_library"]
 
-            # Fallback automático se nada foi retornado
-            if not results:
-                fallback_name = (
-                    "open_library" if primary_provider.name == "google_books" else "google_books"
-                )
-                fallback_provider = self._providers.get(fallback_name)
-                if fallback_provider:
-                    logger.info("Executando fallback bibliográfico para '%s'", fallback_name)
-                    results = await fallback_provider.search(
+            for p_name in search_sequence:
+                provider = self._providers[p_name]
+                # A BrasilAPI só busca por ISBN; se não houver ISBN, pula para o próximo provedor
+                if p_name == "brasil_api" and not clean_isbn_target:
+                    continue
+
+                try:
+                    prov_results = await provider.search(
                         query=query,
                         title=title,
                         author=author,
-                        isbn=clean_isbn_target or isbn,
+                        isbn=clean_isbn_target,
                         limit=limit,
                     )
+                    if prov_results:
+                        results = prov_results
+                        break
+                except Exception as exc:
+                    logger.warning("Falha ao consultar provedor bibliográfico '%s': %s", p_name, exc)
+                    continue
 
         if not results:
             return []
@@ -202,6 +245,22 @@ class BookIntegrationService:
         clean_isbn13 = self.normalize_isbn(payload.isbn13)
         clean_isbn10 = self.normalize_isbn(payload.isbn10)
 
+        # Garante integridade do tamanho dos ISBNs para armazenamento no banco
+        if clean_isbn13 and len(clean_isbn13) != 13:
+            if len(clean_isbn13) == 10 and not clean_isbn10:
+                clean_isbn10 = clean_isbn13
+            clean_isbn13 = None
+
+        if clean_isbn10 and len(clean_isbn10) != 10:
+            if len(clean_isbn10) == 13 and not clean_isbn13:
+                clean_isbn13 = clean_isbn10
+            clean_isbn10 = None
+
+        # Resolve data de publicação estruturada
+        parsed_pub_date = payload.publication_date or self.parse_publication_date(
+            payload.published_date_raw
+        )
+
         existing_book: Book | None = None
 
         # 1. Identificação por ISBN13
@@ -275,8 +334,11 @@ class BookIntegrationService:
             if not book.description and payload.description:
                 book.description = payload.description
                 modified = True
-            if not book.page_count and payload.page_count:
+            if not book.page_count and payload.page_count and payload.page_count > 0:
                 book.page_count = payload.page_count
+                modified = True
+            if not book.publication_date and parsed_pub_date:
+                book.publication_date = parsed_pub_date
                 modified = True
             if not book.isbn13 and clean_isbn13:
                 book.isbn13 = clean_isbn13
@@ -314,8 +376,8 @@ class BookIntegrationService:
                 description=payload.description.strip() if payload.description else None,
                 isbn10=clean_isbn10,
                 isbn13=clean_isbn13,
-                page_count=payload.page_count,
-                publication_date=payload.publication_date,
+                page_count=payload.page_count if payload.page_count and payload.page_count > 0 else None,
+                publication_date=parsed_pub_date,
                 language=payload.language or "pt-BR",
                 cover_url=payload.cover_url,
                 thumbnail_url=payload.thumbnail_url or payload.cover_url,
@@ -324,9 +386,10 @@ class BookIntegrationService:
             db.add(book)
             db.flush()
 
-            # Resolve ou cria Autores
+            # Resolve ou cria Autores (com deduplicação de instâncias para book_authors)
             if payload.authors:
-                for i, author_name_raw in enumerate(payload.authors):
+                seen_author_ids: set[uuid.UUID] = set()
+                for author_name_raw in payload.authors:
                     author_name = author_name_raw.strip()
                     if not author_name:
                         continue
@@ -338,16 +401,20 @@ class BookIntegrationService:
                         db.add(author)
                         db.flush()
 
-                    db.add(
-                        BookAuthor(
-                            book_id=book.id,
-                            author_id=author.id,
-                            is_primary=(i == 0),
+                    if author.id not in seen_author_ids:
+                        is_primary = (len(seen_author_ids) == 0)
+                        seen_author_ids.add(author.id)
+                        db.add(
+                            BookAuthor(
+                                book_id=book.id,
+                                author_id=author.id,
+                                is_primary=is_primary,
+                            )
                         )
-                    )
 
-            # Resolve ou cria Gêneros
+            # Resolve ou cria Gêneros (com deduplicação estrita de IDs para book_genres)
             if payload.genres:
+                seen_genre_ids: set[uuid.UUID] = set()
                 for genre_raw in payload.genres:
                     genre_name = genre_raw.strip()
                     if not genre_name:
@@ -366,7 +433,9 @@ class BookIntegrationService:
                         db.add(genre)
                         db.flush()
 
-                    db.add(BookGenre(book_id=book.id, genre_id=genre.id))
+                    if genre.id not in seen_genre_ids:
+                        seen_genre_ids.add(genre.id)
+                        db.add(BookGenre(book_id=book.id, genre_id=genre.id))
 
             db.commit()
 

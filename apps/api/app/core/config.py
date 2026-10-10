@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # Observability
     SENTRY_DSN: str = ""
 
+    # External APIs
+    GOOGLE_BOOKS_API_KEY: str = ""
+
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT == AppEnvironment.DEVELOPMENT

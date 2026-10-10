@@ -179,8 +179,11 @@ class CatalogService:
                 db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
 
         if book_in.genre_ids:
+            seen_genre_ids: set[uuid.UUID] = set()
             for genre_id in book_in.genre_ids:
-                db.add(BookGenre(book_id=book.id, genre_id=genre_id))
+                if genre_id not in seen_genre_ids:
+                    seen_genre_ids.add(genre_id)
+                    db.add(BookGenre(book_id=book.id, genre_id=genre_id))
 
         db.commit()
         return CatalogService.get_book_by_id(db, book.id)
@@ -252,8 +255,11 @@ class CatalogService:
             genre_ids = update_dict.pop("genre_ids")
             if genre_ids is not None:
                 db.query(BookGenre).filter(BookGenre.book_id == book_id).delete()
+                seen_genre_ids: set[uuid.UUID] = set()
                 for genre_id in genre_ids:
-                    db.add(BookGenre(book_id=book.id, genre_id=genre_id))
+                    if genre_id not in seen_genre_ids:
+                        seen_genre_ids.add(genre_id)
+                        db.add(BookGenre(book_id=book.id, genre_id=genre_id))
 
         for field, value in update_dict.items():
             setattr(book, field, value)

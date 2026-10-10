@@ -123,8 +123,10 @@ class OpenLibraryProvider(BaseBookProvider):
 
         if isbn:
             clean_isbn = self._normalize_isbn(isbn)
-            if clean_isbn:
+            if clean_isbn and len(clean_isbn) in (10, 13):
                 params["isbn"] = clean_isbn
+            elif clean_isbn and not query:
+                params["q"] = clean_isbn
         if title:
             params["title"] = title.strip()
         if author:

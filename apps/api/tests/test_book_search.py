@@ -167,3 +167,61 @@ def test_confirm_import_and_deduplication(client):
     assert d2["reused"] is True
     assert d2["book"]["id"] == created_id
     assert "reutilizado" in d2["message"].lower()
+
+
+def test_parse_publication_date():
+    from datetime import date
+    assert BookIntegrationService.parse_publication_date("2021-05-12") == date(2021, 5, 12)
+    assert BookIntegrationService.parse_publication_date("1997-06") == date(1997, 6, 1)
+    assert BookIntegrationService.parse_publication_date("2005") == date(2005, 1, 1)
+    assert BookIntegrationService.parse_publication_date("c1984") == date(1984, 1, 1)
+    assert BookIntegrationService.parse_publication_date(None) is None
+    assert BookIntegrationService.parse_publication_date("") is None
+
+
+def test_confirm_import_with_duplicate_genres_and_authors(client):
+    import uuid
+
+    rnd_suffix = str(uuid.uuid4().int)[:9]
+    unique_isbn13 = f"978{rnd_suffix}".ljust(13, "0")[:13]
+    unique_title = f"Fundação e Império {uuid.uuid4().hex[:8]}"
+
+    # Envia gêneros repetidos e sinônimos, autores repetidos e published_date_raw de ano
+    payload = {
+        "title": unique_title,
+        "authors": ["Isaac Asimov", "Isaac Asimov", " Isaac Asimov "],
+        "publisher": "Aleph",
+        "description": "Segunda parte da trilogia Fundação",
+        "isbn13": unique_isbn13,
+        "page_count": 296,
+        "published_date_raw": "1952",
+        "language": "pt-BR",
+        "genres": ["Ficção Científica", "Ficção Científica", "ficcao cientifica", "Space Opera"],
+        "add_to_shelf": False,
+    }
+
+    # Não pode lançar IntegrityError (UniqueViolation em book_genres_pkey ou book_authors_pkey)
+    response = client.post("/api/v1/books/import/confirm", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["book"]["id"] is not None
+    assert data["book"]["title"] == unique_title
+    assert data["book"]["publication_date"] == "1952-01-01"
+
+    # Autores e gêneros devem estar deduplicados
+    authors = data["book"]["authors"]
+    assert len(authors) == 1
+    assert authors[0]["name"] == "Isaac Asimov"
+
+    genres = data["book"]["genres"]
+    genre_names = [g["name"].lower() for g in genres]
+    assert len(genre_names) == len(set(genre_names))
+
+
+def test_brasil_api_ignores_invalid_isbn_length():
+    import asyncio
+    brasil = BrasilApiProvider()
+    # Código de 12 dígitos (ex: 791606410248) retorna None imediatamente sem fazer request
+    res = asyncio.run(brasil.get_by_isbn("791606410248"))
+    assert res is None
+

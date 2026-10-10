@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 
+from app.core.config import settings
 from app.schemas.book_search import ExternalBookItem
 from app.services.book_providers.base import BaseBookProvider
 
@@ -104,8 +105,10 @@ class GoogleBooksProvider(BaseBookProvider):
 
         if isbn:
             clean_isbn = self._normalize_isbn(isbn)
-            if clean_isbn:
+            if clean_isbn and len(clean_isbn) in (10, 13):
                 parts.append(f"isbn:{clean_isbn}")
+            elif clean_isbn:
+                parts.append(clean_isbn)
 
         if title:
             parts.append(f"intitle:{title.strip()}")
@@ -137,13 +140,15 @@ class GoogleBooksProvider(BaseBookProvider):
         if not q_param:
             return []
 
-        params = {
+        params: dict[str, Any] = {
             "q": q_param,
             "maxResults": min(max(limit, 1), 40),
             "printType": "books",
             "hl": "pt-BR",
             "country": "BR",
         }
+        if settings.GOOGLE_BOOKS_API_KEY:
+            params["key"] = settings.GOOGLE_BOOKS_API_KEY
 
         try:
             async with httpx.AsyncClient(timeout=8.0) as client:

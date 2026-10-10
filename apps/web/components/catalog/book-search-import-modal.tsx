@@ -55,7 +55,7 @@ export function BookSearchImportModal({
   const [filterTitle, setFilterTitle] = useState("");
   const [filterAuthor, setFilterAuthor] = useState("");
   const [filterIsbn, setFilterIsbn] = useState("");
-  const [provider, setProvider] = useState<"brasil_api" | "google_books" | "open_library">("brasil_api");
+  const [provider, setProvider] = useState<"" | "brasil_api" | "google_books" | "open_library">("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Resultados
@@ -98,7 +98,7 @@ export function BookSearchImportModal({
     cleanTitle?: string;
     cleanAuthor?: string;
     cleanIsbn?: string;
-    targetProvider?: "brasil_api" | "google_books" | "open_library";
+    targetProvider?: "" | "brasil_api" | "google_books" | "open_library";
   }) => {
     try {
       setIsSearching(true);
@@ -106,12 +106,14 @@ export function BookSearchImportModal({
       setHasSearched(true);
       setSelectedItem(null);
 
+      const chosenProvider = (params.targetProvider !== undefined ? params.targetProvider : provider) || undefined;
+
       const items = await api.searchExternalBooks({
         q: params.cleanQ || undefined,
         title: params.cleanTitle || undefined,
         author: params.cleanAuthor || undefined,
         isbn: params.cleanIsbn || undefined,
-        provider: params.targetProvider || provider,
+        provider: chosenProvider,
         limit: 14,
       });
 
@@ -256,9 +258,10 @@ export function BookSearchImportModal({
                 <div className="flex items-center gap-2">
                   <select
                     value={provider}
-                    onChange={(e) => setProvider(e.target.value as "brasil_api" | "google_books" | "open_library")}
+                    onChange={(e) => setProvider(e.target.value as "" | "brasil_api" | "google_books" | "open_library")}
                     className="h-11 px-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-xs text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#007BFF]"
                   >
+                    <option value="">⚡ Busca Integrada (Automática)</option>
                     <option value="brasil_api">🇧🇷 Brasil (CBL / Mercado Nacional)</option>
                     <option value="google_books">🌐 Google Books (Mundial)</option>
                     <option value="open_library">📚 Open Library (Acervo Aberto)</option>

@@ -32,14 +32,15 @@ class BrasilApiProvider(BaseBookProvider):
 
     async def get_by_isbn(self, isbn: str) -> ExternalBookItem | None:
         clean_isbn = self._normalize_isbn(isbn)
-        if not clean_isbn:
+        if not clean_isbn or len(clean_isbn) not in (10, 13):
             return None
 
         url = f"{self.BASE_URL}/{clean_isbn}"
         try:
             async with httpx.AsyncClient(timeout=8.0) as client:
                 response = await client.get(url)
-                if response.status_code == 404:
+                if response.status_code in (400, 404):
+                    logger.info("BrasilAPI: ISBN %s não localizado na base CBL (status %s)", clean_isbn, response.status_code)
                     return None
                 if response.status_code != 200:
                     logger.warning("BrasilAPI retornou status %s para ISBN %s", response.status_code, clean_isbn)

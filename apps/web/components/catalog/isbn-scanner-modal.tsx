@@ -33,6 +33,7 @@ export function IsbnScannerModal({
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
   const [scannedCode, setScannedCode] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerElementId = "telebooks-isbn-scanner-video";
@@ -58,24 +59,33 @@ export function IsbnScannerModal({
       const clean = decodedText.replace(/[^0-9X]/gi, "").toUpperCase();
       if (!clean) return;
 
-      setScannedCode(clean);
+      // Código ISBN padrão: 13 dígitos (EAN-13) ou 10 dígitos (ISBN-10)
+      if (clean.length === 13 || clean.length === 10) {
+        setScannedCode(clean);
+        setWarningMessage(null);
 
-      // Feedback tátil no smartphone
-      if (typeof window !== "undefined" && "navigator" in window && navigator.vibrate) {
-        try {
-          navigator.vibrate([40, 50, 40]);
-        } catch {
-          // Ignora se não permitido
+        // Feedback tátil no smartphone
+        if (typeof window !== "undefined" && "navigator" in window && navigator.vibrate) {
+          try {
+            navigator.vibrate([40, 50, 40]);
+          } catch {
+            // Ignora se não permitido
+          }
         }
+
+        await stopScanner();
+
+        // Aguarda 400ms para mostrar a confirmação visual antes de enviar
+        setTimeout(() => {
+          onScan(clean);
+          onClose();
+        }, 400);
+      } else {
+        // Código lido de 12 dígitos (ex: UPC) ou não conforme
+        setWarningMessage(
+          `Código detectado (${clean}) possui ${clean.length} dígitos. Para livros, posicione a câmera sobre o código de barras ISBN de 13 dígitos (iniciado por 978 ou 979).`
+        );
       }
-
-      await stopScanner();
-
-      // Aguarda 400ms para mostrar a confirmação visual antes de enviar
-      setTimeout(() => {
-        onScan(clean);
-        onClose();
-      }, 400);
     },
     [onScan, onClose, stopScanner]
   );
@@ -86,16 +96,14 @@ export function IsbnScannerModal({
         setIsInitializing(true);
         setCameraError(null);
         setScannedCode(null);
+        setWarningMessage(null);
 
         await stopScanner();
 
         const html5QrCode = new Html5Qrcode(readerElementId, {
+          // Focado exclusivamente em código de barras oficial de livros (EAN-13 / Bookland)
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
           ],
           verbose: false,
         });
@@ -311,6 +319,27 @@ export function IsbnScannerModal({
                 <p className="font-mono text-base font-extrabold text-white mt-0.5">
                   {scannedCode}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Alerta de Código Não-ISBN (ex: 12 dígitos UPC) */}
+          {warningMessage && !scannedCode && (
+            <div className="absolute inset-x-3 bottom-3 p-3 rounded-2xl bg-amber-950/90 border border-amber-600/40 backdrop-blur-md flex flex-col gap-2 z-10 animate-in fade-in duration-150">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-200 leading-tight">
+                  {warningMessage}
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setWarningMessage(null)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-900/60 hover:bg-amber-800 text-[11px] text-amber-100 font-medium transition-colors"
+                >
+                  Continuar Escaneando
+                </button>
               </div>
             </div>
           )}
