@@ -83,3 +83,12 @@ class BookImportConfirmResponse(BaseModel):
     message: str = Field(description="Mensagem descritiva da operação")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookSyncCoversResponse(BaseModel):
+    total_checked: int = Field(description="Total de livros verificados no catálogo")
+    updated: int = Field(description="Total de livros que tiveram capas recuperadas e atualizadas")
+    message: str = Field(description="Mensagem de resumo da sincronização de capas")
+
+    model_config = ConfigDict(from_attributes=True)
+

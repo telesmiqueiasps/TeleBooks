@@ -2,6 +2,7 @@ import logging
 import re
 import uuid
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
@@ -15,6 +16,7 @@ from app.schemas.book_search import (
     ExternalBookItem,
 )
 from app.schemas.catalog import BookRead, slugify
+from app.services.book_cover_service import BookCoverService
 from app.services.book_providers.base import BaseBookProvider
 from app.services.book_providers.brasil_api import BrasilApiProvider
 from app.services.book_providers.google_books import GoogleBooksProvider
@@ -325,12 +327,23 @@ class BookIntegrationService:
 
             # Enriquecimento suave se o livro local estiver incompleto
             modified = False
-            if not book.cover_url and payload.cover_url:
+            if not book.cover_url and payload.cover_url and "covers.openlibrary.org" not in payload.cover_url:
                 book.cover_url = payload.cover_url
-                modified = True
-            if not book.thumbnail_url and (payload.thumbnail_url or payload.cover_url):
                 book.thumbnail_url = payload.thumbnail_url or payload.cover_url
                 modified = True
+            elif not book.cover_url or "covers.openlibrary.org" in book.cover_url:
+                resolved_cov, resolved_th = BookCoverService.resolve_best_cover_sync(
+                    isbn13=book.isbn13 or clean_isbn13, isbn10=book.isbn10 or clean_isbn10
+                )
+                if resolved_cov:
+                    book.cover_url = resolved_cov
+                    book.thumbnail_url = resolved_th
+                    modified = True
+                elif book.cover_url and "covers.openlibrary.org" in book.cover_url:
+                    book.cover_url = None
+                    book.thumbnail_url = None
+                    modified = True
+
             if not book.description and payload.description:
                 book.description = payload.description
                 modified = True
@@ -369,6 +382,20 @@ class BookIntegrationService:
                     db.flush()
                 publisher_id = pub.id
 
+            # Resolução e validação da capa (Google Books + Open Library com verificação real)
+            final_cov = payload.cover_url
+            final_th = payload.thumbnail_url or payload.cover_url
+            if not final_cov or "covers.openlibrary.org" in final_cov:
+                resolved_cov, resolved_th = BookCoverService.resolve_best_cover_sync(
+                    isbn13=clean_isbn13, isbn10=clean_isbn10
+                )
+                if resolved_cov:
+                    final_cov = resolved_cov
+                    final_th = resolved_th
+                elif final_cov and "covers.openlibrary.org" in final_cov:
+                    final_cov = None
+                    final_th = None
+
             # Cria a entidade Book
             book = Book(
                 title=payload.title.strip(),
@@ -379,8 +406,8 @@ class BookIntegrationService:
                 page_count=payload.page_count if payload.page_count and payload.page_count > 0 else None,
                 publication_date=parsed_pub_date,
                 language=payload.language or "pt-BR",
-                cover_url=payload.cover_url,
-                thumbnail_url=payload.thumbnail_url or payload.cover_url,
+                cover_url=final_cov,
+                thumbnail_url=final_th,
                 publisher_id=publisher_id,
             )
             db.add(book)
@@ -497,6 +524,51 @@ class BookIntegrationService:
             user_book_id=user_book_id,
             message=message,
         )
+
+    def sync_missing_covers(self, db: Session) -> dict[str, Any]:
+        """
+        Percorre todos os livros do catálogo sem capa ou com URL cega/inválida
+        e recupera automaticamente a melhor capa do Google Books / Open Library.
+        """
+        books = (
+            db.query(Book)
+            .filter(
+                or_(
+                    Book.cover_url.is_(None),
+                    Book.cover_url.like("%covers.openlibrary.org%"),
+                )
+            )
+            .all()
+        )
+
+        total = len(books)
+        updated_count = 0
+
+        for book in books:
+            target_13 = book.isbn13
+            target_10 = book.isbn10
+            if not target_13 and not target_10:
+                continue
+
+            rc, rt = BookCoverService.resolve_best_cover_sync(
+                isbn13=target_13, isbn10=target_10
+            )
+            if rc:
+                book.cover_url = rc
+                book.thumbnail_url = rt
+                updated_count += 1
+            elif book.cover_url and "covers.openlibrary.org" in book.cover_url:
+                book.cover_url = None
+                book.thumbnail_url = None
+
+        if updated_count > 0:
+            db.commit()
+
+        return {
+            "total_checked": total,
+            "updated": updated_count,
+            "message": f"{updated_count} de {total} livro(s) atualizados com capas reais!",
+        }
 
 
 # Instância singleton do serviço

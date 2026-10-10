@@ -66,8 +66,8 @@ class OpenLibraryProvider(BaseBookProvider):
             thumbnail_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg"
         elif isbn13 or isbn10:
             target_isbn = isbn13 or isbn10
-            cover_url = f"https://covers.openlibrary.org/b/isbn/{target_isbn}-L.jpg"
-            thumbnail_url = f"https://covers.openlibrary.org/b/isbn/{target_isbn}-M.jpg"
+            cover_url = f"https://covers.openlibrary.org/b/isbn/{target_isbn}-L.jpg?default=false"
+            thumbnail_url = f"https://covers.openlibrary.org/b/isbn/{target_isbn}-M.jpg?default=false"
 
         # Páginas
         page_count = doc.get("number_of_pages_median") or doc.get("number_of_pages")

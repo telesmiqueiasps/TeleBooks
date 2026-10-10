@@ -298,6 +298,20 @@ export const api = {
     );
   },
 
+  async syncMissingCovers(): Promise<{
+    total_checked: number;
+    updated: number;
+    message: string;
+  }> {
+    return request<{
+      total_checked: number;
+      updated: number;
+      message: string;
+    }>("/books/sync-covers", {
+      method: "POST",
+    });
+  },
+
   // ============================================================================
   // Catálogo Global: Autores (Authors)
   // ============================================================================

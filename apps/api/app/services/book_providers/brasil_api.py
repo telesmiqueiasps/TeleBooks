@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 
 from app.schemas.book_search import ExternalBookItem
+from app.services.book_cover_service import BookCoverService
 from app.services.book_providers.base import BaseBookProvider
 
 logger = logging.getLogger(__name__)
@@ -73,12 +74,13 @@ class BrasilApiProvider(BaseBookProvider):
                 year = data.get("year")
                 published_date_str = str(year) if year else None
 
-                # Capa da BrasilAPI ou fallback para OpenLibrary Covers pelo ISBN
+                # Capa da BrasilAPI ou resolução multi-fonte (Google Books + Open Library)
                 cover_url = data.get("cover_url")
                 thumbnail_url = cover_url
                 if not cover_url:
-                    cover_url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg"
-                    thumbnail_url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-M.jpg"
+                    cover_url, thumbnail_url = await BookCoverService.resolve_best_cover(
+                        isbn13=isbn13, isbn10=isbn10
+                    )
 
                 categories = data.get("subjects", [])
                 if not isinstance(categories, list):

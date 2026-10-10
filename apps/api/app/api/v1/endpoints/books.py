@@ -8,6 +8,7 @@ from app.core.security import CurrentUser
 from app.schemas.book_search import (
     BookImportConfirmRequest,
     BookImportConfirmResponse,
+    BookSyncCoversResponse,
     ExternalBookItem,
 )
 from app.schemas.catalog import BookCreate, BookRead, BookUpdate
@@ -106,6 +107,23 @@ def confirm_import_book(
         payload=payload,
         current_user=current_user,
     )
+
+
+@router.post(
+    "/sync-covers",
+    response_model=BookSyncCoversResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Sincronizar e recuperar capas ausentes para livros no catálogo",
+)
+def sync_missing_covers(
+    db: Session = Depends(get_db),
+    _user: CurrentUser | None = Depends(get_optional_user),
+):
+    """
+    Varre os livros no catálogo que estão sem capa ou com URLs inválidas
+    e busca ativamente as capas no Google Books CDN e Open Library.
+    """
+    return book_integration_service.sync_missing_covers(db=db)
 
 
 @router.get(

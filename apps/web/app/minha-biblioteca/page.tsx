@@ -123,6 +123,8 @@ export default function MinhaBibliotecaPage() {
   const [isSearchImportModalOpen, setIsSearchImportModalOpen] = useState(false);
   const [bookToEdit, setBookToEdit] = useState<Book | null>(null);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
+  const [isSyncingCovers, setIsSyncingCovers] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
 
   // Redirecionamento de segurança para login se não autenticado
   useEffect(() => {
@@ -461,6 +463,26 @@ export default function MinhaBibliotecaPage() {
     }
   };
 
+  const handleSyncCovers = async () => {
+    setIsSyncingCovers(true);
+    setSyncStatusMsg(null);
+    try {
+      const res = await api.syncMissingCovers();
+      setSyncStatusMsg(res.message);
+      await loadShelf();
+      setTimeout(() => {
+        setSyncStatusMsg(null);
+      }, 6000);
+    } catch {
+      setSyncStatusMsg("Não foi possível sincronizar capas no momento.");
+      setTimeout(() => {
+        setSyncStatusMsg(null);
+      }, 6000);
+    } finally {
+      setIsSyncingCovers(false);
+    }
+  };
+
   // Contadores rápidos para resumo
   const readingCount = useMemo(
     () => userBooks.filter((b) => b.status === "reading").length,
@@ -540,6 +562,18 @@ export default function MinhaBibliotecaPage() {
             >
               Manual
             </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncCovers}
+              isLoading={isSyncingCovers}
+              leftIcon={<Sparkles className="w-4 h-4 text-amber-500" />}
+              className="rounded-full text-xs px-3.5 hover:border-amber-400"
+              title="Buscar capas em alta resolução no Google Books para livros sem capa"
+            >
+              Atualizar Capas
+            </Button>
           </div>
         </div>
 
@@ -557,6 +591,22 @@ export default function MinhaBibliotecaPage() {
           onOpenCollectionsManager={() => setIsCollectionsModalOpen(true)}
           totalBooks={totalItems}
         />
+
+        {/* Feedback de Sincronização de Capas */}
+        {syncStatusMsg && (
+          <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+              <span className="font-medium">{syncStatusMsg}</span>
+            </div>
+            <button
+              onClick={() => setSyncStatusMsg(null)}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium ml-4"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
 
         {/* Alerta de Erro de Conexão */}
         {apiError && (
