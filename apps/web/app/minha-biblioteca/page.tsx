@@ -933,6 +933,10 @@ export default function MinhaBibliotecaPage() {
         }}
         book={detailsBook}
         userBook={detailsUserBook}
+        onBookUpdated={(updated) => {
+          setDetailsBook(updated);
+          loadShelf();
+        }}
         onOpenShelfModal={(b, ub) => {
           setShelfModalBook(b);
           setShelfModalUserBook(ub || null);

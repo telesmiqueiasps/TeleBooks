@@ -14,9 +14,12 @@ import {
   BookmarkCheck,
   ExternalLink,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { Modal, Button, Badge, BadgeVariant } from "@telebooks/ui";
 import type { Book, UserBook } from "@telebooks/types";
+import { api } from "../../lib/api";
+import { CoverSelectorModal } from "./cover-selector-modal";
 
 export interface BookDetailsModalProps {
   isOpen: boolean;
@@ -26,6 +29,7 @@ export interface BookDetailsModalProps {
   onOpenShelfModal?: (book: Book, userBook?: UserBook | null) => void;
   onOpenEditModal?: (book: Book) => void;
   onDeleteBook?: (bookId: string) => void;
+  onBookUpdated?: (book: Book) => void;
 }
 
 const STATUS_LABELS: Record<string, { label: string; variant: BadgeVariant }> = {
@@ -44,8 +48,25 @@ export function BookDetailsModal({
   onOpenShelfModal,
   onOpenEditModal,
   onDeleteBook,
+  onBookUpdated,
 }: BookDetailsModalProps) {
+  const [isCoverModalOpen, setIsCoverModalOpen] = React.useState(false);
+
   if (!book) return null;
+
+  const handleCoverSelected = async (newUrl: string) => {
+    try {
+      const updated = await api.updateBook(book.id, {
+        cover_url: newUrl,
+        thumbnail_url: newUrl,
+      });
+      book.cover_url = newUrl;
+      book.thumbnail_url = newUrl;
+      onBookUpdated?.(updated);
+    } catch (err) {
+      console.error("Erro ao atualizar capa:", err);
+    }
+  };
 
   const authorsText =
     book.authors?.map((a) => a.name).join(", ") || "Autor não informado";
@@ -57,7 +78,7 @@ export function BookDetailsModal({
       <div className="space-y-6">
         {/* Top: Cover + Core Metadata */}
         <div className="flex flex-col sm:flex-row gap-5">
-          <div className="flex-shrink-0 mx-auto sm:mx-0">
+          <div className="flex-shrink-0 mx-auto sm:mx-0 flex flex-col items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={
@@ -67,6 +88,14 @@ export function BookDetailsModal({
               alt={book.title}
               className="w-32 h-48 object-cover rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800"
             />
+            <button
+              type="button"
+              onClick={() => setIsCoverModalOpen(true)}
+              className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-[#007BFF] hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 transition-all cursor-pointer shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>{book.cover_url ? "Alterar Capa" : "Buscar Capa na Net"}</span>
+            </button>
           </div>
 
           <div className="flex-1 space-y-2 text-center sm:text-left">
@@ -231,6 +260,17 @@ export function BookDetailsModal({
           </div>
         </div>
       </div>
+
+      {/* Modal Seletor de Capa da Edição na Web */}
+      <CoverSelectorModal
+        isOpen={isCoverModalOpen}
+        onClose={() => setIsCoverModalOpen(false)}
+        isbn={book.isbn13 || book.isbn10}
+        title={book.title}
+        author={book.authors?.[0]?.name}
+        currentCoverUrl={book.cover_url}
+        onSelectCover={handleCoverSelected}
+      />
     </Modal>
   );
 }

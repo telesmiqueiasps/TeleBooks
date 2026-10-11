@@ -9,10 +9,12 @@ from app.schemas.book_search import (
     BookImportConfirmRequest,
     BookImportConfirmResponse,
     BookSyncCoversResponse,
+    CoverOption,
     ExternalBookItem,
 )
 from app.schemas.catalog import BookCreate, BookRead, BookUpdate
 from app.schemas.common import PaginatedResponse
+from app.services.book_cover_service import BookCoverService
 from app.services.book_integration_service import book_integration_service
 from app.services.catalog_service import CatalogService
 
@@ -124,6 +126,29 @@ def sync_missing_covers(
     e busca ativamente as capas no Google Books CDN e Open Library.
     """
     return book_integration_service.sync_missing_covers(db=db)
+
+
+@router.get(
+    "/covers/search-options",
+    response_model=list[CoverOption],
+    summary="Buscar opções de capas online para uma edição de livro (ISBN, Título, Autor)",
+)
+async def search_cover_options(
+    isbn: str | None = Query(default=None, description="ISBN-10 ou ISBN-13 da obra"),
+    title: str | None = Query(default=None, description="Título da obra"),
+    author: str | None = Query(default=None, description="Nome do autor"),
+    _user: CurrentUser | None = Depends(get_optional_user),
+):
+    """
+    Pesquisa e agrega múltiplas opções de capas na internet para que o usuário
+    possa escolher visualmente a capa correta da edição.
+    """
+    options = await BookCoverService.search_cover_options(
+        isbn=isbn,
+        title=title,
+        author=author,
+    )
+    return [CoverOption.model_validate(opt) for opt in options]
 
 
 @router.get(

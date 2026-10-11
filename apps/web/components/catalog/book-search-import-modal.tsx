@@ -35,6 +35,7 @@ import type {
 } from "@telebooks/types";
 import { api } from "../../lib/api";
 import { IsbnScannerModal } from "./isbn-scanner-modal";
+import { CoverSelectorModal } from "./cover-selector-modal";
 
 export interface BookSearchImportModalProps {
   isOpen: boolean;
@@ -73,6 +74,19 @@ export function BookSearchImportModal({
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState<BookImportConfirmResponse | null>(null);
+
+  // Modal Seletor de Capa da Edição
+  const [isCoverSelectorOpen, setIsCoverSelectorOpen] = useState(false);
+
+  const handleSelectCustomCover = (coverUrl: string) => {
+    if (selectedItem) {
+      setSelectedItem({
+        ...selectedItem,
+        cover_url: coverUrl,
+        thumbnail_url: coverUrl,
+      });
+    }
+  };
 
   const resetAll = () => {
     setQuery("");
@@ -565,21 +579,32 @@ export function BookSearchImportModal({
 
             {/* Ficha Resumida do Livro */}
             <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs">
-              <div className="relative w-24 h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-md book-spine self-center sm:self-start">
-                {selectedItem.cover_url || selectedItem.thumbnail_url ? (
-                  <Image
-                    src={selectedItem.cover_url || selectedItem.thumbnail_url || ""}
-                    alt={selectedItem.title}
-                    fill
-                    sizes="96px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-400">
-                    <BookOpen className="w-8 h-8" />
-                  </div>
-                )}
+              <div className="flex flex-col items-center gap-2 self-center sm:self-start">
+                <div className="relative w-24 h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-md book-spine">
+                  {selectedItem.cover_url || selectedItem.thumbnail_url ? (
+                    <Image
+                      src={selectedItem.cover_url || selectedItem.thumbnail_url || ""}
+                      alt={selectedItem.title}
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                      <BookOpen className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCoverSelectorOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold text-[#007BFF] hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>{selectedItem.cover_url ? "Alterar Capa" : "Buscar Capa na Net"}</span>
+                </button>
               </div>
 
               <div className="flex-1 min-w-0 space-y-2">
@@ -784,6 +809,17 @@ export function BookSearchImportModal({
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleBarcodeScanned}
+      />
+
+      {/* Modal de Busca e Seleção de Capa da Edição na Web */}
+      <CoverSelectorModal
+        isOpen={isCoverSelectorOpen}
+        onClose={() => setIsCoverSelectorOpen(false)}
+        isbn={selectedItem?.isbn13 || selectedItem?.isbn10}
+        title={selectedItem?.title}
+        author={selectedItem?.authors?.[0]}
+        currentCoverUrl={selectedItem?.cover_url}
+        onSelectCover={handleSelectCustomCover}
       />
     </Modal>
   );

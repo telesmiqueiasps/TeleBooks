@@ -307,3 +307,11 @@ export interface BookImportConfirmResponse {
   user_book_id?: string | null;
   message: string;
 }
+
+export interface CoverOption {
+  url: string;
+  thumbnail_url?: string | null;
+  source: string;
+  label?: string | null;
+}
+

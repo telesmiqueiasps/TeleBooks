@@ -92,3 +92,13 @@ class BookSyncCoversResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class CoverOption(BaseModel):
+    url: str = Field(description="URL da capa em alta resolução")
+    thumbnail_url: str | None = Field(default=None, description="URL da miniatura")
+    source: str = Field(description="Fonte da capa (ex: Google Books, Open Library)")
+    label: str | None = Field(default=None, description="Identificação da edição")
+
+    model_config = ConfigDict(from_attributes=True)
+
+

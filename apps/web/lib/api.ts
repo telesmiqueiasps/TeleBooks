@@ -6,6 +6,7 @@ import type {
   BookSearchQueryParams,
   BookStatus,
   Collection,
+  CoverOption,
   DashboardSummary,
   ExternalBookItem,
   Genre,
@@ -310,6 +311,19 @@ export const api = {
     }>("/books/sync-covers", {
       method: "POST",
     });
+  },
+
+  async searchCoverOptions(params: {
+    isbn?: string;
+    title?: string;
+    author?: string;
+  }): Promise<CoverOption[]> {
+    const searchParams = new URLSearchParams();
+    if (params.isbn) searchParams.set("isbn", params.isbn);
+    if (params.title) searchParams.set("title", params.title);
+    if (params.author) searchParams.set("author", params.author);
+    const qs = searchParams.toString();
+    return request<CoverOption[]>(`/books/covers/search-options${qs ? `?${qs}` : ""}`);
   },
 
   // ============================================================================
