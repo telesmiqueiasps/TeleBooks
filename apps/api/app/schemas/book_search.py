@@ -23,6 +23,10 @@ class ExternalBookItem(BaseModel):
     categories: list[str] = Field(default_factory=list, description="Categorias ou gêneros literários")
     cover_url: str | None = Field(default=None, description="URL da capa em alta resolução")
     thumbnail_url: str | None = Field(default=None, description="URL da miniatura da capa")
+    candidate_covers: list[str] = Field(
+        default_factory=list,
+        description="Lista de capas alternativas encontradas na internet para o livro",
+    )
 
     # Metadados de integração com o catálogo do TeleBooks
     is_already_in_catalog: bool = Field(default=False, description="Indica se o livro já existe no catálogo local")

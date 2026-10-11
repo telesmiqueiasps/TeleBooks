@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   BookOpen,
@@ -15,11 +16,12 @@ import {
   ExternalLink,
   ArrowRight,
   Sparkles,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { Modal, Button, Badge, BadgeVariant } from "@telebooks/ui";
 import type { Book, UserBook } from "@telebooks/types";
 import { api } from "../../lib/api";
-import { CoverSelectorModal } from "./cover-selector-modal";
 
 export interface BookDetailsModalProps {
   isOpen: boolean;
@@ -50,18 +52,54 @@ export function BookDetailsModal({
   onDeleteBook,
   onBookUpdated,
 }: BookDetailsModalProps) {
-  const [isCoverModalOpen, setIsCoverModalOpen] = React.useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [candidateCovers, setCandidateCovers] = useState<string[]>([]);
+  const [isLoadingCovers, setIsLoadingCovers] = useState(false);
+
+  // Reseta galeria ao trocar de livro
+  React.useEffect(() => {
+    setIsGalleryOpen(false);
+    setCandidateCovers([]);
+  }, [book?.id]);
 
   if (!book) return null;
 
-  const handleCoverSelected = async (newUrl: string) => {
+  const handleOpenGallery = async () => {
+    const nextState = !isGalleryOpen;
+    setIsGalleryOpen(nextState);
+
+    if (nextState && candidateCovers.length === 0) {
+      setIsLoadingCovers(true);
+      try {
+        const results = await api.searchCoverOptions({
+          isbn: book.isbn13 || book.isbn10 || undefined,
+          title: book.title,
+          author: book.authors?.[0]?.name,
+        });
+        const list: string[] = [];
+        if (book.cover_url) list.push(book.cover_url);
+        if (results) {
+          for (const opt of results) {
+            if (opt.url && !list.includes(opt.url)) list.push(opt.url);
+          }
+        }
+        setCandidateCovers(list);
+      } catch {
+        // Silencioso em caso de falha de conexão
+      } finally {
+        setIsLoadingCovers(false);
+      }
+    }
+  };
+
+  const handleSelectCover = async (coverUrl: string) => {
     try {
       const updated = await api.updateBook(book.id, {
-        cover_url: newUrl,
-        thumbnail_url: newUrl,
+        cover_url: coverUrl,
+        thumbnail_url: coverUrl,
       });
-      book.cover_url = newUrl;
-      book.thumbnail_url = newUrl;
+      book.cover_url = coverUrl;
+      book.thumbnail_url = coverUrl;
       onBookUpdated?.(updated);
     } catch (err) {
       console.error("Erro ao atualizar capa:", err);
@@ -90,11 +128,11 @@ export function BookDetailsModal({
             />
             <button
               type="button"
-              onClick={() => setIsCoverModalOpen(true)}
+              onClick={handleOpenGallery}
               className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-[#007BFF] hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 transition-all cursor-pointer shadow-2xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>{book.cover_url ? "Alterar Capa" : "Buscar Capa na Net"}</span>
+              <span>{isGalleryOpen ? "Fechar Galeria" : "Galeria de Capas"}</span>
             </button>
           </div>
 
@@ -127,7 +165,17 @@ export function BookDetailsModal({
               {book.publisher && (
                 <div className="flex items-center gap-1.5">
                   <Building2 className="h-3.5 w-3.5 text-neutral-400" />
-                  <span>Editora: <strong>{book.publisher.name}</strong></span>
+                  <span>{book.publisher.name}</span>
+                </div>
+              )}
+              {book.publication_date && (
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-neutral-400" />
+                  <span>
+                    {new Date(book.publication_date).toLocaleDateString("pt-BR", {
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
               )}
               {book.page_count && (
@@ -137,108 +185,146 @@ export function BookDetailsModal({
                 </div>
               )}
               {book.isbn13 && (
-                <div className="flex items-center gap-1.5">
-                  <span>ISBN: <strong>{book.isbn13}</strong></span>
-                </div>
-              )}
-              {book.language && (
-                <div className="flex items-center gap-1.5">
-                  <span>Idioma: <strong>{book.language}</strong></span>
+                <div className="text-neutral-400">
+                  <span className="font-mono">{book.isbn13}</span>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Sinopse */}
+        {/* Galeria de Capas Integrada (Dentro do Próprio App) */}
+        {isGalleryOpen && (
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3 animate-in fade-in-50 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Capas Disponíveis para Esta Edição
+              </span>
+              {isLoadingCovers ? (
+                <span className="text-[11px] text-blue-500 flex items-center gap-1.5 font-medium animate-pulse">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Buscando capas na web...
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {candidateCovers.length} {candidateCovers.length === 1 ? "opção" : "opções"}
+                </span>
+              )}
+            </div>
+
+            {candidateCovers.length > 0 ? (
+              <div className="flex items-center gap-3 overflow-x-auto py-2 px-1 scrollbar-thin">
+                {candidateCovers.map((covUrl, idx) => {
+                  const isSelected = book.cover_url === covUrl;
+                  return (
+                    <button
+                      key={`${covUrl}-${idx}`}
+                      type="button"
+                      onClick={() => handleSelectCover(covUrl)}
+                      className={`group relative flex-shrink-0 w-16 h-24 sm:w-20 sm:h-28 rounded-xl overflow-hidden border-2 transition-all cursor-pointer book-spine ${
+                        isSelected
+                          ? "border-[#007BFF] ring-4 ring-[#007BFF]/25 shadow-md scale-105"
+                          : "border-slate-200 dark:border-slate-700 hover:border-blue-400 opacity-70 hover:opacity-100 hover:scale-102"
+                      }`}
+                      title="Clique para selecionar e salvar esta capa"
+                    >
+                      <Image
+                        src={covUrl}
+                        alt={`Capa ${idx + 1}`}
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#007BFF] text-white flex items-center justify-center shadow">
+                          <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic py-2 text-center">
+                {isLoadingCovers
+                  ? "Consultando catálogos e livrarias..."
+                  : "Nenhuma capa adicional encontrada para esta edição."}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Status in Shelf Badge */}
+        {userBook && statusInfo && (
+          <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BookmarkCheck className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
+              <div>
+                <p className="text-xs text-neutral-500">Status na sua estante</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                  {userBook.rating && (
+                    <div className="flex items-center gap-1 text-xs text-amber-500">
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <span>{userBook.rating}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {onOpenShelfModal && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenShelfModal(book, userBook)}
+              >
+                Atualizar Progresso
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Sinopse / Descrição */}
         {book.description && (
-          <div className="space-y-1.5 bg-neutral-50 dark:bg-neutral-900/40 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               Sinopse
             </h4>
-            <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto pr-2">
               {book.description}
             </p>
           </div>
         )}
 
-        {/* Bloco de Vínculo Pessoal (Minha Estante) */}
-        <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                Minha Biblioteca
-              </span>
-              {userBook ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={statusInfo?.variant || "default"}>
-                    {statusInfo?.label || userBook.status}
-                  </Badge>
-                  <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                    Página {userBook.current_page} de {book.page_count || "?"} (
-                    {Math.round(
-                      (userBook.current_page / (book.page_count || 1)) * 100
-                    )}
-                    %)
-                  </span>
-                  {userBook.rating && (
-                    <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-600">
-                      <Star className="h-3 w-3 fill-amber-500" />
-                      {userBook.rating}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  Este livro ainda não está vinculado à sua estante pessoal.
-                </p>
-              )}
-            </div>
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            {onOpenEditModal && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Edit3 className="h-4 w-4" />}
+                onClick={() => onOpenEditModal(book)}
+              >
+                Editar Livro
+              </Button>
+            )}
 
-            <Button
-              variant={userBook ? "outline" : "primary"}
-              onClick={() => {
-                onClose();
-                onOpenShelfModal?.(book, userBook);
-              }}
-              leftIcon={userBook ? <BookmarkCheck className="h-4 w-4" /> : <BookmarkPlus className="h-4 w-4" />}
-            >
-              {userBook ? "Editar Minha Leitura" : "Adicionar à Minha Estante"}
-            </Button>
-          </div>
-
-          {userBook?.private_notes && (
-            <div className="mt-3 pt-3 border-t border-amber-500/10 text-xs text-neutral-600 dark:text-neutral-400">
-              <span className="font-semibold text-neutral-700 dark:text-neutral-300">Minhas notas: </span>
-              {userBook.private_notes}
-            </div>
-          )}
-        </div>
-
-        {/* Rodapé: Ações de Gestão do Catálogo */}
-        <div className="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-800">
-          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => {
-                onClose();
-                onOpenEditModal?.(book);
-              }}
-              className="text-xs text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white flex items-center gap-1 transition-colors"
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-              Editar Dados Bibliográficos
-            </button>
-            <span className="text-neutral-300 dark:text-neutral-700">•</span>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`Excluir permanentemente "${book.title}" do catálogo global?`)) {
+                if (
+                  confirm(
+                    `Tem certeza que deseja excluir "${book.title}" do catálogo global? Esta ação é irreversível.`
+                  )
+                ) {
                   onDeleteBook?.(book.id);
                   onClose();
                 }
               }}
-              className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 transition-colors"
+              className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 transition-colors ml-2"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Excluir do Catálogo
@@ -260,17 +346,6 @@ export function BookDetailsModal({
           </div>
         </div>
       </div>
-
-      {/* Modal Seletor de Capa da Edição na Web */}
-      <CoverSelectorModal
-        isOpen={isCoverModalOpen}
-        onClose={() => setIsCoverModalOpen(false)}
-        isbn={book.isbn13 || book.isbn10}
-        title={book.title}
-        author={book.authors?.[0]?.name}
-        currentCoverUrl={book.cover_url}
-        onSelectCover={handleCoverSelected}
-      />
     </Modal>
   );
 }

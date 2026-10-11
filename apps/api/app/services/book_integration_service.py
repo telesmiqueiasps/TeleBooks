@@ -214,6 +214,11 @@ class BookIntegrationService:
             if matched_book:
                 item.is_already_in_catalog = True
                 item.existing_book_id = matched_book.id
+                if matched_book.cover_url:
+                    item.cover_url = matched_book.cover_url
+                    item.thumbnail_url = matched_book.thumbnail_url or matched_book.cover_url
+                    if matched_book.cover_url not in item.candidate_covers:
+                        item.candidate_covers.insert(0, matched_book.cover_url)
 
                 # Verifica se está na estante do usuário
                 if user_id:

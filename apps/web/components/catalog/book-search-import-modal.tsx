@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Search,
@@ -35,7 +35,6 @@ import type {
 } from "@telebooks/types";
 import { api } from "../../lib/api";
 import { IsbnScannerModal } from "./isbn-scanner-modal";
-import { CoverSelectorModal } from "./cover-selector-modal";
 
 export interface BookSearchImportModalProps {
   isOpen: boolean;
@@ -75,17 +74,89 @@ export function BookSearchImportModal({
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirmSuccess, setConfirmSuccess] = useState<BookImportConfirmResponse | null>(null);
 
-  // Modal Seletor de Capa da Edição
-  const [isCoverSelectorOpen, setIsCoverSelectorOpen] = useState(false);
+  // Galeria de Capas Integrada no próprio app
+  const [candidateCovers, setCandidateCovers] = useState<string[]>([]);
+  const [isSearchingCovers, setIsSearchingCovers] = useState(false);
+  const [manualCoverInput, setManualCoverInput] = useState("");
+  const [showManualInput, setShowManualInput] = useState(false);
 
-  const handleSelectCustomCover = (coverUrl: string) => {
+  useEffect(() => {
+    if (!selectedItem) {
+      setCandidateCovers([]);
+      setManualCoverInput("");
+      setShowManualInput(false);
+      return;
+    }
+
+    let isMounted = true;
+    const initialList: string[] = [];
+    if (selectedItem.cover_url) initialList.push(selectedItem.cover_url);
+    if (selectedItem.thumbnail_url && !initialList.includes(selectedItem.thumbnail_url)) {
+      initialList.push(selectedItem.thumbnail_url);
+    }
+    if (selectedItem.candidate_covers) {
+      for (const cov of selectedItem.candidate_covers) {
+        if (!initialList.includes(cov)) initialList.push(cov);
+      }
+    }
+    setCandidateCovers(initialList);
+
+    // Busca opções adicionais de capas na internet automaticamente
+    const fetchCovers = async () => {
+      setIsSearchingCovers(true);
+      try {
+        const results = await api.searchCoverOptions({
+          isbn: selectedItem.isbn13 || selectedItem.isbn10 || undefined,
+          title: selectedItem.title,
+          author: selectedItem.authors?.[0],
+        });
+        if (isMounted && results && results.length > 0) {
+          setCandidateCovers((prev) => {
+            const merged = [...prev];
+            for (const r of results) {
+              if (r.url && !merged.includes(r.url)) {
+                merged.push(r.url);
+              }
+            }
+            return merged;
+          });
+
+          // Se o livro ainda não tinha capa, adota automaticamente a melhor capa encontrada
+          const firstCover = results[0]?.url;
+          if (!selectedItem.cover_url && firstCover) {
+            setSelectedItem((prev) =>
+              prev ? { ...prev, cover_url: firstCover, thumbnail_url: firstCover } : null
+            );
+          }
+        }
+      } catch {
+        // Silencioso em caso de erro de rede
+      } finally {
+        if (isMounted) setIsSearchingCovers(false);
+      }
+    };
+
+    fetchCovers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedItem?.external_id, selectedItem?.isbn13]);
+
+  const handleApplyManualCover = () => {
+    const trimmed = manualCoverInput.trim();
+    if (!trimmed) return;
     if (selectedItem) {
       setSelectedItem({
         ...selectedItem,
-        cover_url: coverUrl,
-        thumbnail_url: coverUrl,
+        cover_url: trimmed,
+        thumbnail_url: trimmed,
       });
+      if (!candidateCovers.includes(trimmed)) {
+        setCandidateCovers((prev) => [trimmed, ...prev]);
+      }
     }
+    setShowManualInput(false);
   };
 
   const resetAll = () => {
@@ -579,32 +650,21 @@ export function BookSearchImportModal({
 
             {/* Ficha Resumida do Livro */}
             <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs">
-              <div className="flex flex-col items-center gap-2 self-center sm:self-start">
-                <div className="relative w-24 h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-md book-spine">
-                  {selectedItem.cover_url || selectedItem.thumbnail_url ? (
-                    <Image
-                      src={selectedItem.cover_url || selectedItem.thumbnail_url || ""}
-                      alt={selectedItem.title}
-                      fill
-                      sizes="96px"
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400">
-                      <BookOpen className="w-8 h-8" />
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCoverSelectorOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold text-[#007BFF] hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 transition-all cursor-pointer shadow-2xs"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>{selectedItem.cover_url ? "Alterar Capa" : "Buscar Capa na Net"}</span>
-                </button>
+              <div className="relative w-24 h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 shadow-md book-spine self-center sm:self-start">
+                {selectedItem.cover_url || selectedItem.thumbnail_url ? (
+                  <Image
+                    src={selectedItem.cover_url || selectedItem.thumbnail_url || ""}
+                    alt={selectedItem.title}
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                    <BookOpen className="w-8 h-8" />
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 min-w-0 space-y-2">
@@ -647,6 +707,118 @@ export function BookSearchImportModal({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Galeria de Capas da Edição (Dentro do Próprio App) */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Capas da Edição Encontradas na Web
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Clique na capa da sua edição para selecioná-la.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isSearchingCovers ? (
+                    <span className="text-[11px] text-blue-500 font-medium flex items-center gap-1.5 animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Buscando capas...
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                      {candidateCovers.length} {candidateCovers.length === 1 ? "opção" : "opções"}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowManualInput(!showManualInput)}
+                    className="text-[11px] font-medium text-[#007BFF] hover:underline ml-1 cursor-pointer"
+                  >
+                    {showManualInput ? "Ocultar link" : "Colar outro link"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Campo opcional de colar link manual */}
+              {showManualInput && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-in fade-in-50 duration-150">
+                  <input
+                    type="url"
+                    placeholder="Cole o endereço da imagem (https://...)"
+                    value={manualCoverInput}
+                    onChange={(e) => setManualCoverInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyManualCover()}
+                    className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
+                  />
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={handleApplyManualCover}
+                    disabled={!manualCoverInput.trim()}
+                    className="rounded-lg text-xs px-3 h-8"
+                  >
+                    Usar Link
+                  </Button>
+                </div>
+              )}
+
+              {/* Faixa / Galeria de Capas */}
+              {candidateCovers.length > 0 ? (
+                <div className="flex items-center gap-3 overflow-x-auto py-2 px-1 scrollbar-thin">
+                  {candidateCovers.map((covUrl, idx) => {
+                    const isSelected =
+                      selectedItem.cover_url === covUrl ||
+                      selectedItem.thumbnail_url === covUrl;
+                    return (
+                      <button
+                        key={`${covUrl}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedItem({
+                            ...selectedItem,
+                            cover_url: covUrl,
+                            thumbnail_url: covUrl,
+                          });
+                        }}
+                        className={`group relative flex-shrink-0 w-16 h-24 sm:w-20 sm:h-28 rounded-xl overflow-hidden border-2 transition-all cursor-pointer book-spine ${
+                          isSelected
+                            ? "border-[#007BFF] ring-4 ring-[#007BFF]/25 shadow-md scale-105"
+                            : "border-slate-200 dark:border-slate-700 hover:border-blue-400 opacity-70 hover:opacity-100 hover:scale-102"
+                        }`}
+                        title={`Selecionar Capa ${idx + 1}`}
+                      >
+                        <Image
+                          src={covUrl}
+                          alt={`Capa ${idx + 1}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#007BFF] text-white flex items-center justify-center shadow">
+                            <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-slate-400 italic">
+                  {isSearchingCovers
+                    ? "Buscando capas da edição nos acervos e livrarias..."
+                    : "Nenhuma capa adicional encontrada. O livro será cadastrado com a capa padrão."}
+                </div>
+              )}
             </div>
 
             {/* Opções de Vinculação à Estante Pessoal */}
@@ -809,17 +981,6 @@ export function BookSearchImportModal({
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleBarcodeScanned}
-      />
-
-      {/* Modal de Busca e Seleção de Capa da Edição na Web */}
-      <CoverSelectorModal
-        isOpen={isCoverSelectorOpen}
-        onClose={() => setIsCoverSelectorOpen(false)}
-        isbn={selectedItem?.isbn13 || selectedItem?.isbn10}
-        title={selectedItem?.title}
-        author={selectedItem?.authors?.[0]}
-        currentCoverUrl={selectedItem?.cover_url}
-        onSelectCover={handleSelectCustomCover}
       />
     </Modal>
   );

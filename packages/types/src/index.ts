@@ -265,6 +265,7 @@ export interface ExternalBookItem {
   categories: string[];
   cover_url?: string | null;
   thumbnail_url?: string | null;
+  candidate_covers?: string[];
   is_already_in_catalog: boolean;
   existing_book_id?: string | null;
   is_on_user_shelf: boolean;

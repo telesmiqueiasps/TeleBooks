@@ -74,13 +74,28 @@ class BrasilApiProvider(BaseBookProvider):
                 year = data.get("year")
                 published_date_str = str(year) if year else None
 
-                # Capa da BrasilAPI ou resolução multi-fonte (Google Books + Open Library)
+                # Capa da BrasilAPI ou resolução multi-fonte (Google Books + Estante Virtual + Open Library)
                 cover_url = data.get("cover_url")
                 thumbnail_url = cover_url
-                if not cover_url:
+                candidate_covers: list[str] = []
+
+                # Busca opções disponíveis na internet para preencher a galeria
+                cover_options = await BookCoverService.search_cover_options(
+                    isbn=clean_isbn,
+                    title=title,
+                    author=authors[0] if authors else None,
+                )
+                if cover_options:
+                    candidate_covers = [opt["url"] for opt in cover_options]
+                    if not cover_url:
+                        cover_url = cover_options[0]["url"]
+                        thumbnail_url = cover_options[0].get("thumbnail_url") or cover_url
+                elif not cover_url:
                     cover_url, thumbnail_url = await BookCoverService.resolve_best_cover(
-                        isbn13=isbn13, isbn10=isbn10
+                        isbn13=isbn13, isbn10=isbn10, title=title, author=authors[0] if authors else None
                     )
+                    if cover_url:
+                        candidate_covers = [cover_url]
 
                 categories = data.get("subjects", [])
                 if not isinstance(categories, list):
@@ -102,6 +117,7 @@ class BrasilApiProvider(BaseBookProvider):
                     categories=categories,
                     cover_url=cover_url,
                     thumbnail_url=thumbnail_url,
+                    candidate_covers=candidate_covers,
                 )
         except Exception as exc:
             logger.error("Erro ao consultar BrasilAPI para ISBN %s: %s", clean_isbn, exc)
