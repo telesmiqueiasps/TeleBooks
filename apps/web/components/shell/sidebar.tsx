@@ -41,8 +41,8 @@ export interface SidebarProps {
 export function Sidebar({
   currentTab,
   onSelectTab,
-  bookCount = 128,
-  readingCount = 2,
+  bookCount,
+  readingCount,
 }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -55,7 +55,10 @@ export function Sidebar({
   };
 
   const isHomeActive = pathname === "/" && (currentTab === "home" || !currentTab);
-  const isLibraryActive = pathname.startsWith("/minha-biblioteca") || currentTab === "library";
+  const isLibraryActive =
+    pathname.startsWith("/minha-biblioteca") ||
+    pathname.startsWith("/livros") ||
+    currentTab === "library";
   const isReadingActive = pathname.startsWith("/leitura-atual") || currentTab === "reading";
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || "Leitor";

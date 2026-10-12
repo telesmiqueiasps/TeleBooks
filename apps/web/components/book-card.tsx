@@ -136,6 +136,7 @@ export function BookCard({
                   >
                     Remover da Estante
                   </DropdownItem>
+
                 </>
               ) : (
                 <DropdownItem

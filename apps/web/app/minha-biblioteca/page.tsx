@@ -446,22 +446,32 @@ export default function MinhaBibliotecaPage() {
     }
   };
 
-  const handleRemoveFromShelf = async (item: BookItem) => {
-    const confirmed = window.confirm(
-      `Deseja remover "${item.title}" da sua biblioteca pessoal?`
-    );
-    if (!confirmed) return;
+  const handleRemoveFromShelf = async (target: BookItem | string) => {
+    const userBookId = typeof target === "string" ? target : target.id;
+    const title = typeof target === "string" ? "este livro" : `"${target.title}"`;
+
+    if (typeof target !== "string") {
+      const confirmed = window.confirm(
+        `Deseja remover ${title} da sua biblioteca pessoal?`
+      );
+      if (!confirmed) return;
+    }
 
     // Atualização otimista
-    setUserBooks((prev) => prev.filter((b) => b.id !== item.id));
+    setUserBooks((prev) => prev.filter((b) => b.id !== userBookId));
     setTotalItems((prev) => Math.max(0, prev - 1));
 
     try {
-      await api.removeFromShelf(item.id);
-    } catch {
-      loadShelf();
+      await api.removeFromShelf(userBookId);
+      await loadShelf();
+    } catch (err: unknown) {
+      console.error("Erro ao remover da estante:", err);
+      await loadShelf();
+      alert(err instanceof Error ? err.message : "Erro ao remover livro da estante.");
     }
   };
+
+
 
   const handleSyncCovers = async () => {
     setIsSyncingCovers(true);
@@ -943,6 +953,7 @@ export default function MinhaBibliotecaPage() {
           setDetailsBook(null);
           setDetailsUserBook(null);
         }}
+        onRemoveFromShelf={(ubId) => handleRemoveFromShelf(ubId)}
       />
 
       {/* Modal de Progresso de Leitura na Estante */}

@@ -31,6 +31,7 @@ export interface BookDetailsModalProps {
   onOpenShelfModal?: (book: Book, userBook?: UserBook | null) => void;
   onOpenEditModal?: (book: Book) => void;
   onDeleteBook?: (bookId: string) => void;
+  onRemoveFromShelf?: (userBookId: string) => void;
   onBookUpdated?: (book: Book) => void;
 }
 
@@ -50,6 +51,7 @@ export function BookDetailsModal({
   onOpenShelfModal,
   onOpenEditModal,
   onDeleteBook,
+  onRemoveFromShelf,
   onBookUpdated,
 }: BookDetailsModalProps) {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -312,23 +314,25 @@ export function BookDetailsModal({
               </Button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (
-                  confirm(
-                    `Tem certeza que deseja excluir "${book.title}" do catálogo global? Esta ação é irreversível.`
-                  )
-                ) {
-                  onDeleteBook?.(book.id);
-                  onClose();
-                }
-              }}
-              className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 transition-colors ml-2"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Excluir do Catálogo
-            </button>
+            {userBook && onRemoveFromShelf && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Deseja remover "${book.title}" da sua biblioteca pessoal? Suas anotações e progresso deste exemplar serão desvinculados.`
+                    )
+                  ) {
+                    onRemoveFromShelf(userBook.id);
+                    onClose();
+                  }
+                }}
+                className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remover da Minha Biblioteca
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

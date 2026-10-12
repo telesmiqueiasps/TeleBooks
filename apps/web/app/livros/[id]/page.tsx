@@ -143,6 +143,10 @@ export default function BookDetailPage() {
   const [userTags, setUserTags] = useState<UserTag[]>([]);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
 
+  // Contadores reais da estante para o AppShell / Sidebar
+  const [shelfTotalBooks, setShelfTotalBooks] = useState<number | undefined>(undefined);
+  const [shelfReadingCount, setShelfReadingCount] = useState<number | undefined>(undefined);
+
   // Estados do formulário de Nota
   const [isNoteFormOpen, setIsNoteFormOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
@@ -189,6 +193,14 @@ export default function BookDetailPage() {
       setUserCollections(collectionsData || []);
       setUserTags(tagsData || []);
       setQuickNotesText(userBookData?.private_notes || "");
+
+      // Carrega métricas da estante para manter a sidebar 100% precisa
+      api.getDashboard()
+        .then((dash) => {
+          setShelfTotalBooks(dash.total_books);
+          setShelfReadingCount(dash.reading_books_count);
+        })
+        .catch(() => {});
 
       // Se o usuário tem o livro na estante, carrega notas, citações e sessões
       if (userBookData?.id) {
@@ -246,6 +258,10 @@ export default function BookDetailPage() {
         favorite: false,
       });
       setUserBook(created);
+      setShelfTotalBooks((prev) => (prev !== undefined ? prev + 1 : undefined));
+      if (initialStatus === "reading") {
+        setShelfReadingCount((prev) => (prev !== undefined ? prev + 1 : undefined));
+      }
       showToast(`Livro adicionado à estante como "${STATUS_CONFIG[initialStatus].label}"!`);
       // Recarrega para obter relacionamentos limpos
       loadBookData();
@@ -265,6 +281,12 @@ export default function BookDetailPage() {
 
     const previousStatus = userBook.status;
     setUserBook((prev) => (prev ? { ...prev, status: newStatus } : null));
+
+    if (previousStatus === "reading" && newStatus !== "reading") {
+      setShelfReadingCount((prev) => (prev !== undefined ? Math.max(0, prev - 1) : undefined));
+    } else if (previousStatus !== "reading" && newStatus === "reading") {
+      setShelfReadingCount((prev) => (prev !== undefined ? prev + 1 : undefined));
+    }
 
     try {
       const updatePayload: {
@@ -411,11 +433,16 @@ export default function BookDetailPage() {
       return;
     }
     setIsSaving(true);
+    const wasReading = userBook.status === "reading";
     try {
       await api.removeFromShelf(userBook.id);
       setUserBook(null);
       setNotes([]);
       setQuotes([]);
+      setShelfTotalBooks((prev) => (prev !== undefined ? Math.max(0, prev - 1) : undefined));
+      if (wasReading) {
+        setShelfReadingCount((prev) => (prev !== undefined ? Math.max(0, prev - 1) : undefined));
+      }
       showToast("Livro removido da sua estante.");
     } catch {
       showToast("Erro ao remover da estante");
@@ -605,7 +632,11 @@ export default function BookDetailPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell
+      currentTab="library"
+      bookCount={shelfTotalBooks}
+      readingCount={shelfReadingCount}
+    >
       {/* Toast de Feedback */}
       {toastMessage && (
         <div className="fixed bottom-20 md:bottom-8 right-6 z-50 animate-in fade-in slide-in-from-bottom-5">
@@ -866,14 +897,17 @@ export default function BookDetailPage() {
                       </button>
                     </div>
 
-                    {/* Ação secundária: Remover da Estante */}
-                    <button
-                      type="button"
-                      onClick={handleRemoveFromShelf}
-                      className="w-full text-center text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 py-1 transition-colors"
-                    >
-                      Remover da minha estante
-                    </button>
+                    {/* Ação secundária: Remover da Estante Pessoal */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                      <button
+                        type="button"
+                        onClick={handleRemoveFromShelf}
+                        className="w-full text-center text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 py-1 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Remover da minha biblioteca
+                      </button>
+                    </div>
                   </>
                 ) : (
                   /* Call to Action se o livro ainda não estiver na estante */

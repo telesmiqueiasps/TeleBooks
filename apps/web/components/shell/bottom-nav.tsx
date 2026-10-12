@@ -14,7 +14,7 @@ export interface BottomNavProps {
 export function BottomNav({
   currentTab,
   onSelectTab,
-  readingCount = 2,
+  readingCount,
 }: BottomNavProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +26,7 @@ export function BottomNav({
       id: "reading",
       label: "Lendo",
       icon: BookmarkCheck,
-      badge: readingCount,
+      badge: readingCount && readingCount > 0 ? readingCount : undefined,
     },
     { id: "collections", label: "Coleções", icon: FolderHeart },
     { id: "stats", label: "Métricas", icon: BarChart3 },

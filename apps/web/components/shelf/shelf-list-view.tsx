@@ -315,6 +315,7 @@ export function ShelfListView({
                     >
                       Remover da Estante
                     </DropdownItem>
+
                   </DropdownMenu>
                 </Dropdown>
               </div>
