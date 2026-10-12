@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Search,
-  Plus,
   Sun,
   Moon,
   Bell,
@@ -12,9 +12,10 @@ import {
   User,
   Settings,
   Loader2,
+  Menu,
+  LogIn,
 } from "lucide-react";
 import {
-  Button,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
@@ -26,13 +27,12 @@ import { useAuth } from "../auth/auth-provider";
 import { Logo } from "../ui/logo";
 
 export interface TopbarProps {
-  onAddBookClick: () => void;
+  onAddBookClick?: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
 export function Topbar({
-  onAddBookClick,
   searchQuery,
   onSearchChange,
 }: TopbarProps) {
@@ -54,24 +54,30 @@ export function Topbar({
   const initials = displayName.substring(0, 2).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 sm:gap-4 border-b border-[#e2e8f0] dark:border-[#1E293B] bg-white/85 dark:bg-[#0B0F1A]/85 backdrop-blur-md px-4 sm:px-8 py-3">
-      {/* Mobile Brand Logo */}
-      <div className="flex items-center md:hidden">
-        <Logo size="xs" />
-      </div>
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 sm:gap-4 border-b border-[#0062CC]/60 bg-gradient-to-r from-[#006CEB] via-[#007BFF] to-[#0057C2] text-white px-3 sm:px-8 py-2.5 sm:py-3 shadow-md select-none">
+      {/* Brand Logo & Name (Idêntico à tela de login) */}
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 transition-transform hover:scale-[1.02] focus:outline-none shrink-0"
+      >
+        <Logo variant="icon" size="sm" />
+        <span className="font-display font-extrabold text-lg sm:text-xl tracking-tight text-white">
+          Tele<span className="text-blue-200">Books</span>
+        </span>
+      </Link>
 
       {/* Global Search Input */}
       <div className="flex-1 max-w-md relative hidden sm:block">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9ca3af] pointer-events-none" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-200/90 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Buscar livros, autores, editoras..."
-          className="w-full rounded-full border border-[#e2e8f0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] pl-11 pr-12 py-2 text-xs sm:text-sm text-[#0F172A] dark:text-[#f8fafc] placeholder:text-[#9ca3af] dark:placeholder:text-[#64748b] transition-all focus:outline-none focus:border-[#007BFF] focus:ring-2 focus:ring-[#007BFF]/20"
+          className="w-full rounded-full border border-white/20 bg-white/15 focus:bg-white text-xs sm:text-sm text-white focus:text-[#0F172A] placeholder:text-blue-100/75 focus:placeholder:text-[#94A3B8] pl-10 pr-12 py-2 transition-all focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
         />
         <div className="absolute right-3.5 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 pointer-events-none">
-          <kbd className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#f0ebe1] dark:bg-[#252a35] text-[#6b7280] dark:text-[#9ca3af] border border-[#e0dad0] dark:border-[#313744]">
+          <kbd className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
             ⌘K
           </kbd>
         </div>
@@ -82,83 +88,88 @@ export function Topbar({
         {/* Notification Bell */}
         <button
           type="button"
-          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
           title="Notificações"
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#007BFF]" />
+          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-400" />
         </button>
 
         {/* Quick Theme Toggle */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="h-9 w-9 flex items-center justify-center rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
           aria-label="Alternar tema"
           title={`Tema: ${theme === "dark" ? "Escuro" : "Claro"}`}
         >
           {theme === "dark" ? (
-            <Moon className="h-4 w-4 text-[#007BFF]" />
+            <Moon className="h-4 w-4 text-blue-200" />
           ) : (
-            <Sun className="h-4 w-4 text-amber-500" />
+            <Sun className="h-4 w-4 text-amber-300" />
           )}
         </button>
 
-        {/* Action Button: Add Book */}
-        <Button
-          onClick={onAddBookClick}
-          variant="primary"
-          size="sm"
-          className="gap-1.5 text-xs sm:text-sm h-9 px-3.5 sm:px-4 rounded-full shadow-sm shadow-[#007BFF]/25"
-          leftIcon={<Plus className="h-4 w-4" />}
-        >
-          <span className="hidden xs:inline">Adicionar Livro</span>
-          <span className="xs:hidden">Novo</span>
-        </Button>
+        {/* Avatar Capsule (discreto no desktop) */}
+        {user && (
+          <div
+            onClick={() => router.push("/perfil")}
+            role="button"
+            tabIndex={0}
+            className="hidden md:flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 transition-colors cursor-pointer"
+            title="Ver Meu Perfil"
+          >
+            <div className="h-7 w-7 rounded-full bg-white text-[#006CEB] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+              {initials}
+            </div>
+            <span className="text-xs font-semibold text-white max-w-[100px] truncate">
+              {displayName.split(" ")[0]}
+            </span>
+          </div>
+        )}
 
-        {/* Divisor vertical */}
-        <div className="h-6 w-[1px] bg-[#E2E8F0] dark:bg-[#1E293B] mx-0.5" />
-
-        {/* Seção de Usuário & Botão de Logout */}
-        {user ? (
-          <div className="flex items-center gap-1.5">
-            {/* Avatar Dropdown */}
-            <Dropdown>
-              <DropdownTrigger>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full border border-[#E2E8F0] dark:border-[#1E293B] bg-white dark:bg-[#0F172A] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors cursor-pointer"
-                  title="Menu do Perfil"
-                >
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#007BFF] to-[#6366F1] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                    {initials}
-                  </div>
-                  <span className="hidden md:inline text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] max-w-[100px] truncate">
-                    {displayName.split(" ")[0]}
-                  </span>
-                </div>
-              </DropdownTrigger>
-              <DropdownMenu align="right" className="top-full mt-2 w-56">
+        {/* Botão de 3 Barrinhas (Menu / Mais Opções) */}
+        <Dropdown>
+          <DropdownTrigger>
+            <button
+              type="button"
+              aria-label="Mais opções e conta"
+              title="Menu"
+              className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Menu className="h-5 w-5 stroke-[2.2]" />
+            </button>
+          </DropdownTrigger>
+          <DropdownMenu align="right" className="top-full mt-2 w-56">
+            {user ? (
+              <>
                 <div className="px-3 py-2 border-b border-[#E2E8F0] dark:border-[#1E293B]">
-                  <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
-                    @{displayUsername}
-                  </p>
-                  <p className="text-[10px] text-[#94A3B8] dark:text-[#64748B] truncate mt-0.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
+                        @{displayUsername}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[#94A3B8] dark:text-[#64748B] truncate">
                     {user.email}
                   </p>
                 </div>
+
                 <DropdownItem
-                  icon={<User className="h-4 w-4" />}
+                  icon={<User className="h-4 w-4 text-[#007BFF]" />}
                   onClick={() => router.push("/perfil")}
                 >
                   Meu Perfil
                 </DropdownItem>
                 <DropdownItem
-                  icon={<Settings className="h-4 w-4" />}
+                  icon={<Settings className="h-4 w-4 text-slate-500" />}
                   onClick={() => router.push("/perfil")}
                 >
                   Configurações
@@ -166,40 +177,28 @@ export function Topbar({
                 <DropdownSeparator />
                 <DropdownItem
                   danger
-                  icon={<LogOut className="h-4 w-4" />}
+                  icon={
+                    isLoggingOut ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )
+                  }
                   onClick={handleSignOut}
                 >
                   Sair da Conta
                 </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-
-            {/* Botão Direto de Logout */}
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isLoggingOut}
-              title="Encerrar Sessão (Logout)"
-              aria-label="Encerrar Sessão (Logout)"
-              className="h-9 px-3 flex items-center gap-1.5 rounded-full border border-red-200/80 dark:border-red-900/50 bg-red-50/70 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/60 transition-all duration-150 active:scale-95 text-xs font-semibold select-none"
-            >
-              {isLoggingOut ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <LogOut className="h-4 w-4 shrink-0" />
-              )}
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => router.push("/login")}
-            className="h-9 px-4 rounded-full bg-[#007BFF] hover:bg-[#0066D6] text-white text-xs font-semibold shadow-sm transition-colors"
-          >
-            Entrar
-          </button>
-        )}
+              </>
+            ) : (
+              <DropdownItem
+                icon={<LogIn className="h-4 w-4 text-[#007BFF]" />}
+                onClick={() => router.push("/login")}
+              >
+                Entrar / Cadastrar
+              </DropdownItem>
+            )}
+          </DropdownMenu>
+        </Dropdown>
       </div>
     </header>
   );

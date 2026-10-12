@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Library,
@@ -74,6 +74,7 @@ interface BookGroup {
 
 export default function MinhaBibliotecaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: isAuthLoading } = useAuth();
 
   // Modo de visualização: grid (capas), list (tabela detalhada), bookshelf (estante 3D)
@@ -99,6 +100,21 @@ export default function MinhaBibliotecaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+
+  // Contagens para os cards de status
+  const [statusCounts, setStatusCounts] = useState<{
+    all: number;
+    reading: number;
+    want_to_read: number;
+    read: number;
+    favorite: number;
+  }>({
+    all: 0,
+    reading: 0,
+    want_to_read: 0,
+    read: 0,
+    favorite: 0,
+  });
 
   // Dados da Estante
   const [userBooks, setUserBooks] = useState<UserBook[]>([]);
@@ -126,6 +142,13 @@ export default function MinhaBibliotecaPage() {
   const [isSyncingCovers, setIsSyncingCovers] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
 
+  // Dispara busca online caso a URL contenha action=search
+  useEffect(() => {
+    if (searchParams?.get("action") === "search") {
+      setIsSearchImportModalOpen(true);
+    }
+  }, [searchParams]);
+
   // Redirecionamento de segurança para login se não autenticado
   useEffect(() => {
     if (!isAuthLoading && !user) {
@@ -133,16 +156,18 @@ export default function MinhaBibliotecaPage() {
     }
   }, [user, isAuthLoading, router]);
 
-  // Carrega entidades para os seletores de filtros
+  // Carrega entidades para os seletores de filtros e dashboard agregado
   const loadAuxiliaryData = useCallback(async () => {
     try {
-      const [authorsRes, publishersRes, genresRes, collectionsRes, tagsRes] =
+      const [authorsRes, publishersRes, genresRes, collectionsRes, tagsRes, dashRes, favRes] =
         await Promise.allSettled([
           api.getAuthors({ page_size: 100 }),
           api.getPublishers({ page_size: 100 }),
           api.getGenres({ page_size: 100 }),
           api.getCollections(),
           api.getUserTags(),
+          api.getDashboard(),
+          api.getShelf({ favorite: true, page_size: 1 }),
         ]);
 
       if (authorsRes.status === "fulfilled") {
@@ -159,6 +184,17 @@ export default function MinhaBibliotecaPage() {
       }
       if (tagsRes.status === "fulfilled") {
         setTags(tagsRes.value || []);
+      }
+      if (dashRes.status === "fulfilled") {
+        const d = dashRes.value;
+        const favCount = favRes.status === "fulfilled" ? favRes.value.total || 0 : 0;
+        setStatusCounts({
+          all: d.total_books,
+          reading: d.reading_books_count,
+          want_to_read: d.want_to_read_books_count,
+          read: d.read_books_count,
+          favorite: favCount,
+        });
       }
     } catch {
       // Falha silenciosa no carregamento de metadados
@@ -517,26 +553,26 @@ export default function MinhaBibliotecaPage() {
       readingCount={readingCount}
       onAddBookClick={() => setIsSearchImportModalOpen(true)}
     >
-      <div className="space-y-6 sm:space-y-8 select-none">
+      <div className="space-y-3.5 sm:space-y-5 select-none">
         {/* Cabeçalho Editorial da Biblioteca */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1.5 sm:pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
           <div>
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center shadow-md shadow-[#007BFF]/20">
-                <Library className="w-5 h-5 stroke-[2.2]" />
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center shadow-md shadow-[#007BFF]/20">
+                <Library className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                 Minha Biblioteca
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-sans">
               Organize, acompanhe e explore todo o seu acervo literário pessoal.
             </p>
           </div>
 
-          {/* Badges de Contagem e Botões de Ação */}
+          {/* Badges de Contagem e Botão Coleções & Tags */}
           <div className="flex items-center gap-2 sm:self-center flex-wrap">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
               <span>{totalItems} no acervo</span>
               {readingCount > 0 && (
                 <span className="text-[#007BFF]">• {readingCount} lendo</span>
@@ -548,41 +584,9 @@ export default function MinhaBibliotecaPage() {
               size="sm"
               onClick={() => setIsCollectionsModalOpen(true)}
               leftIcon={<FolderPlus className="w-4 h-4 text-[#007BFF]" />}
-              className="rounded-full text-xs px-3.5"
+              className="rounded-full text-xs px-3.5 h-8"
             >
               Coleções & Tags
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsSearchImportModalOpen(true)}
-              leftIcon={<Globe className="w-4 h-4 stroke-[2.2]" />}
-              className="rounded-full shadow-sm shadow-[#007BFF]/25 font-semibold text-xs px-4"
-            >
-              Buscar Online (ISBN/Título)
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsBookFormOpen(true)}
-              leftIcon={<Plus className="w-4 h-4" />}
-              className="rounded-full text-xs px-3.5"
-            >
-              Manual
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncCovers}
-              isLoading={isSyncingCovers}
-              leftIcon={<Sparkles className="w-4 h-4 text-amber-500" />}
-              className="rounded-full text-xs px-3.5 hover:border-amber-400"
-              title="Buscar capas em alta resolução no Google Books para livros sem capa"
-            >
-              Atualizar Capas
             </Button>
           </div>
         </div>
@@ -599,7 +603,8 @@ export default function MinhaBibliotecaPage() {
           collections={collections}
           tags={tags}
           onOpenCollectionsManager={() => setIsCollectionsModalOpen(true)}
-          totalBooks={totalItems}
+          totalBooks={statusCounts.all || totalItems}
+          statusCounts={statusCounts}
         />
 
         {/* Feedback de Sincronização de Capas */}
@@ -635,7 +640,7 @@ export default function MinhaBibliotecaPage() {
         {isLoading ? (
           // Skeletons de Carregamento
           viewMode === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
               {[...Array(filters.page_size)].map((_, idx) => (
                 <BookCardSkeleton key={idx} />
               ))}
@@ -768,7 +773,7 @@ export default function MinhaBibliotecaPage() {
 
                 {/* Livros do Grupo no Modo Escolhido */}
                 {viewMode === "grid" && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
                     {group.books.map((userBook) => (
                       <BookCard
                         key={userBook.id}
@@ -810,7 +815,7 @@ export default function MinhaBibliotecaPage() {
           // =========================================================================
           <>
             {viewMode === "grid" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
                 {userBooks.map((userBook) => (
                   <BookCard
                     key={userBook.id}

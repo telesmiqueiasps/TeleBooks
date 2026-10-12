@@ -2,152 +2,192 @@
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Library, BookmarkCheck, FolderHeart, BarChart3 } from "lucide-react";
+import { Home, Library, Plus, Users, BookmarkCheck } from "lucide-react";
 import { cn } from "@telebooks/ui";
 
 export interface BottomNavProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
   readingCount?: number;
+  onAddBookClick?: () => void;
 }
 
 export function BottomNav({
   currentTab,
   onSelectTab,
   readingCount,
+  onAddBookClick,
 }: BottomNavProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const tabs = [
-    { id: "home", label: "Início", icon: Home },
-    { id: "library", label: "Biblioteca", icon: Library },
-    {
-      id: "reading",
-      label: "Lendo",
-      icon: BookmarkCheck,
-      badge: readingCount && readingCount > 0 ? readingCount : undefined,
-    },
-    { id: "collections", label: "Coleções", icon: FolderHeart },
-    { id: "stats", label: "Métricas", icon: BarChart3 },
-  ];
+  const isHomeActive = pathname === "/" && (currentTab === "home" || !currentTab);
+  const isLibraryActive =
+    pathname.startsWith("/minha-biblioteca") || currentTab === "library";
+  const isCommunityActive =
+    pathname.startsWith("/comunidade") || currentTab === "community";
+  const isReadingActive =
+    pathname.startsWith("/leitura-atual") || currentTab === "reading";
 
-  const effectiveTab = pathname.startsWith("/minha-biblioteca")
-    ? (pathname.includes("groupBy=collection") ? "collections" : "library")
-    : pathname.startsWith("/leitura-atual")
-    ? "reading"
-    : pathname.startsWith("/dashboard")
-    ? "stats"
-    : pathname === "/"
-    ? "home"
-    : currentTab;
-
-  const activeIndex = tabs.findIndex((t) => t.id === effectiveTab);
-  const safeIndex = activeIndex >= 0 ? activeIndex : 0;
-  const activeTabObj = tabs[safeIndex];
-  const ActiveIcon = activeTabObj?.icon || Home;
+  const handleCenterPlusClick = () => {
+    if (onAddBookClick) {
+      onAddBookClick();
+    } else {
+      router.push("/minha-biblioteca?action=search");
+    }
+  };
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 select-none pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       {/* Barra de navegação arredondada com sombra fluida */}
       <div className="relative mx-3 mb-1.5 rounded-[28px] bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.35)]">
-        {/* Indicador Flutuante com Recorte Arredondado (Curved Notch) */}
-        <div
-          className="absolute top-0 h-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none flex justify-center z-20"
-          style={{
-            left: `${safeIndex * 20}%`,
-            width: "20%",
-          }}
-        >
-          {/* Botão circular elevado com orelhas curvas suaves */}
-          <div className="relative -top-3.5 flex items-center justify-center">
-            {/* Orelha curva esquerda (inverted border-radius) */}
+        <div className="grid grid-cols-5 items-center h-16 max-w-lg mx-auto px-1">
+          {/* 1. Início */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("home");
+              if (pathname !== "/") router.push("/");
+            }}
+            className={cn(
+              "flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
+              isHomeActive
+                ? "text-[#007BFF] dark:text-[#38BDF8]"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+            )}
+            aria-label="Início"
+          >
+            <Home className={cn("w-5 h-5", isHomeActive ? "stroke-[2.5]" : "stroke-[2]")} />
             <span
-              className="absolute -left-[14px] top-[14px] w-3.5 h-3.5 bg-transparent rounded-tr-[14px] pointer-events-none transition-colors duration-200 shadow-[4px_-4px_0_0_#ffffff] dark:shadow-[4px_-4px_0_0_#0F172A]"
-              aria-hidden="true"
-            />
+              className={cn(
+                "text-[10px] tracking-tight leading-none mt-1",
+                isHomeActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
+              )}
+            >
+              Início
+            </span>
+            {isHomeActive && (
+              <span className="w-1 h-1 rounded-full bg-[#007BFF] dark:bg-[#38BDF8] mt-0.5" />
+            )}
+          </button>
 
-            {/* Círculo flutuante ativo */}
-            <div className="relative w-12 h-12 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(0,123,255,0.45)] border-[3px] border-white dark:border-[#0F172A] transform transition-transform duration-200 active:scale-95">
-              <ActiveIcon className="w-5 h-5 stroke-[2.4]" />
-              {activeTabObj?.badge && activeTabObj.badge > 0 ? (
-                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-[#0F172A]">
-                  {activeTabObj.badge}
+          {/* 2. Biblioteca */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("library");
+              if (!pathname.startsWith("/minha-biblioteca")) {
+                router.push("/minha-biblioteca");
+              }
+            }}
+            className={cn(
+              "flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
+              isLibraryActive
+                ? "text-[#007BFF] dark:text-[#38BDF8]"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+            )}
+            aria-label="Biblioteca"
+          >
+            <Library className={cn("w-5 h-5", isLibraryActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span
+              className={cn(
+                "text-[10px] tracking-tight leading-none mt-1",
+                isLibraryActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
+              )}
+            >
+              Biblioteca
+            </span>
+            {isLibraryActive && (
+              <span className="w-1 h-1 rounded-full bg-[#007BFF] dark:bg-[#38BDF8] mt-0.5" />
+            )}
+          </button>
+
+          {/* 3. Botão + no centro (um pouco maior que os demais e fixo em azul para busca online) */}
+          <div className="flex flex-col items-center justify-center relative">
+            <button
+              type="button"
+              onClick={handleCenterPlusClick}
+              className="relative -top-3 w-13 h-13 rounded-full bg-gradient-to-tr from-[#006CEB] via-[#007BFF] to-[#0057C2] text-white flex items-center justify-center shadow-[0_8px_20px_-2px_rgba(0,123,255,0.55)] border-[3.5px] border-white dark:border-[#0F172A] transform transition-transform duration-200 active:scale-90 hover:scale-105 cursor-pointer focus:outline-none"
+              aria-label="Buscar online e cadastrar livros"
+              title="Buscar Online (Cadastrar Livro)"
+            >
+              <Plus className="w-6 h-6 stroke-[3]" />
+            </button>
+            <span className="text-[9px] font-semibold text-[#007BFF] dark:text-[#38BDF8] -mt-1.5 leading-none">
+              Buscar
+            </span>
+          </div>
+
+          {/* 4. Comunidade */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("community");
+              if (!pathname.startsWith("/comunidade")) {
+                router.push("/comunidade");
+              }
+            }}
+            className={cn(
+              "flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
+              isCommunityActive
+                ? "text-[#007BFF] dark:text-[#38BDF8]"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+            )}
+            aria-label="Comunidade"
+          >
+            <Users className={cn("w-5 h-5", isCommunityActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span
+              className={cn(
+                "text-[10px] tracking-tight leading-none mt-1",
+                isCommunityActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
+              )}
+            >
+              Comunidade
+            </span>
+            {isCommunityActive && (
+              <span className="w-1 h-1 rounded-full bg-[#007BFF] dark:bg-[#38BDF8] mt-0.5" />
+            )}
+          </button>
+
+          {/* 5. Lendo */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("reading");
+              if (!pathname.startsWith("/leitura-atual")) {
+                router.push("/leitura-atual");
+              }
+            }}
+            className={cn(
+              "relative flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
+              isReadingActive
+                ? "text-[#007BFF] dark:text-[#38BDF8]"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+            )}
+            aria-label="Lendo"
+          >
+            <div className="relative">
+              <BookmarkCheck
+                className={cn("w-5 h-5", isReadingActive ? "stroke-[2.5]" : "stroke-[2]")}
+              />
+              {readingCount && readingCount > 0 ? (
+                <span className="absolute -top-1.5 -right-2 h-4 min-w-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-white dark:border-[#0F172A]">
+                  {readingCount}
                 </span>
               ) : null}
             </div>
-
-            {/* Orelha curva direita (inverted border-radius) */}
             <span
-              className="absolute -right-[14px] top-[14px] w-3.5 h-3.5 bg-transparent rounded-tl-[14px] pointer-events-none transition-colors duration-200 shadow-[-4px_-4px_0_0_#ffffff] dark:shadow-[-4px_-4px_0_0_#0F172A]"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
-
-        {/* Itens da barra de navegação */}
-        <div className="relative z-10 flex items-center justify-around h-16 max-w-lg mx-auto px-1">
-          {tabs.map((tab, idx) => {
-            const Icon = tab.icon;
-            const isActive = safeIndex === idx;
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  onSelectTab(tab.id);
-                  if (tab.id === "home" && pathname !== "/") {
-                    router.push("/");
-                  } else if (tab.id === "library" && !pathname.startsWith("/minha-biblioteca")) {
-                    router.push("/minha-biblioteca");
-                  } else if (tab.id === "reading" && !pathname.startsWith("/leitura-atual")) {
-                    router.push("/leitura-atual");
-                  } else if (tab.id === "collections") {
-                    router.push("/minha-biblioteca?groupBy=collection");
-                  } else if (tab.id === "stats" && !pathname.startsWith("/dashboard")) {
-                    router.push("/dashboard");
-                  }
-                }}
-                className={cn(
-                  "relative flex-1 flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
-                  isActive
-                    ? "opacity-100"
-                    : "opacity-75 hover:opacity-100 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-                )}
-                aria-label={tab.label}
-              >
-                {/* Ícone inativo (oculto quando ativo, pois sobe para o círculo flutuante) */}
-                <div
-                  className={cn(
-                    "transition-all duration-200",
-                    isActive
-                      ? "opacity-0 -translate-y-2 pointer-events-none h-0"
-                      : "opacity-100 translate-y-0 h-5"
-                  )}
-                >
-                  <Icon className="w-5 h-5 stroke-[2]" />
-                  {tab.badge && tab.badge > 0 ? (
-                    <span className="absolute top-2 right-1/2 translate-x-3.5 h-3.5 min-w-[14px] px-1 rounded-full bg-[#007BFF] text-white text-[9px] font-bold flex items-center justify-center">
-                      {tab.badge}
-                    </span>
-                  ) : null}
-                </div>
-
-                {/* Rótulo de texto com transição suave */}
-                <span
-                  className={cn(
-                    "text-[10px] tracking-tight leading-none transition-all duration-200",
-                    isActive
-                      ? "font-bold text-[#007BFF] dark:text-[#38BDF8] translate-y-3"
-                      : "font-medium text-slate-500 dark:text-slate-400 mt-1"
-                  )}
-                >
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
+              className={cn(
+                "text-[10px] tracking-tight leading-none mt-1",
+                isReadingActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
+              )}
+            >
+              Lendo
+            </span>
+            {isReadingActive && (
+              <span className="w-1 h-1 rounded-full bg-[#007BFF] dark:bg-[#38BDF8] mt-0.5" />
+            )}
+          </button>
         </div>
       </div>
     </nav>

@@ -90,6 +90,7 @@ export function AppShell({
         currentTab={currentTab}
         onSelectTab={onSelectTab}
         readingCount={readingCount}
+        onAddBookClick={onAddBookClick}
       />
     </div>
   );

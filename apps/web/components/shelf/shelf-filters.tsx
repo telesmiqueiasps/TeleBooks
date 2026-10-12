@@ -21,6 +21,11 @@ import {
   Layers,
   Sparkles,
   Settings,
+  BookOpen,
+  BookmarkCheck,
+  CheckCircle2,
+  Clock,
+  Library,
 } from "lucide-react";
 import type {
   Author,
@@ -29,10 +34,21 @@ import type {
   Collection,
   UserTag,
 } from "@telebooks/types";
+import { cn } from "@telebooks/ui";
 import { PERSONAL_COLOR_PALETTE } from "./collections-manager-modal";
 
 export type ViewMode = "grid" | "list" | "bookshelf";
 export type GroupByOption = "none" | "collection" | "status" | "author" | "genre";
+
+export interface ShelfStatusCounts {
+  all?: number;
+  reading?: number;
+  want_to_read?: number;
+  read?: number;
+  favorite?: number;
+  paused?: number;
+  abandoned?: number;
+}
 
 export interface ShelfFilterValues {
   q: string;
@@ -61,6 +77,7 @@ export interface ShelfFiltersProps {
   tags?: UserTag[];
   onOpenCollectionsManager?: () => void;
   totalBooks?: number;
+  statusCounts?: ShelfStatusCounts;
 }
 
 export const SORT_OPTIONS = [
@@ -103,6 +120,7 @@ export function ShelfFilters({
   tags = [],
   onOpenCollectionsManager,
   totalBooks,
+  statusCounts,
 }: ShelfFiltersProps) {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
@@ -305,29 +323,91 @@ export function ShelfFilters({
         </div>
       </div>
 
-      {/* Pílulas de Status Rápidas (Scroll Horizontal) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar select-none">
-        {STATUS_PILLS.map((pill) => {
-          const isActive = filters.status === pill.id;
+      {/* Cards Quadrados de Status com Cantos Arredondados e Contador */}
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-3 w-full select-none">
+        {[
+          {
+            id: "all",
+            label: "Todos",
+            icon: Library,
+            count: statusCounts?.all ?? totalBooks ?? 0,
+            iconColor: "text-blue-500",
+          },
+          {
+            id: "reading",
+            label: "Lendo",
+            icon: BookOpen,
+            count: statusCounts?.reading ?? 0,
+            iconColor: "text-blue-500",
+          },
+          {
+            id: "want_to_read",
+            label: "Quero Ler",
+            icon: BookmarkCheck,
+            count: statusCounts?.want_to_read ?? 0,
+            iconColor: "text-amber-500",
+          },
+          {
+            id: "read",
+            label: "Lidos",
+            icon: CheckCircle2,
+            count: statusCounts?.read ?? 0,
+            iconColor: "text-emerald-500",
+          },
+          {
+            id: "favorite",
+            label: "Favoritos",
+            icon: Heart,
+            count: statusCounts?.favorite ?? 0,
+            iconColor: "text-rose-500 fill-current",
+          },
+        ].map((card) => {
+          const isActive = filters.status === card.id;
+          const Icon = card.icon;
+
           return (
             <button
-              key={pill.id}
+              key={card.id}
               type="button"
-              onClick={() => handleStatusChange(pill.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+              onClick={() => handleStatusChange(card.id)}
+              className={cn(
+                "relative flex flex-col items-center justify-between p-1.5 sm:p-2.5 rounded-2xl border transition-all duration-200 cursor-pointer aspect-square min-h-[66px] sm:min-h-[82px] active:scale-95 group focus:outline-none",
                 isActive
-                  ? "bg-[#007BFF] text-white shadow-sm shadow-[#007BFF]/25 font-semibold"
-                  : "bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-white shadow-2xs"
-              }`}
-            >
-              {pill.id === "favorite" && (
-                <Heart
-                  className={`w-3 h-3 inline mr-1 -mt-0.5 ${
-                    isActive ? "fill-current text-white" : "text-rose-500 fill-current"
-                  }`}
-                />
+                  ? "bg-gradient-to-tr from-[#006CEB] to-[#007BFF] border-[#006CEB] text-white shadow-md shadow-[#007BFF]/25 scale-[1.02]"
+                  : "bg-white dark:bg-[#0F172A] border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
               )}
-              <span>{pill.label}</span>
+            >
+              {/* Contador no cantinho superior direito */}
+              <span
+                className={cn(
+                  "absolute top-1 sm:top-1.5 right-1 sm:right-1.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold leading-none shadow-xs",
+                  isActive
+                    ? "bg-white text-[#006CEB]"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60"
+                )}
+              >
+                {card.count}
+              </span>
+
+              {/* Ícone no centro */}
+              <div className="flex-1 flex items-center justify-center pt-2 sm:pt-1">
+                <Icon
+                  className={cn(
+                    "w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110",
+                    isActive ? "text-white" : card.iconColor
+                  )}
+                />
+              </div>
+
+              {/* Rótulo na base */}
+              <span
+                className={cn(
+                  "text-[9px] sm:text-[11px] tracking-tight leading-none text-center font-semibold truncate max-w-full px-0.5 pb-0.5",
+                  isActive ? "text-white font-bold" : "text-slate-700 dark:text-slate-300"
+                )}
+              >
+                {card.label}
+              </span>
             </button>
           );
         })}
