@@ -141,6 +141,7 @@ export function BookSearchImportModal({
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedItem?.external_id, selectedItem?.isbn13]);
 
   const handleApplyManualCover = () => {

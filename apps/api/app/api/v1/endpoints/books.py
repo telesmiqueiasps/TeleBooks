@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_optional_user
 from app.core.security import CurrentUser
+from app.models.shelf import BookStatus
 from app.schemas.book_search import (
     BookImportConfirmRequest,
     BookImportConfirmResponse,
@@ -185,9 +186,18 @@ def get_book(
 )
 def create_book(
     book_in: BookCreate,
+    add_to_shelf: bool = Query(default=True, description="Adicionar automaticamente à estante do usuário"),
+    shelf_status: BookStatus = Query(default=BookStatus.WANT_TO_READ, description="Status inicial na estante"),
     db: Session = Depends(get_db),
+    current_user: CurrentUser | None = Depends(get_optional_user),
 ):
-    book = CatalogService.create_book(db=db, book_in=book_in)
+    book = CatalogService.create_book(
+        db=db,
+        book_in=book_in,
+        current_user=current_user,
+        add_to_shelf=add_to_shelf,
+        shelf_status=shelf_status,
+    )
     return BookRead.model_validate(book)
 
 

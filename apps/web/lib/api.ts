@@ -241,8 +241,19 @@ export const api = {
     return request<Book>(`/books/${id}`);
   },
 
-  async createBook(payload: BookCreateParams): Promise<Book> {
-    return request<Book>("/books", {
+  async createBook(
+    payload: BookCreateParams,
+    options?: { add_to_shelf?: boolean; shelf_status?: string }
+  ): Promise<Book> {
+    const searchParams = new URLSearchParams();
+    if (options?.add_to_shelf !== undefined) {
+      searchParams.set("add_to_shelf", String(options.add_to_shelf));
+    }
+    if (options?.shelf_status) {
+      searchParams.set("shelf_status", options.shelf_status);
+    }
+    const qs = searchParams.toString();
+    return request<Book>(`/books${qs ? `?${qs}` : ""}`, {
       method: "POST",
       body: JSON.stringify(payload),
     });

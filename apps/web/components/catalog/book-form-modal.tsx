@@ -13,7 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Modal, Button, Input } from "@telebooks/ui";
-import type { Author, Book, Genre, Publisher } from "@telebooks/types";
+import type { Author, Book, Genre, Publisher, BookStatus } from "@telebooks/types";
 import { api, BookCreateParams } from "../../lib/api";
 
 export interface BookFormModalProps {
@@ -39,6 +39,10 @@ export function BookFormModal({
   const [pageCount, setPageCount] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
+
+  // Estante Pessoal state
+  const [addToShelf, setAddToShelf] = useState(true);
+  const [shelfStatus, setShelfStatus] = useState<BookStatus>("want_to_read");
 
   // Cloudflare R2 Upload state
   const [coverMode, setCoverMode] = useState<"upload" | "url">("upload");
@@ -75,6 +79,8 @@ export function BookFormModal({
         setPageCount("");
         setCoverUrl("");
         setSelectedGenreIds([]);
+        setAddToShelf(true);
+        setShelfStatus("want_to_read");
       }
       setIsUploadingCover(false);
       setCoverUploadSuccess(false);
@@ -199,7 +205,22 @@ export function BookFormModal({
       if (bookToEdit) {
         savedBook = await api.updateBook(bookToEdit.id, payload);
       } else {
-        savedBook = await api.createBook(payload);
+        savedBook = await api.createBook(payload, {
+          add_to_shelf: addToShelf,
+          shelf_status: shelfStatus,
+        });
+
+        // Garantia de vinculação à estante pessoal do leitor
+        if (addToShelf) {
+          try {
+            await api.addToShelf({
+              book_id: savedBook.id,
+              status: shelfStatus,
+            });
+          } catch {
+            // Se já foi adicionado pelo backend, ignora
+          }
+        }
       }
       onSuccess?.(savedBook);
       onClose();
@@ -504,6 +525,54 @@ export function BookFormModal({
             className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-[#d97706]"
           />
         </div>
+
+        {/* Opções de Vinculação à Minha Biblioteca */}
+        {!bookToEdit && (
+          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 space-y-3">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={addToShelf}
+                onChange={(e) => setAddToShelf(e.target.checked)}
+                className="w-4 h-4 rounded text-[#007BFF] focus:ring-[#007BFF]"
+              />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Adicionar este livro diretamente à minha biblioteca
+              </span>
+            </label>
+
+            {addToShelf && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 pl-6">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Status de leitura inicial:
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(
+                    [
+                      { id: "want_to_read", label: "Quero Ler" },
+                      { id: "reading", label: "Lendo Agora" },
+                      { id: "read", label: "Já Lido" },
+                      { id: "paused", label: "Pausado" },
+                    ] as const
+                  ).map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setShelfStatus(st.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                        shelfStatus === st.id
+                          ? "bg-[#007BFF] text-white shadow-xs"
+                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Ações */}
         <div className="flex justify-end gap-2 pt-3 border-t border-neutral-200 dark:border-neutral-800">

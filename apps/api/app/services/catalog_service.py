@@ -1,10 +1,13 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError
+from app.core.security import CurrentUser
 from app.models.catalog import Author, Book, BookAuthor, BookGenre, Genre, Publisher
+from app.models.shelf import BookStatus, UserBook
 from app.schemas.catalog import (
     AuthorCreate,
     AuthorUpdate,
@@ -124,66 +127,162 @@ class CatalogService:
         return list(books), total
 
     @staticmethod
-    def create_book(db: Session, book_in: BookCreate) -> Book:
-        if book_in.isbn13:
+    def create_book(
+        db: Session,
+        book_in: BookCreate,
+        current_user: CurrentUser | None = None,
+        add_to_shelf: bool = True,
+        shelf_status: BookStatus = BookStatus.WANT_TO_READ,
+    ) -> Book:
+        clean_isbn13 = book_in.isbn13.replace("-", "").strip() if book_in.isbn13 else None
+        clean_isbn10 = book_in.isbn10.replace("-", "").strip() if book_in.isbn10 else None
+
+        if clean_isbn13 and len(clean_isbn13) != 13:
+            if len(clean_isbn13) == 10 and not clean_isbn10:
+                clean_isbn10 = clean_isbn13
+            clean_isbn13 = None
+
+        if clean_isbn10 and len(clean_isbn10) != 10:
+            if len(clean_isbn10) == 13 and not clean_isbn13:
+                clean_isbn13 = clean_isbn10
+            clean_isbn10 = None
+
+        existing: Book | None = None
+        if clean_isbn13:
             existing = db.execute(
-                select(Book).where(Book.isbn13 == book_in.isbn13)
-            ).scalar_one_or_none()
-            if existing:
-                raise ConflictError(
-                    f"Já existe um livro cadastrado com o ISBN13 '{book_in.isbn13}'."
+                select(Book)
+                .options(
+                    selectinload(Book.publisher),
+                    selectinload(Book.authors),
+                    selectinload(Book.genres),
                 )
+                .where(Book.isbn13 == clean_isbn13)
+            ).scalar_one_or_none()
+        if not existing and clean_isbn10:
+            existing = db.execute(
+                select(Book)
+                .options(
+                    selectinload(Book.publisher),
+                    selectinload(Book.authors),
+                    selectinload(Book.genres),
+                )
+                .where(Book.isbn10 == clean_isbn10)
+            ).scalar_one_or_none()
 
-        book_data = book_in.model_dump(
-            exclude={"author_ids", "author_names", "genre_ids", "publisher_name"}
-        )
+        if existing:
+            # Reutiliza o livro existente no catálogo global e enriquece campos vazios
+            book = existing
+            modified = False
+            if not book.cover_url and book_in.cover_url:
+                book.cover_url = book_in.cover_url
+                book.thumbnail_url = book_in.thumbnail_url or book_in.cover_url
+                modified = True
+            if not book.description and book_in.description:
+                book.description = book_in.description
+                modified = True
+            if not book.page_count and book_in.page_count:
+                book.page_count = book_in.page_count
+                modified = True
+            if not book.publication_date and book_in.publication_date:
+                book.publication_date = book_in.publication_date
+                modified = True
+            if not book.isbn13 and clean_isbn13:
+                book.isbn13 = clean_isbn13
+                modified = True
+            if not book.isbn10 and clean_isbn10:
+                book.isbn10 = clean_isbn10
+                modified = True
+            if modified:
+                db.flush()
+        else:
+            book_data = book_in.model_dump(
+                exclude={"author_ids", "author_names", "genre_ids", "publisher_name"}
+            )
+            if clean_isbn13:
+                book_data["isbn13"] = clean_isbn13
+            if clean_isbn10:
+                book_data["isbn10"] = clean_isbn10
 
-        # Resolução de Editora por nome se não fornecido publisher_id
-        if not book_data.get("publisher_id") and book_in.publisher_name:
-            pub_name = book_in.publisher_name.strip()
-            if pub_name:
-                pub = db.execute(
-                    select(Publisher).where(func.lower(Publisher.name) == pub_name.lower())
-                ).scalar_one_or_none()
-                if not pub:
-                    pub = Publisher(name=pub_name)
-                    db.add(pub)
-                    db.flush()
-                book_data["publisher_id"] = pub.id
+            # Resolução de Editora por nome se não fornecido publisher_id
+            if not book_data.get("publisher_id") and book_in.publisher_name:
+                pub_name = book_in.publisher_name.strip()
+                if pub_name:
+                    pub = db.execute(
+                        select(Publisher).where(func.lower(Publisher.name) == pub_name.lower())
+                    ).scalar_one_or_none()
+                    if not pub:
+                        pub = Publisher(name=pub_name)
+                        db.add(pub)
+                        db.flush()
+                    book_data["publisher_id"] = pub.id
 
-        book = Book(**book_data)
-        db.add(book)
-        db.flush()
+            book = Book(**book_data)
+            db.add(book)
+            db.flush()
 
-        # Resolução de Autores (por ID e/ou por Nome)
-        resolved_author_ids: list[uuid.UUID] = (
-            list(book_in.author_ids) if book_in.author_ids else []
-        )
-        if book_in.author_names:
-            for a_name in book_in.author_names:
-                cleaned_name = a_name.strip()
-                if not cleaned_name:
-                    continue
-                author = db.execute(
-                    select(Author).where(func.lower(Author.name) == cleaned_name.lower())
-                ).scalar_one_or_none()
-                if not author:
-                    author = Author(name=cleaned_name)
-                    db.add(author)
-                    db.flush()
-                if author.id not in resolved_author_ids:
-                    resolved_author_ids.append(author.id)
+            # Resolução de Autores (por ID e/ou por Nome)
+            resolved_author_ids: list[uuid.UUID] = (
+                list(book_in.author_ids) if book_in.author_ids else []
+            )
+            if book_in.author_names:
+                for a_name in book_in.author_names:
+                    cleaned_name = a_name.strip()
+                    if not cleaned_name:
+                        continue
+                    author = db.execute(
+                        select(Author).where(func.lower(Author.name) == cleaned_name.lower())
+                    ).scalar_one_or_none()
+                    if not author:
+                        author = Author(name=cleaned_name)
+                        db.add(author)
+                        db.flush()
+                    if author.id not in resolved_author_ids:
+                        resolved_author_ids.append(author.id)
 
-        if resolved_author_ids:
-            for i, author_id in enumerate(resolved_author_ids):
-                db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
+            if resolved_author_ids:
+                for i, author_id in enumerate(resolved_author_ids):
+                    db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
 
-        if book_in.genre_ids:
-            seen_genre_ids: set[uuid.UUID] = set()
-            for genre_id in book_in.genre_ids:
-                if genre_id not in seen_genre_ids:
-                    seen_genre_ids.add(genre_id)
-                    db.add(BookGenre(book_id=book.id, genre_id=genre_id))
+            if book_in.genre_ids:
+                seen_genre_ids: set[uuid.UUID] = set()
+                for genre_id in book_in.genre_ids:
+                    if genre_id not in seen_genre_ids:
+                        seen_genre_ids.add(genre_id)
+                        db.add(BookGenre(book_id=book.id, genre_id=genre_id))
+
+        # Adiciona à estante pessoal do usuário se solicitado e usuário logado
+        if add_to_shelf and current_user:
+            user_id = (
+                uuid.UUID(str(current_user.id))
+                if isinstance(current_user.id, str)
+                else current_user.id
+            )
+            existing_user_book = db.execute(
+                select(UserBook).where(
+                    UserBook.user_id == user_id,
+                    UserBook.book_id == book.id,
+                )
+            ).scalar_one_or_none()
+
+            if not existing_user_book:
+                target_status = BookStatus.WANT_TO_READ
+                if shelf_status:
+                    if isinstance(shelf_status, BookStatus):
+                        target_status = shelf_status
+                    else:
+                        try:
+                            target_status = BookStatus(str(shelf_status))
+                        except ValueError:
+                            target_status = BookStatus.WANT_TO_READ
+
+                new_user_book = UserBook(
+                    user_id=user_id,
+                    book_id=book.id,
+                    status=target_status,
+                    started_at=datetime.now(UTC) if target_status == BookStatus.READING else None,
+                    finished_at=datetime.now(UTC) if target_status == BookStatus.READ else None,
+                )
+                db.add(new_user_book)
 
         db.commit()
         return CatalogService.get_book_by_id(db, book.id)

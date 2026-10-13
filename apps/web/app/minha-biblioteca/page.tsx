@@ -72,7 +72,7 @@ interface BookGroup {
   books: UserBook[];
 }
 
-export default function MinhaBibliotecaPage() {
+function MinhaBibliotecaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: isAuthLoading } = useAuth();
@@ -1016,5 +1016,19 @@ export default function MinhaBibliotecaPage() {
         }}
       />
     </AppShell>
+  );
+}
+
+export default function MinhaBibliotecaPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen bg-[#EDF3FA] dark:bg-[#060B14] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#007BFF]" />
+        </div>
+      }
+    >
+      <MinhaBibliotecaContent />
+    </React.Suspense>
   );
 }

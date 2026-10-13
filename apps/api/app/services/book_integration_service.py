@@ -82,6 +82,133 @@ class BookIntegrationService:
                 pass
         return None
 
+    def _search_local_database(
+        self,
+        db: Session,
+        isbn: str | None = None,
+        query: str | None = None,
+        title: str | None = None,
+        author: str | None = None,
+        limit: int = 10,
+    ) -> list[Book]:
+        """
+        Busca livros no catálogo interno do TeleBooks.
+        Permite que livros criados manualmente por outros usuários ou salvos no sistema
+        sejam imediatamente localizados por ISBN, título ou autor.
+        """
+        books: list[Book] = []
+        clean_isbn = self.normalize_isbn(isbn)
+
+        # 1. Busca por ISBN (10 ou 13 dígitos)
+        if clean_isbn and len(clean_isbn) in (10, 13):
+            stmt = (
+                select(Book)
+                .options(
+                    selectinload(Book.publisher),
+                    selectinload(Book.authors),
+                    selectinload(Book.genres),
+                )
+                .where(or_(Book.isbn13 == clean_isbn, Book.isbn10 == clean_isbn))
+            )
+            found = db.execute(stmt).scalars().all()
+            if found:
+                books.extend(found)
+
+        # 2. Busca por título / autor / query textual
+        conditions = []
+        if title and title.strip():
+            clean_t = title.strip()
+            conditions.append(Book.title.ilike(f"%{clean_t}%"))
+        if query and query.strip():
+            clean_q = query.strip()
+            clean_q_isbn = self.normalize_isbn(clean_q)
+            if clean_q_isbn and len(clean_q_isbn) in (10, 13):
+                conditions.append(or_(Book.isbn13 == clean_q_isbn, Book.isbn10 == clean_q_isbn))
+            else:
+                conditions.append(
+                    or_(
+                        Book.title.ilike(f"%{clean_q}%"),
+                        Book.description.ilike(f"%{clean_q}%"),
+                    )
+                )
+
+        if conditions or (author and author.strip()):
+            stmt = (
+                select(Book)
+                .options(
+                    selectinload(Book.publisher),
+                    selectinload(Book.authors),
+                    selectinload(Book.genres),
+                )
+            )
+            if author and author.strip():
+                clean_a = author.strip()
+                stmt = stmt.join(Book.authors).where(Author.name.ilike(f"%{clean_a}%"))
+            if conditions:
+                stmt = stmt.where(or_(*conditions))
+
+            stmt = stmt.limit(limit)
+            found = db.execute(stmt).scalars().all()
+            for b in found:
+                if b.id not in [x.id for x in books]:
+                    books.append(b)
+
+        return books
+
+    def _book_to_external_item(
+        self,
+        book: Book,
+        db: Session,
+        current_user: CurrentUser | None = None,
+    ) -> ExternalBookItem:
+        authors = [a.name for a in book.authors] if book.authors else []
+        genres = [g.name for g in book.genres] if book.genres else []
+        candidate_covers: list[str] = []
+        if book.cover_url:
+            candidate_covers.append(book.cover_url)
+        if book.thumbnail_url and book.thumbnail_url not in candidate_covers:
+            candidate_covers.append(book.thumbnail_url)
+
+        item = ExternalBookItem(
+            provider="telebooks",
+            external_id=str(book.id),
+            title=book.title,
+            subtitle=book.subtitle,
+            authors=authors,
+            publisher=book.publisher.name if book.publisher else None,
+            published_date=str(book.publication_date) if book.publication_date else None,
+            description=book.description,
+            isbn10=book.isbn10,
+            isbn13=book.isbn13,
+            page_count=book.page_count,
+            language="pt-BR",
+            categories=genres,
+            cover_url=book.cover_url,
+            thumbnail_url=book.thumbnail_url or book.cover_url,
+            candidate_covers=candidate_covers,
+            is_already_in_catalog=True,
+            existing_book_id=book.id,
+        )
+
+        if current_user:
+            user_uuid = (
+                uuid.UUID(str(current_user.id))
+                if isinstance(current_user.id, str)
+                else current_user.id
+            )
+            user_book = db.execute(
+                select(UserBook).where(
+                    UserBook.user_id == user_uuid,
+                    UserBook.book_id == book.id,
+                )
+            ).scalar_one_or_none()
+            if user_book:
+                item.is_on_user_shelf = True
+                item.user_book_id = user_book.id
+                item.user_book_status = user_book.status.value
+
+        return item
+
     async def search_external_books(
         self,
         db: Session,
@@ -94,10 +221,9 @@ class BookIntegrationService:
         current_user: CurrentUser | None = None,
     ) -> list[ExternalBookItem]:
         """
-        Pesquisa livros externamente e correlaciona com o catálogo local e a estante do leitor.
-        Para buscas por ISBN, prioriza a BrasilAPI (CBL - Câmara Brasileira do Livro)
-        para resgatar a edição brasileira oficial.
-        Aplica fallback automático entre provedores em cascata se nada for localizado.
+        Pesquisa livros no catálogo interno do TeleBooks e em provedores externos.
+        Garante que livros cadastrados manualmente por qualquer usuário sejam imediatamente
+        encontrados por ISBN, título ou autor por todos os usuários do sistema.
         """
         # 1. Identifica se a busca possui código ISBN válido (10 ou 13 dígitos)
         clean_isbn_target: str | None = None
@@ -106,8 +232,6 @@ class BookIntegrationService:
             if len(clean_raw_isbn) in (10, 13):
                 clean_isbn_target = clean_raw_isbn
             else:
-                # Código numérico não é um ISBN de 10 ou 13 dígitos (ex: UPC de 12 dígitos)
-                # Não envia para filtro estrito de ISBN; se query não tiver sido fornecida, pesquisa como texto
                 if not query:
                     query = isbn
         elif query:
@@ -117,16 +241,40 @@ class BookIntegrationService:
 
         results: list[ExternalBookItem] = []
 
-        # 2. Se houver ISBN válido (10 ou 13 dígitos), consulta primeiro a BrasilAPI
-        if clean_isbn_target and (not provider_name or provider_name == "brasil_api"):
+        # 2. Busca prioritária no catálogo global do TeleBooks (incluindo manuais)
+        local_books = self._search_local_database(
+            db=db,
+            isbn=clean_isbn_target or isbn,
+            query=query,
+            title=title,
+            author=author,
+            limit=limit,
+        )
+        for lb in local_books:
+            results.append(self._book_to_external_item(lb, db=db, current_user=current_user))
+
+        # Já temos ISBNs encontrados localmente para evitar duplicar
+        found_isbns = {
+            self.normalize_isbn(r.isbn13) for r in results if r.isbn13
+        } | {
+            self.normalize_isbn(r.isbn10) for r in results if r.isbn10
+        }
+
+        # 3. Se houver ISBN válido e ainda não encontrado localmente, consulta BrasilAPI
+        if (
+            clean_isbn_target
+            and clean_isbn_target not in found_isbns
+            and (not provider_name or provider_name == "brasil_api")
+        ):
             brasil_provider = self._providers["brasil_api"]
             cbl_item = await brasil_provider.get_by_isbn(clean_isbn_target)
             if cbl_item:
                 results.append(cbl_item)
+                if cbl_item.isbn13:
+                    found_isbns.add(self.normalize_isbn(cbl_item.isbn13))
 
-        # 3. Se não houver resultados (ou a busca for por título/autor/termo textual):
-        if not results:
-            # Constrói sequência de consulta e fallback em cascata
+        # 4. Se ainda não atingiu o limite ou busca por termo textual/fallback externo:
+        if len(results) < limit and not (clean_isbn_target and len(results) > 0):
             search_sequence: list[str] = []
             if provider_name and provider_name in self._providers:
                 search_sequence.append(provider_name)
@@ -138,7 +286,6 @@ class BookIntegrationService:
 
             for p_name in search_sequence:
                 provider = self._providers[p_name]
-                # A BrasilAPI só busca por ISBN; se não houver ISBN, pula para o próximo provedor
                 if p_name == "brasil_api" and not clean_isbn_target:
                     continue
 
@@ -148,11 +295,21 @@ class BookIntegrationService:
                         title=title,
                         author=author,
                         isbn=clean_isbn_target,
-                        limit=limit,
+                        limit=limit - len(results),
                     )
                     if prov_results:
-                        results = prov_results
-                        break
+                        for pr in prov_results:
+                            pr_13 = self.normalize_isbn(pr.isbn13)
+                            pr_10 = self.normalize_isbn(pr.isbn10)
+                            if (pr_13 and pr_13 in found_isbns) or (pr_10 and pr_10 in found_isbns):
+                                continue
+                            results.append(pr)
+                            if pr_13:
+                                found_isbns.add(pr_13)
+                            if pr_10:
+                                found_isbns.add(pr_10)
+                        if len(results) >= limit:
+                            break
                 except Exception as exc:
                     logger.warning("Falha ao consultar provedor bibliográfico '%s': %s", p_name, exc)
                     continue
@@ -160,7 +317,7 @@ class BookIntegrationService:
         if not results:
             return []
 
-        # Correlaciona com o catálogo local e estante
+        # Correlaciona itens externos restantes com o catálogo local e estante
         return self._correlate_with_local_database(
             db=db,
             items=results,
@@ -177,7 +334,13 @@ class BookIntegrationService:
         Cruza os resultados com a tabela 'books' (por ISBN13, ISBN10 ou Título+Autor)
         e com 'user_books' para informar se o livro já existe no catálogo ou na estante.
         """
-        user_id = current_user.id if current_user else None
+        user_uuid: uuid.UUID | None = None
+        if current_user:
+            user_uuid = (
+                uuid.UUID(str(current_user.id))
+                if isinstance(current_user.id, str)
+                else current_user.id
+            )
 
         for item in items:
             clean_13 = self.normalize_isbn(item.isbn13)
@@ -221,10 +384,10 @@ class BookIntegrationService:
                         item.candidate_covers.insert(0, matched_book.cover_url)
 
                 # Verifica se está na estante do usuário
-                if user_id:
+                if user_uuid:
                     user_book = db.execute(
                         select(UserBook).where(
-                            UserBook.user_id == user_id,
+                            UserBook.user_id == user_uuid,
                             UserBook.book_id == matched_book.id,
                         )
                     ).scalar_one_or_none()
@@ -489,7 +652,11 @@ class BookIntegrationService:
         user_book_id: uuid.UUID | None = None
 
         if payload.add_to_shelf and current_user:
-            user_id = current_user.id
+            user_id = (
+                uuid.UUID(str(current_user.id))
+                if isinstance(current_user.id, str)
+                else current_user.id
+            )
             existing_user_book = db.execute(
                 select(UserBook).where(
                     UserBook.user_id == user_id,
