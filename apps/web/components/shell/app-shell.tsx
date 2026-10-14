@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
 import { useAuth } from "../auth/auth-provider";
@@ -63,29 +62,24 @@ export function AppShell({
   const readingCount = controlledReadingCount ?? fetchedCounts.readingCount;
 
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
-      {/* Desktop Sidebar */}
-      <Sidebar
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Faixa Superior com Logo, 04 Abas Exclusivas e Ações */}
+      <Topbar
         currentTab={currentTab}
         onSelectTab={onSelectTab}
         bookCount={bookCount}
         readingCount={readingCount}
+        onAddBookClick={onAddBookClick}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar
-          onAddBookClick={onAddBookClick}
-          searchQuery={searchQuery}
-          onSearchChange={onSearchChange}
-        />
+      {/* Área Principal de Conteúdo em Largura Completa Centralizada */}
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-28 sm:pb-32 md:pb-12">
+        {children}
+      </main>
 
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-28 sm:pb-32 md:pb-12">
-          {children}
-        </main>
-      </div>
-
-      {/* Mobile Bottom Navigation */}
+      {/* Navegação Mobile Inferior */}
       <BottomNav
         currentTab={currentTab}
         onSelectTab={onSelectTab}

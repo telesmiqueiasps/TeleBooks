@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
   Sun,
@@ -14,6 +14,12 @@ import {
   Loader2,
   Menu,
   LogIn,
+  Home,
+  Library,
+  Users,
+  BookmarkCheck,
+  Plus,
+  Sparkles,
 } from "lucide-react";
 import {
   Dropdown,
@@ -21,22 +27,33 @@ import {
   DropdownMenu,
   DropdownItem,
   DropdownSeparator,
+  cn,
 } from "@telebooks/ui";
 import { useTheme } from "../theme-provider";
 import { useAuth } from "../auth/auth-provider";
 import { Logo } from "../ui/logo";
 
 export interface TopbarProps {
+  currentTab?: string;
+  onSelectTab?: (tab: string) => void;
+  bookCount?: number;
+  readingCount?: number;
   onAddBookClick?: () => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export function Topbar({
-  searchQuery,
-  onSearchChange,
+  currentTab = "home",
+  onSelectTab,
+  bookCount,
+  readingCount,
+  onAddBookClick,
+  searchQuery = "",
+  onSearchChange = () => {},
 }: TopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { user, profile, signOut } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -53,152 +70,288 @@ export function Topbar({
     profile?.username || user?.user_metadata?.username || "leitor";
   const initials = displayName.substring(0, 2).toUpperCase();
 
+  // Estados ativos das 04 abas principais
+  const isHomeActive = pathname === "/" && (currentTab === "home" || !currentTab);
+  const isLibraryActive =
+    pathname.startsWith("/minha-biblioteca") ||
+    pathname.startsWith("/livros") ||
+    currentTab === "library";
+  const isCommunityActive =
+    pathname.startsWith("/comunidade") || currentTab === "community";
+  const isReadingActive =
+    pathname.startsWith("/leitura-atual") || currentTab === "reading";
+
+  const handleTabClick = (tabId: string, route: string) => {
+    if (onSelectTab) {
+      onSelectTab(tabId);
+    }
+    if (pathname !== route) {
+      router.push(route);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 sm:gap-4 border-b border-[#0062CC]/60 bg-gradient-to-r from-[#006CEB] via-[#007BFF] to-[#0057C2] text-white px-3 sm:px-8 py-2.5 sm:py-3 shadow-md select-none">
-      {/* Brand Logo & Name (Idêntico à tela de login) */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 transition-transform hover:scale-[1.02] focus:outline-none shrink-0"
-      >
-        <Logo variant="icon" size="sm" />
-        <span className="font-display font-extrabold text-lg sm:text-xl tracking-tight text-white">
-          Tele<span className="text-blue-200">Books</span>
-        </span>
-      </Link>
-
-      {/* Global Search Input */}
-      <div className="flex-1 max-w-md relative hidden sm:block">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-200/90 pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Buscar livros, autores, editoras..."
-          className="w-full rounded-full border border-white/20 bg-white/15 focus:bg-white text-xs sm:text-sm text-white focus:text-[#0F172A] placeholder:text-blue-100/75 focus:placeholder:text-[#94A3B8] pl-10 pr-12 py-2 transition-all focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
-        />
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-0.5 pointer-events-none">
-          <kbd className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
-            ⌘K
-          </kbd>
-        </div>
-      </div>
-
-      {/* Right Actions */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5">
-        {/* Notification Bell */}
-        <button
-          type="button"
-          className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
-          title="Notificações"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-400" />
-        </button>
-
-        {/* Quick Theme Toggle */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
-          aria-label="Alternar tema"
-          title={`Tema: ${theme === "dark" ? "Escuro" : "Claro"}`}
-        >
-          {theme === "dark" ? (
-            <Moon className="h-4 w-4 text-blue-200" />
-          ) : (
-            <Sun className="h-4 w-4 text-amber-300" />
-          )}
-        </button>
-
-        {/* Avatar Capsule (discreto no desktop) */}
-        {user && (
-          <div
-            onClick={() => router.push("/perfil")}
-            role="button"
-            tabIndex={0}
-            className="hidden md:flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 transition-colors cursor-pointer"
-            title="Ver Meu Perfil"
+    <header className="sticky top-0 z-40 w-full border-b border-[#0062CC]/60 bg-gradient-to-r from-[#006CEB] via-[#007BFF] to-[#0057C2] text-white shadow-md select-none transition-all">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4 lg:gap-6">
+        
+        {/* Lado Esquerdo: Logo e Marca TeleBooks */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href="/"
+            onClick={() => onSelectTab && onSelectTab("home")}
+            className="inline-flex items-center gap-2.5 transition-transform hover:scale-[1.02] focus:outline-none shrink-0"
           >
-            <div className="h-7 w-7 rounded-full bg-white text-[#006CEB] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-              {initials}
-            </div>
-            <span className="text-xs font-semibold text-white max-w-[100px] truncate">
-              {displayName.split(" ")[0]}
+            <Logo variant="icon" size="sm" />
+            <span className="font-display font-extrabold text-lg sm:text-xl tracking-tight text-white">
+              Tele<span className="text-blue-200">Books</span>
             </span>
-          </div>
-        )}
+          </Link>
+        </div>
 
-        {/* Botão de 3 Barrinhas (Menu / Mais Opções) */}
-        <Dropdown>
-          <DropdownTrigger>
+        {/* Centro / Desktop: As 04 Abas Exclusivas do Sistema */}
+        <nav
+          aria-label="Navegação Principal"
+          className="hidden md:flex items-center gap-1 bg-black/15 dark:bg-black/25 p-1 rounded-full border border-white/20 backdrop-blur-md shadow-inner shrink-0"
+        >
+          {/* 1. Aba Início */}
+          <button
+            type="button"
+            onClick={() => handleTabClick("home", "/")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
+              isHomeActive
+                ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
+                : "text-white/85 hover:text-white hover:bg-white/15"
+            )}
+            title="Página Inicial e Recomendações"
+          >
+            <Home className={cn("h-4 w-4", isHomeActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span>Início</span>
+          </button>
+
+          {/* 2. Aba Biblioteca */}
+          <button
+            type="button"
+            onClick={() => handleTabClick("library", "/minha-biblioteca")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
+              isLibraryActive
+                ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
+                : "text-white/85 hover:text-white hover:bg-white/15"
+            )}
+            title="Minha Biblioteca e Estante Pessoal"
+          >
+            <Library className={cn("h-4 w-4", isLibraryActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span>Biblioteca</span>
+            {bookCount !== undefined && bookCount > 0 && (
+              <span
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none tracking-tight",
+                  isLibraryActive
+                    ? "bg-blue-100 text-[#006CEB]"
+                    : "bg-white/20 text-white"
+                )}
+              >
+                {bookCount}
+              </span>
+            )}
+          </button>
+
+          {/* 3. Aba Comunidade */}
+          <button
+            type="button"
+            onClick={() => handleTabClick("community", "/comunidade")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
+              isCommunityActive
+                ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
+                : "text-white/85 hover:text-white hover:bg-white/15"
+            )}
+            title="Comunidade de Leitores (Em Desenvolvimento)"
+          >
+            <Users className={cn("h-4 w-4", isCommunityActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span>Comunidade</span>
+            <span
+              className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider leading-none",
+                isCommunityActive
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-amber-400 text-slate-900"
+              )}
+            >
+              Em Breve
+            </span>
+          </button>
+
+          {/* 4. Aba Lendo */}
+          <button
+            type="button"
+            onClick={() => handleTabClick("reading", "/leitura-atual")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
+              isReadingActive
+                ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
+                : "text-white/85 hover:text-white hover:bg-white/15"
+            )}
+            title="Leituras em Andamento"
+          >
+            <BookmarkCheck className={cn("h-4 w-4", isReadingActive ? "stroke-[2.5]" : "stroke-[2]")} />
+            <span>Lendo</span>
+            {readingCount !== undefined && readingCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none bg-rose-500 text-white animate-pulse">
+                {readingCount}
+              </span>
+            )}
+          </button>
+        </nav>
+
+        {/* Global Search Input (Desktop expandido ou Tablet compacto) */}
+        <div className="flex-1 max-w-xs relative hidden lg:block">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-200/90 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Buscar títulos, autores..."
+            className="w-full rounded-full border border-white/20 bg-white/15 focus:bg-white text-xs sm:text-sm text-white focus:text-[#0F172A] placeholder:text-blue-100/75 focus:placeholder:text-[#94A3B8] pl-9 pr-11 py-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden xl:flex items-center pointer-events-none">
+            <kbd className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
+              ⌘K
+            </kbd>
+          </div>
+        </div>
+
+        {/* Lado Direito: Ações de Usuário, Tema e Menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Botão de Adicionar Livro (se fornecido callback) */}
+          {onAddBookClick && (
             <button
               type="button"
-              aria-label="Mais opções e conta"
-              title="Menu"
-              className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all active:scale-95 cursor-pointer shadow-sm"
+              onClick={onAddBookClick}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#006CEB] hover:bg-blue-50 text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+              title="Cadastrar Novo Livro"
             >
-              <Menu className="h-5 w-5 stroke-[2.2]" />
+              <Plus className="h-3.5 w-3.5 stroke-[3]" />
+              <span>Adicionar</span>
             </button>
-          </DropdownTrigger>
-          <DropdownMenu align="right" className="top-full mt-2 w-56">
-            {user ? (
-              <>
-                <div className="px-3 py-2 border-b border-[#E2E8F0] dark:border-[#1E293B]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                      {initials}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
-                        {displayName}
-                      </p>
-                      <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
-                        @{displayUsername}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-[#94A3B8] dark:text-[#64748B] truncate">
-                    {user.email}
-                  </p>
-                </div>
+          )}
 
-                <DropdownItem
-                  icon={<User className="h-4 w-4 text-[#007BFF]" />}
-                  onClick={() => router.push("/perfil")}
-                >
-                  Meu Perfil
-                </DropdownItem>
-                <DropdownItem
-                  icon={<Settings className="h-4 w-4 text-slate-500" />}
-                  onClick={() => router.push("/perfil")}
-                >
-                  Configurações
-                </DropdownItem>
-                <DropdownSeparator />
-                <DropdownItem
-                  danger
-                  icon={
-                    isLoggingOut ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <LogOut className="h-4 w-4" />
-                    )
-                  }
-                  onClick={handleSignOut}
-                >
-                  Sair da Conta
-                </DropdownItem>
-              </>
+          {/* Notificações */}
+          <button
+            type="button"
+            className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
+            title="Notificações"
+          >
+            <Bell className="h-4 w-4" />
+            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-400" />
+          </button>
+
+          {/* Alternador de Tema Claro / Escuro */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
+            aria-label="Alternar tema"
+            title={`Tema: ${theme === "dark" ? "Escuro" : "Claro"}`}
+          >
+            {theme === "dark" ? (
+              <Moon className="h-4 w-4 text-blue-200" />
             ) : (
-              <DropdownItem
-                icon={<LogIn className="h-4 w-4 text-[#007BFF]" />}
-                onClick={() => router.push("/login")}
-              >
-                Entrar / Cadastrar
-              </DropdownItem>
+              <Sun className="h-4 w-4 text-amber-300" />
             )}
-          </DropdownMenu>
-        </Dropdown>
+          </button>
+
+          {/* Cápsula de Avatar do Usuário */}
+          {user && (
+            <div
+              onClick={() => router.push("/perfil")}
+              role="button"
+              tabIndex={0}
+              className="hidden md:flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 transition-colors cursor-pointer"
+              title="Ver Meu Perfil"
+            >
+              <div className="h-7 w-7 rounded-full bg-white text-[#006CEB] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                {initials}
+              </div>
+              <span className="text-xs font-semibold text-white max-w-[100px] truncate">
+                {displayName.split(" ")[0]}
+              </span>
+            </div>
+          )}
+
+          {/* Menu Dropdown de Opções / Conta */}
+          <Dropdown>
+            <DropdownTrigger>
+              <button
+                type="button"
+                aria-label="Mais opções e conta"
+                title="Menu"
+                className="h-9 w-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all active:scale-95 cursor-pointer shadow-sm"
+              >
+                <Menu className="h-5 w-5 stroke-[2.2]" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu align="right" className="top-full mt-2 w-56">
+              {user ? (
+                <>
+                  <div className="px-3 py-2 border-b border-[#E2E8F0] dark:border-[#1E293B]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] truncate">
+                          {displayName}
+                        </p>
+                        <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] truncate">
+                          @{displayUsername}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-[#94A3B8] dark:text-[#64748B] truncate">
+                      {user.email}
+                    </p>
+                  </div>
+
+                  <DropdownItem
+                    icon={<User className="h-4 w-4 text-[#007BFF]" />}
+                    onClick={() => router.push("/perfil")}
+                  >
+                    Meu Perfil
+                  </DropdownItem>
+                  <DropdownItem
+                    icon={<Settings className="h-4 w-4 text-slate-500" />}
+                    onClick={() => router.push("/perfil")}
+                  >
+                    Configurações
+                  </DropdownItem>
+                  <DropdownSeparator />
+                  <DropdownItem
+                    danger
+                    icon={
+                      isLoggingOut ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <LogOut className="h-4 w-4" />
+                      )
+                    }
+                    onClick={handleSignOut}
+                  >
+                    Sair da Conta
+                  </DropdownItem>
+                </>
+              ) : (
+                <DropdownItem
+                  icon={<LogIn className="h-4 w-4 text-[#007BFF]" />}
+                  onClick={() => router.push("/login")}
+                >
+                  Entrar / Cadastrar
+                </DropdownItem>
+              )}
+            </DropdownMenu>
+          </Dropdown>
+        </div>
       </div>
     </header>
   );
