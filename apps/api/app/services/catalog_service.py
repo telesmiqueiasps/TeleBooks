@@ -417,7 +417,16 @@ class CatalogService:
 
     @staticmethod
     def create_author(db: Session, author_in: AuthorCreate) -> Author:
-        author = Author(**author_in.model_dump())
+        norm_name = author_in.name.strip()
+        existing = db.execute(
+            select(Author).where(func.lower(func.trim(Author.name)) == norm_name.lower())
+        ).scalar_one_or_none()
+        if existing:
+            raise ConflictError(f"O autor '{author_in.name}' já está cadastrado.")
+
+        author_data = author_in.model_dump()
+        author_data["name"] = norm_name
+        author = Author(**author_data)
         db.add(author)
         db.commit()
         db.refresh(author)
@@ -426,7 +435,23 @@ class CatalogService:
     @staticmethod
     def update_author(db: Session, author_id: uuid.UUID, author_update: AuthorUpdate) -> Author:
         author = CatalogService.get_author_by_id(db, author_id)
-        for field, value in author_update.model_dump(exclude_unset=True).items():
+        update_dict = author_update.model_dump(exclude_unset=True)
+
+        if "name" in update_dict:
+            norm_name = update_dict["name"].strip()
+            existing = db.execute(
+                select(Author).where(
+                    func.lower(func.trim(Author.name)) == norm_name.lower(),
+                    Author.id != author_id,
+                )
+            ).scalar_one_or_none()
+            if existing:
+                raise ConflictError(
+                    f"Já existe um autor cadastrado com o nome '{update_dict['name']}'."
+                )
+            update_dict["name"] = norm_name
+
+        for field, value in update_dict.items():
             setattr(author, field, value)
         db.commit()
         db.refresh(author)
@@ -474,13 +499,16 @@ class CatalogService:
 
     @staticmethod
     def create_publisher(db: Session, pub_in: PublisherCreate) -> Publisher:
+        norm_name = pub_in.name.strip()
         existing = db.execute(
-            select(Publisher).where(Publisher.name == pub_in.name)
+            select(Publisher).where(func.lower(func.trim(Publisher.name)) == norm_name.lower())
         ).scalar_one_or_none()
         if existing:
             raise ConflictError(f"A editora '{pub_in.name}' já está cadastrada.")
 
-        publisher = Publisher(**pub_in.model_dump())
+        pub_data = pub_in.model_dump()
+        pub_data["name"] = norm_name
+        publisher = Publisher(**pub_data)
         db.add(publisher)
         db.commit()
         db.refresh(publisher)
@@ -493,16 +521,19 @@ class CatalogService:
         publisher = CatalogService.get_publisher_by_id(db, publisher_id)
         update_dict = pub_update.model_dump(exclude_unset=True)
 
-        if "name" in update_dict and update_dict["name"] != publisher.name:
+        if "name" in update_dict:
+            norm_name = update_dict["name"].strip()
             existing = db.execute(
                 select(Publisher).where(
-                    Publisher.name == update_dict["name"], Publisher.id != publisher_id
+                    func.lower(func.trim(Publisher.name)) == norm_name.lower(),
+                    Publisher.id != publisher_id,
                 )
             ).scalar_one_or_none()
             if existing:
                 raise ConflictError(
                     f"Já existe uma editora cadastrada com o nome '{update_dict['name']}'."
                 )
+            update_dict["name"] = norm_name
 
         for field, value in update_dict.items():
             setattr(publisher, field, value)

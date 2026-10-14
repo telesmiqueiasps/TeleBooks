@@ -13,6 +13,11 @@ CREATE INDEX IF NOT EXISTS idx_books_created_at ON public.books (created_at DESC
 CREATE INDEX IF NOT EXISTS idx_authors_name_trgm ON public.authors USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_genres_slug ON public.genres (slug);
 
+-- Índices Únicos Normalizados (Insensíveis a maiúsculas e espaços nas extremidades)
+CREATE UNIQUE INDEX IF NOT EXISTS publishers_name_normalized_uidx ON public.publishers (lower(trim(name)));
+CREATE UNIQUE INDEX IF NOT EXISTS authors_name_normalized_uidx ON public.authors (lower(trim(name)));
+CREATE UNIQUE INDEX IF NOT EXISTS book_authors_book_author_uidx ON public.book_authors (book_id, author_id);
+
 CREATE INDEX IF NOT EXISTS idx_book_authors_book_id ON public.book_authors (book_id);
 CREATE INDEX IF NOT EXISTS idx_book_authors_author_id ON public.book_authors (author_id);
 CREATE INDEX IF NOT EXISTS idx_book_genres_book_id ON public.book_genres (book_id);

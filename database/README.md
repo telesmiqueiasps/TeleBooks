@@ -12,6 +12,8 @@ Este diretório contém os esquemas, migrações versionadas, políticas RLS (Ro
   - `00004_create_user_shelf_and_reading.sql`: Estante pessoal do leitor (`user_books`), coleções, tags, notas, citações, avaliações e listas.
   - `00005_create_performance_indexes.sql`: Índices compostos e buscas textuais com Trigram (`pg_trgm`).
   - `00006_create_rls_policies.sql`: Políticas de segurança em nível de linha (RLS) protegendo dados privados de cada usuário.
+  - `00007_add_author_name_to_books.sql`: Adiciona e sincroniza a coluna `author_name` na tabela `books`.
+  - `00008_deduplicate_and_normalize_authors_publishers.sql`: Varredura e unificação de duplicatas em editoras e autores, e criação de índices únicos normalizados (`lower(trim(name))`).
 - `seeds/`: Dados de inicialização e demonstração bibliográfica:
   - `001_initial_genres.sql`: Gêneros literários essenciais.
   - `002_demo_catalog.sql`: Editoras, autores clássicos e contemporâneos e livros de exemplo.
