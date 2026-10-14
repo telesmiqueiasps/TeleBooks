@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     auth,
     authors,
     books,
+    feed,
     genres,
     health,
     publishers,
@@ -27,6 +28,9 @@ api_router.include_router(genres.router, prefix="/genres", tags=["Genres"])
 
 # Estante Pessoal do Leitor
 api_router.include_router(shelf.router, prefix="/shelf", tags=["Shelf"])
+
+# Feed Público Literário
+api_router.include_router(feed.router, prefix="/feed", tags=["Feed"])
 
 # Armazenamento de Arquivos (Cloudflare R2)
 api_router.include_router(storage.router, prefix="/storage", tags=["Storage"])

@@ -317,3 +317,62 @@ export interface CoverOption {
   label?: string | null;
 }
 
+/** Sistemática de Feed Público */
+export interface FeedAuthor {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  is_public: boolean;
+}
+
+export interface FeedBook {
+  id: string;
+  title: string;
+  author_name?: string | null;
+  cover_url?: string | null;
+  page_count?: number | null;
+}
+
+export interface FeedComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author?: FeedAuthor | null;
+}
+
+export interface FeedPost {
+  id: string;
+  user_id: string;
+  book_id?: string | null;
+  content: string;
+  page_number?: number | null;
+  likes_count: number;
+  comments_count: number;
+  has_liked?: boolean;
+  created_at: string;
+  updated_at: string;
+  author: FeedAuthor;
+  book?: FeedBook | null;
+  comments?: FeedComment[];
+}
+
+export interface FeedPostCreateParams {
+  content: string;
+  book_id?: string | null;
+  page_number?: number | null;
+}
+
+export interface FeedCommentCreateParams {
+  content: string;
+}
+
+export interface FeedLikeResult {
+  post_id: string;
+  has_liked: boolean;
+  likes_count: number;
+}
+
+

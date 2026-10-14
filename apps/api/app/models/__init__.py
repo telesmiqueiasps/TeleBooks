@@ -8,6 +8,11 @@ from app.models.catalog import (
     Genre,
     Publisher,
 )
+from app.models.feed import (
+    FeedPost,
+    FeedPostComment,
+    FeedPostLike,
+)
 from app.models.profile import Profile
 from app.models.shelf import (
     BookStatus,
@@ -48,4 +53,7 @@ __all__ = [
     "UserReview",
     "ReadingList",
     "ReadingListBook",
+    "FeedPost",
+    "FeedPostLike",
+    "FeedPostComment",
 ]

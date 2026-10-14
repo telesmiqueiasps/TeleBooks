@@ -17,6 +17,13 @@ import type {
   UserNote,
   UserQuote,
   UserTag,
+  FeedAuthor,
+  FeedBook,
+  FeedComment,
+  FeedCommentCreateParams,
+  FeedLikeResult,
+  FeedPost,
+  FeedPostCreateParams,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -898,5 +905,236 @@ export const api = {
       },
       true
     );
+  },
+
+  // =========================================================================
+  // Feed Público Literário (MVP)
+  // =========================================================================
+  async getFeed(page: number = 1, pageSize: number = 20): Promise<PaginatedResult<FeedPost>> {
+    try {
+      return await request<PaginatedResult<FeedPost>>(
+        `/feed?page=${page}&page_size=${pageSize}`,
+        {},
+        false
+      );
+    } catch {
+      // Fallback resiliente via Supabase client direto
+      const supabase = createClient();
+      const offset = (page - 1) * pageSize;
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: posts, count, error } = await supabase
+        .from("feed_posts")
+        .select(`
+          id,
+          user_id,
+          book_id,
+          content,
+          page_number,
+          likes_count,
+          comments_count,
+          created_at,
+          updated_at,
+          author:profiles!feed_posts_user_id_fkey(id, username, full_name, avatar_url, is_public),
+          book:books(id, title, author_name, cover_url, page_count),
+          comments:feed_post_comments(
+            id,
+            post_id,
+            user_id,
+            content,
+            created_at,
+            author:profiles!feed_post_comments_user_id_fkey(id, username, full_name, avatar_url, is_public)
+          )
+        `, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      let likedPostIds = new Set<string>();
+      if (user && posts && posts.length > 0) {
+        const postIds = (posts as any[]).map((p) => p.id);
+        const { data: likes } = await supabase
+          .from("feed_post_likes")
+          .select("post_id")
+          .eq("user_id", user.id)
+          .in("post_id", postIds);
+        if (likes) {
+          likedPostIds = new Set((likes as any[]).map((l) => l.post_id));
+        }
+      }
+
+      const items: FeedPost[] = ((posts as any[]) || []).map((p) => ({
+        id: p.id,
+        user_id: p.user_id,
+        book_id: p.book_id,
+        content: p.content,
+        page_number: p.page_number,
+        likes_count: p.likes_count || 0,
+        comments_count: p.comments_count || 0,
+        has_liked: likedPostIds.has(p.id),
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        author: p.author,
+        book: p.book,
+        comments: p.comments || [],
+      }));
+
+      const total = count || items.length;
+      return {
+        items,
+        total,
+        page,
+        page_size: pageSize,
+        total_pages: Math.ceil(total / pageSize) || 1,
+      };
+    }
+  },
+
+  async createFeedPost(params: FeedPostCreateParams): Promise<FeedPost> {
+    try {
+      return await request<FeedPost>(
+        "/feed",
+        {
+          method: "POST",
+          body: JSON.stringify(params),
+        },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      // Garante perfil público para participar do feed
+      await supabase.from("profiles").update({ is_public: true }).eq("id", user.id);
+
+      const { data: post, error } = await supabase
+        .from("feed_posts")
+        .insert({
+          user_id: user.id,
+          book_id: params.book_id || null,
+          content: params.content.trim(),
+          page_number: params.page_number || null,
+        })
+        .select(`
+          id,
+          user_id,
+          book_id,
+          content,
+          page_number,
+          likes_count,
+          comments_count,
+          created_at,
+          updated_at,
+          author:profiles!feed_posts_user_id_fkey(id, username, full_name, avatar_url, is_public),
+          book:books(id, title, author_name, cover_url, page_count)
+        `)
+        .single();
+
+      if (error) throw error;
+      return {
+        ...(post as any),
+        has_liked: false,
+        comments: [],
+      };
+    }
+  },
+
+  async toggleFeedLike(postId: string): Promise<FeedLikeResult> {
+    try {
+      return await request<FeedLikeResult>(
+        `/feed/${postId}/like`,
+        { method: "POST" },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const { data: existingLike } = await supabase
+        .from("feed_post_likes")
+        .select("post_id")
+        .eq("post_id", postId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let hasLiked = false;
+      if (existingLike) {
+        await supabase
+          .from("feed_post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+        hasLiked = false;
+      } else {
+        await supabase
+          .from("feed_post_likes")
+          .insert({ post_id: postId, user_id: user.id });
+        hasLiked = true;
+      }
+
+      const { data: post } = await supabase
+        .from("feed_posts")
+        .select("likes_count")
+        .eq("id", postId)
+        .single();
+
+      return {
+        post_id: postId,
+        has_liked: hasLiked,
+        likes_count: post?.likes_count || 0,
+      };
+    }
+  },
+
+  async createFeedComment(postId: string, content: string): Promise<FeedComment> {
+    try {
+      return await request<FeedComment>(
+        `/feed/${postId}/comments`,
+        {
+          method: "POST",
+          body: JSON.stringify({ content }),
+        },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      await supabase.from("profiles").update({ is_public: true }).eq("id", user.id);
+
+      const { data: comment, error } = await supabase
+        .from("feed_post_comments")
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: content.trim(),
+        })
+        .select(`
+          id,
+          post_id,
+          user_id,
+          content,
+          created_at,
+          author:profiles!feed_post_comments_user_id_fkey(id, username, full_name, avatar_url, is_public)
+        `)
+        .single();
+
+      if (error) throw error;
+      return comment as any;
+    }
+  },
+
+  async deleteFeedPost(postId: string): Promise<void> {
+    try {
+      await request<void>(`/feed/${postId}`, { method: "DELETE" }, true);
+    } catch {
+      const supabase = createClient();
+      const { error } = await supabase.from("feed_posts").delete().eq("id", postId);
+      if (error) throw error;
+    }
   },
 };
