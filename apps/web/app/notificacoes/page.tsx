@@ -242,7 +242,7 @@ export default function NotificacoesPage() {
 
                     {notif.content && (
                       <p className="text-xs text-slate-600 dark:text-slate-300 italic line-clamp-2 mt-1 bg-white/60 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                        "{notif.content}"
+                        &ldquo;{notif.content}&rdquo;
                       </p>
                     )}
 

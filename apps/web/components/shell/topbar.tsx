@@ -413,7 +413,7 @@ export function Topbar({
                               </p>
                               {notif.content && (
                                 <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-1 mt-0.5">
-                                  "{notif.content}"
+                                  &ldquo;{notif.content}&rdquo;
                                 </p>
                               )}
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1 font-mono">
