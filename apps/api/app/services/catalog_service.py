@@ -216,6 +216,12 @@ class CatalogService:
                         db.flush()
                     book_data["publisher_id"] = pub.id
 
+            # Resolução de autor textual denormalizado
+            if not book_data.get("author_name") and book_in.author_names:
+                clean_authors = [a.strip() for a in book_in.author_names if a.strip()]
+                if clean_authors:
+                    book_data["author_name"] = ", ".join(clean_authors)
+
             book = Book(**book_data)
             db.add(book)
             db.flush()
@@ -349,6 +355,11 @@ class CatalogService:
             db.query(BookAuthor).filter(BookAuthor.book_id == book_id).delete()
             for i, author_id in enumerate(resolved_author_ids):
                 db.add(BookAuthor(book_id=book.id, author_id=author_id, is_primary=(i == 0)))
+
+            if author_names:
+                clean_authors = [a.strip() for a in author_names if a.strip()]
+                if clean_authors:
+                    book.author_name = ", ".join(clean_authors)
 
         if "genre_ids" in update_dict:
             genre_ids = update_dict.pop("genre_ids")

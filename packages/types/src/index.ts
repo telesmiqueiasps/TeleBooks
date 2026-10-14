@@ -58,6 +58,7 @@ export interface Book {
   publisher_id?: string | null;
   publisher?: Publisher | null;
   authors?: Author[];
+  author_name?: string | null;
   genres?: Genre[];
   cover_url?: string | null;
   thumbnail_url?: string | null;

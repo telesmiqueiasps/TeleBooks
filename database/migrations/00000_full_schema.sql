@@ -105,9 +105,12 @@ CREATE TABLE IF NOT EXISTS public.books (
     publisher_id UUID REFERENCES public.publishers(id) ON DELETE SET NULL,
     cover_url TEXT,
     thumbnail_url TEXT,
+    author_name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_books_author_name ON public.books (author_name);
 
 DROP TRIGGER IF EXISTS set_books_updated_at ON public.books;
 CREATE TRIGGER set_books_updated_at

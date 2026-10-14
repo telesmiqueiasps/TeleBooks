@@ -113,7 +113,7 @@ BEGIN
     -- 4. Livros
     SELECT id INTO book_vento FROM public.books WHERE isbn13 = '9788580419320' LIMIT 1;
     IF book_vento IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'O Nome do Vento',
             'A Crônica do Matador do Rei: Primeiro Dia',
@@ -123,13 +123,14 @@ BEGIN
             'pt-BR',
             656,
             pub_arqueiro,
-            'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+            'Patrick Rothfuss'
         ) RETURNING id INTO book_vento;
     END IF;
 
     SELECT id INTO book_solidao FROM public.books WHERE isbn13 = '9788501012074' LIMIT 1;
     IF book_solidao IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'Cem Anos de Solidão',
             NULL,
@@ -139,13 +140,14 @@ BEGIN
             'pt-BR',
             448,
             pub_record,
-            'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+            'Gabriel García Márquez'
         ) RETURNING id INTO book_solidao;
     END IF;
 
     SELECT id INTO book_duna FROM public.books WHERE isbn13 = '9788576573135' LIMIT 1;
     IF book_duna IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'Duna',
             'As Crônicas de Duna: Livro 1',
@@ -155,13 +157,14 @@ BEGIN
             'pt-BR',
             680,
             pub_aleph,
-            'https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&q=80&w=600',
+            'Frank Herbert'
         ) RETURNING id INTO book_duna;
     END IF;
 
     SELECT id INTO book_republica FROM public.books WHERE isbn13 = '9788572836241' LIMIT 1;
     IF book_republica IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'A República',
             NULL,
@@ -171,13 +174,14 @@ BEGIN
             'pt-BR',
             384,
             pub_edipro,
-            'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600',
+            'Platão'
         ) RETURNING id INTO book_republica;
     END IF;
 
     SELECT id INTO book_crime FROM public.books WHERE isbn13 = '9788573262117' LIMIT 1;
     IF book_crime IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'Crime e Castigo',
             NULL,
@@ -187,13 +191,14 @@ BEGIN
             'pt-BR',
             592,
             pub_editora34,
-            'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=600',
+            'Fiódor Dostoiévski'
         ) RETURNING id INTO book_crime;
     END IF;
 
     SELECT id INTO book_sapiens FROM public.books WHERE isbn13 = '9788535925920' LIMIT 1;
     IF book_sapiens IS NULL THEN
-        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url)
+        INSERT INTO public.books (title, subtitle, description, isbn10, isbn13, language, page_count, publisher_id, cover_url, author_name)
         VALUES (
             'Sapiens: Uma Breve História da Humanidade',
             NULL,
@@ -203,7 +208,8 @@ BEGIN
             'pt-BR',
             464,
             pub_companhia,
-            'https://images.unsplash.com/photo-1495640388908-05fa85288e61?auto=format&fit=crop&q=80&w=600'
+            'https://images.unsplash.com/photo-1495640388908-05fa85288e61?auto=format&fit=crop&q=80&w=600',
+            'Yuval Noah Harari'
         ) RETURNING id INTO book_sapiens;
     END IF;
 

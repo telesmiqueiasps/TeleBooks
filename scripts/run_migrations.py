@@ -18,6 +18,7 @@ MIGRATIONS = [
     "database/migrations/00004_create_user_shelf_and_reading.sql",
     "database/migrations/00005_create_performance_indexes.sql",
     "database/migrations/00006_create_rls_policies.sql",
+    "database/migrations/00007_add_author_name_to_books.sql",
 ]
 
 SEEDS = [

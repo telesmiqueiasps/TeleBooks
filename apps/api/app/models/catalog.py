@@ -105,6 +105,7 @@ class Book(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    author_name: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
     __table_args__ = (CheckConstraint("page_count > 0", name="books_page_count_check"),)
 

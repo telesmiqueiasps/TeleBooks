@@ -25,6 +25,7 @@ import {
   Loader2,
   Camera,
   ScanLine,
+  Edit3,
 } from "lucide-react";
 import { Modal, Button, Input, Badge } from "@telebooks/ui";
 import type {
@@ -68,6 +69,13 @@ export function BookSearchImportModal({
   const [selectedItem, setSelectedItem] = useState<ExternalBookItem | null>(null);
   const [shelfStatus, setShelfStatus] = useState<BookStatus>("want_to_read");
   const [addToShelf, setAddToShelf] = useState(true);
+
+  // Metadados Editáveis do Livro Selecionado antes de importar
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedAuthor, setEditedAuthor] = useState("");
+  const [editedPages, setEditedPages] = useState("");
+  const [editedPublisher, setEditedPublisher] = useState("");
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
 
   // Submissão da confirmação
   const [isConfirming, setIsConfirming] = useState(false);
@@ -251,6 +259,13 @@ export function BookSearchImportModal({
 
   const handleSelectBook = (item: ExternalBookItem) => {
     setSelectedItem(item);
+    setEditedTitle(item.title || "");
+    setEditedAuthor(item.authors?.join(", ") || "");
+    setEditedPages(item.page_count ? String(item.page_count) : "");
+    setEditedPublisher(item.publisher || "");
+    // Se faltar autor ou páginas, abre edição imediatamente para agilizar
+    const isMissingData = !item.authors || item.authors.length === 0 || !item.page_count;
+    setIsEditingMetadata(isMissingData);
     setConfirmError(null);
     setConfirmSuccess(null);
   };
@@ -262,15 +277,22 @@ export function BookSearchImportModal({
       setIsConfirming(true);
       setConfirmError(null);
 
+      const authorList = editedAuthor
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
+      const parsedPages = editedPages ? parseInt(editedPages, 10) : null;
+      const validPages = parsedPages && !isNaN(parsedPages) && parsedPages > 0 ? parsedPages : null;
+
       const response = await api.confirmImportBook({
-        title: selectedItem.title,
+        title: editedTitle.trim() || selectedItem.title,
         subtitle: selectedItem.subtitle || null,
-        authors: selectedItem.authors,
-        publisher: selectedItem.publisher || null,
+        authors: authorList.length > 0 ? authorList : selectedItem.authors,
+        publisher: editedPublisher.trim() || selectedItem.publisher || null,
         description: selectedItem.description || null,
         isbn10: selectedItem.isbn10 || null,
         isbn13: selectedItem.isbn13 || null,
-        page_count: selectedItem.page_count || null,
+        page_count: validPages ?? selectedItem.page_count ?? null,
         published_date_raw: selectedItem.published_date || null,
         language: selectedItem.language || "pt-BR",
         cover_url: selectedItem.cover_url || null,
@@ -668,25 +690,94 @@ export function BookSearchImportModal({
                 )}
               </div>
 
-              <div className="flex-1 min-w-0 space-y-2">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                    {selectedItem.title}
-                  </h3>
-                  {selectedItem.subtitle && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {selectedItem.subtitle}
+              <div className="flex-1 min-w-0 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                      {editedTitle.trim() || selectedItem.title}
+                    </h3>
+                    {selectedItem.subtitle && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {selectedItem.subtitle}
+                      </p>
+                    )}
+                    <p className={`text-xs font-semibold mt-1 ${
+                      editedAuthor.trim() ? "text-[#007BFF] dark:text-[#38BDF8]" : "text-amber-600 dark:text-amber-400 font-bold"
+                    }`}>
+                      {editedAuthor.trim() || "⚠️ Autor não informado (clique para adicionar)"}
                     </p>
-                  )}
-                  <p className="text-xs font-semibold text-[#007BFF] dark:text-[#38BDF8] mt-1">
-                    {selectedItem.authors.join(", ") || "Autor desconhecido"}
-                  </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingMetadata((v) => !v)}
+                    className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#007BFF] text-slate-600 dark:text-slate-300 hover:text-[#007BFF] text-xs font-medium flex items-center gap-1.5 transition-colors shrink-0"
+                    title="Editar autor, páginas ou editora antes de salvar"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{isEditingMetadata ? "Fechar Edição" : "Editar Dados"}</span>
+                  </button>
                 </div>
+
+                {/* Formulário Inline de Edição Rápida */}
+                {isEditingMetadata && (
+                  <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200 dark:border-blue-900/50 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900 dark:text-blue-200">
+                        <Sparkles className="w-3.5 h-3.5 text-[#007BFF]" />
+                        <span>Ajustar dados antes de salvar</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Altera apenas seu cadastro
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                        Autor(es):
+                      </label>
+                      <input
+                        type="text"
+                        value={editedAuthor}
+                        onChange={(e) => setEditedAuthor(e.target.value)}
+                        placeholder="Ex: Patrick Rothfuss, Neil Gaiman"
+                        className="w-full text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/30"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          Total de Páginas:
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={editedPages}
+                          onChange={(e) => setEditedPages(e.target.value)}
+                          placeholder="Ex: 480"
+                          className="w-full text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/30"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          Editora:
+                        </label>
+                        <input
+                          type="text"
+                          value={editedPublisher}
+                          onChange={(e) => setEditedPublisher(e.target.value)}
+                          placeholder="Ex: Arqueiro, Companhia das Letras"
+                          className="w-full text-xs px-3 py-1.5 rounded-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400 pt-1">
                   <div>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Editora: </span>
-                    <span>{selectedItem.publisher || "Não informada"}</span>
+                    <span>{editedPublisher.trim() || selectedItem.publisher || "Não informada"}</span>
                   </div>
                   <div>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Ano: </span>
@@ -698,7 +789,9 @@ export function BookSearchImportModal({
                   </div>
                   <div>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">Páginas: </span>
-                    <span>{selectedItem.page_count ? `${selectedItem.page_count} páginas` : "—"}</span>
+                    <span className={editedPages.trim() ? "font-semibold text-slate-800 dark:text-slate-200" : "text-amber-600 dark:text-amber-400 font-medium"}>
+                      {editedPages.trim() ? `${editedPages.trim()} páginas` : (selectedItem.page_count ? `${selectedItem.page_count} páginas` : "Não informadas")}
+                    </span>
                   </div>
                 </div>
 

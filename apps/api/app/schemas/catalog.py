@@ -135,6 +135,7 @@ class BookBase(BaseModel):
     publication_date: date | None = None
     cover_url: str | None = None
     thumbnail_url: str | None = None
+    author_name: str | None = None
 
 
 class BookCreate(BookBase):
@@ -156,6 +157,7 @@ class BookUpdate(BaseModel):
     publication_date: date | None = None
     cover_url: str | None = None
     thumbnail_url: str | None = None
+    author_name: str | None = None
     publisher_id: uuid.UUID | None = None
     publisher_name: str | None = None
     author_ids: list[uuid.UUID] | None = None

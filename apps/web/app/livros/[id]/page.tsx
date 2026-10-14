@@ -123,6 +123,13 @@ export default function BookDetailPage() {
   const [readingSessions, setReadingSessions] = useState<ReadingSession[]>([]);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
 
+  // Estados de controle refinado de leitura de páginas
+  const [sliderPage, setSliderPage] = useState<number>(0);
+  const [isEditingCurrentPage, setIsEditingCurrentPage] = useState(false);
+  const [pageInputVal, setPageInputVal] = useState<string>("");
+  const [isSettingTotalPages, setIsSettingTotalPages] = useState(false);
+  const [totalPagesInputVal, setTotalPagesInputVal] = useState<string>("");
+
   // Estados de carregamento e feedback
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -190,6 +197,8 @@ export default function BookDetailPage() {
 
       setBook(bookData);
       setUserBook(userBookData);
+      setSliderPage(userBookData?.current_page || 0);
+      setPageInputVal(String(userBookData?.current_page || 0));
       setUserCollections(collectionsData || []);
       setUserTags(tagsData || []);
       setQuickNotesText(userBookData?.private_notes || "");
@@ -366,6 +375,8 @@ export default function BookDetailPage() {
     const validPage = Math.max(0, Math.min(targetPage, maxPages));
 
     const prevPage = userBook.current_page;
+    setSliderPage(validPage);
+    setPageInputVal(String(validPage));
     setUserBook((prev) => (prev ? { ...prev, current_page: validPage } : null));
 
     try {
@@ -603,7 +614,11 @@ export default function BookDetailPage() {
   }, [userBook]);
 
   const formattedAuthors = useMemo(() => {
-    return book?.authors?.map((a) => a.name).join(", ") || "Autor não informado";
+    return (
+      book?.authors?.map((a) => a.name).join(", ") ||
+      book?.author_name ||
+      "Autor não informado"
+    );
   }, [book]);
 
   // Formatação de data amigável
@@ -1055,15 +1070,132 @@ export default function BookDetailPage() {
                       </div>
                     </div>
 
-                    <div className="text-right flex sm:flex-col items-center sm:items-end justify-between">
+                    <div className="text-right flex sm:flex-col items-center sm:items-end justify-between gap-1">
                       <span className="font-display text-2xl font-black text-primary">
                         {progressPercent}%
                       </span>
-                      <span className="text-xs text-slate-500">
-                        Pág. {userBook.current_page} de {book.page_count || "?"}
-                      </span>
+                      {isEditingCurrentPage ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const p = parseInt(pageInputVal, 10);
+                            if (!isNaN(p)) {
+                              handlePageUpdate(p);
+                              setIsEditingCurrentPage(false);
+                            }
+                          }}
+                          className="flex items-center gap-1 mt-1"
+                        >
+                          <span className="text-xs text-slate-500">Pág.</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={book.page_count && book.page_count > 0 ? book.page_count : 99999}
+                            value={pageInputVal}
+                            onChange={(e) => setPageInputVal(e.target.value)}
+                            autoFocus
+                            className="w-16 text-xs px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-primary text-slate-900 dark:text-white font-bold text-center focus:outline-none"
+                          />
+                          <span className="text-xs text-slate-500">de {book.page_count || "?"}</span>
+                          <button
+                            type="submit"
+                            className="p-1 rounded-md bg-primary text-white text-xs hover:bg-primary/90"
+                            title="Salvar página"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingCurrentPage(false)}
+                            className="p-1 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs"
+                            title="Cancelar"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-slate-500">
+                            Pág. <strong className="text-slate-800 dark:text-slate-200 font-bold">{userBook.current_page}</strong> de {book.page_count || "?"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPageInputVal(String(userBook.current_page || 0));
+                              setIsEditingCurrentPage(true);
+                            }}
+                            className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-primary transition-colors"
+                            title="Digitar número da página manualmente"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Alerta e Definição caso o livro não possua total de páginas */}
+                  {(!book.page_count || book.page_count <= 0) && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <span>Este livro não possui a quantidade total de páginas cadastrada.</span>
+                      </div>
+                      {!isSettingTotalPages ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTotalPagesInputVal("");
+                            setIsSettingTotalPages(true);
+                          }}
+                          className="px-3 py-1 rounded-xl bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 transition-colors self-start sm:self-auto shrink-0 shadow-xs"
+                        >
+                          Definir total de páginas
+                        </button>
+                      ) : (
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            const p = parseInt(totalPagesInputVal, 10);
+                            if (p > 0 && book) {
+                              try {
+                                const updatedBook = await api.updateBook(book.id, { page_count: p });
+                                setBook(updatedBook);
+                                setIsSettingTotalPages(false);
+                                showToast(`Total de páginas definido como ${p}!`);
+                              } catch {
+                                showToast("Erro ao atualizar total de páginas");
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-1 self-start sm:self-auto shrink-0"
+                        >
+                          <input
+                            type="number"
+                            min={1}
+                            placeholder="Qtd."
+                            value={totalPagesInputVal}
+                            onChange={(e) => setTotalPagesInputVal(e.target.value)}
+                            className="w-16 px-2 py-1 text-xs rounded-lg bg-white dark:bg-slate-900 border border-amber-400 text-slate-900 dark:text-white"
+                            autoFocus
+                          />
+                          <button
+                            type="submit"
+                            className="px-2.5 py-1 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsSettingTotalPages(false)}
+                            className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs"
+                          >
+                            ✕
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
 
                   {/* Barra de Progresso em Azul Royal TeleBooks */}
                   <div className="space-y-2">
@@ -1074,14 +1206,22 @@ export default function BookDetailPage() {
                       />
                     </div>
 
-                    {/* Slider Interativo de Páginas */}
+                    {/* Slider Interativo de Páginas com Prevenção de Wheel */}
                     {book.page_count && book.page_count > 0 && (
                       <input
                         type="range"
                         min={0}
                         max={book.page_count}
-                        value={userBook.current_page}
-                        onChange={(e) => handlePageUpdate(parseInt(e.target.value, 10))}
+                        value={sliderPage}
+                        onChange={(e) => setSliderPage(parseInt(e.target.value, 10))}
+                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                        onMouseUp={() => handlePageUpdate(sliderPage)}
+                        onTouchEnd={() => handlePageUpdate(sliderPage)}
+                        onKeyUp={(e) => {
+                          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                            handlePageUpdate(sliderPage);
+                          }
+                        }}
                         className="w-full accent-primary cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
                       />
                     )}

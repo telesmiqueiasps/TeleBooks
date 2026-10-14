@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS public.books (
     publisher_id UUID REFERENCES public.publishers(id) ON DELETE SET NULL,
     cover_url TEXT,
     thumbnail_url TEXT,
+    author_name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

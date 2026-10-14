@@ -46,6 +46,7 @@ export interface BookCreateParams {
   publisher_name?: string | null;
   author_ids?: string[];
   author_names?: string[];
+  author_name?: string | null;
   genre_ids?: string[];
 }
 

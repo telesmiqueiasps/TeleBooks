@@ -129,6 +129,7 @@ class BookIntegrationService:
                     or_(
                         Book.title.ilike(f"%{clean_q}%"),
                         Book.description.ilike(f"%{clean_q}%"),
+                        Book.author_name.ilike(f"%{clean_q}%"),
                     )
                 )
 
@@ -143,7 +144,12 @@ class BookIntegrationService:
             )
             if author and author.strip():
                 clean_a = author.strip()
-                stmt = stmt.join(Book.authors).where(Author.name.ilike(f"%{clean_a}%"))
+                stmt = stmt.outerjoin(Book.authors).where(
+                    or_(
+                        Author.name.ilike(f"%{clean_a}%"),
+                        Book.author_name.ilike(f"%{clean_a}%"),
+                    )
+                )
             if conditions:
                 stmt = stmt.where(or_(*conditions))
 
@@ -161,7 +167,7 @@ class BookIntegrationService:
         db: Session,
         current_user: CurrentUser | None = None,
     ) -> ExternalBookItem:
-        authors = [a.name for a in book.authors] if book.authors else []
+        authors = [a.name for a in book.authors] if book.authors else ([book.author_name] if book.author_name else [])
         genres = [g.name for g in book.genres] if book.genres else []
         candidate_covers: list[str] = []
         if book.cover_url:
@@ -269,6 +275,27 @@ class BookIntegrationService:
             brasil_provider = self._providers["brasil_api"]
             cbl_item = await brasil_provider.get_by_isbn(clean_isbn_target)
             if cbl_item:
+                # Enriquecimento cruzado se a BrasilAPI não trouxe autores ou número de páginas
+                if not cbl_item.authors or not cbl_item.page_count:
+                    try:
+                        gb_prov = self._providers.get("google_books")
+                        if gb_prov:
+                            gb_item = await gb_prov.get_by_isbn(clean_isbn_target)
+                            if gb_item:
+                                if not cbl_item.authors and gb_item.authors:
+                                    cbl_item.authors = gb_item.authors
+                                if not cbl_item.page_count and gb_item.page_count:
+                                    cbl_item.page_count = gb_item.page_count
+                                if not cbl_item.publisher and gb_item.publisher:
+                                    cbl_item.publisher = gb_item.publisher
+                                if not cbl_item.description and gb_item.description:
+                                    cbl_item.description = gb_item.description
+                                if not cbl_item.cover_url and gb_item.cover_url:
+                                    cbl_item.cover_url = gb_item.cover_url
+                                    cbl_item.thumbnail_url = gb_item.thumbnail_url
+                    except Exception as enrich_err:
+                        logger.warning("Falha ao enriquecer dados com Google Books: %s", enrich_err)
+
                 results.append(cbl_item)
                 if cbl_item.isbn13:
                     found_isbns.add(self.normalize_isbn(cbl_item.isbn13))
@@ -527,6 +554,11 @@ class BookIntegrationService:
             if not book.isbn10 and clean_isbn10:
                 book.isbn10 = clean_isbn10
                 modified = True
+            if not getattr(book, "author_name", None) and payload.authors:
+                clean_auths = [a.strip() for a in payload.authors if a.strip()]
+                if clean_auths:
+                    book.author_name = ", ".join(clean_auths)
+                    modified = True
 
             if modified:
                 db.commit()
@@ -564,6 +596,13 @@ class BookIntegrationService:
                     final_cov = None
                     final_th = None
 
+            # Monta nome de autor denormalizado
+            denorm_author_name = (
+                ", ".join([a.strip() for a in payload.authors if a.strip()])
+                if payload.authors
+                else None
+            )
+
             # Cria a entidade Book
             book = Book(
                 title=payload.title.strip(),
@@ -571,6 +610,7 @@ class BookIntegrationService:
                 description=payload.description.strip() if payload.description else None,
                 isbn10=clean_isbn10,
                 isbn13=clean_isbn13,
+                author_name=denorm_author_name,
                 page_count=payload.page_count if payload.page_count and payload.page_count > 0 else None,
                 publication_date=parsed_pub_date,
                 language=payload.language or "pt-BR",
