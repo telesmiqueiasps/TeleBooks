@@ -375,4 +375,33 @@ export interface FeedLikeResult {
   likes_count: number;
 }
 
+/** Sistema de Notificações */
+export type NotificationType = "post_like" | "post_comment";
+
+export interface NotificationActor {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface NotificationItem {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: NotificationType;
+  post_id?: string | null;
+  comment_id?: string | null;
+  content?: string | null;
+  is_read: boolean;
+  created_at: string;
+  actor?: NotificationActor | null;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  unread_count: number;
+  total: number;
+}
+
 

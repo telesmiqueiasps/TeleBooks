@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     feed,
     genres,
     health,
+    notifications,
     publishers,
     shelf,
     storage,
@@ -31,6 +32,9 @@ api_router.include_router(shelf.router, prefix="/shelf", tags=["Shelf"])
 
 # Feed Público Literário
 api_router.include_router(feed.router, prefix="/feed", tags=["Feed"])
+
+# Notificações
+api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 
 # Armazenamento de Arquivos (Cloudflare R2)
 api_router.include_router(storage.router, prefix="/storage", tags=["Storage"])

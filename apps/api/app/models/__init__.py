@@ -13,6 +13,7 @@ from app.models.feed import (
     FeedPostComment,
     FeedPostLike,
 )
+from app.models.notification import Notification
 from app.models.profile import Profile
 from app.models.shelf import (
     BookStatus,
@@ -56,4 +57,5 @@ __all__ = [
     "FeedPost",
     "FeedPostLike",
     "FeedPostComment",
+    "Notification",
 ]

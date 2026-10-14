@@ -32,6 +32,8 @@ import {
 import { useTheme } from "../theme-provider";
 import { useAuth } from "../auth/auth-provider";
 import { Logo } from "../ui/logo";
+import { api } from "../../lib/api";
+import type { NotificationItem } from "@telebooks/types";
 
 export interface TopbarProps {
   currentTab?: string;
@@ -62,6 +64,66 @@ export function Topbar({
     setIsLoggingOut(true);
     await signOut();
     router.push("/login");
+  };
+
+  // Estados de Notificações
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = React.useRef<HTMLDivElement>(null);
+
+  const loadNotificationsData = React.useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.getNotifications(10, 0);
+      setNotifications(res.items || []);
+      setUnreadCount(res.unread_count || 0);
+    } catch {
+      // Ignora erro
+    }
+  }, [user]);
+
+  React.useEffect(() => {
+    loadNotificationsData();
+    const interval = setInterval(loadNotificationsData, 30000);
+    return () => clearInterval(interval);
+  }, [loadNotificationsData]);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
+        setIsNotificationsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.markNotificationsAsRead({ mark_all: true });
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch {
+      // Ignora erro
+    }
+  };
+
+  const handleNotificationClick = async (notif: NotificationItem) => {
+    if (!notif.is_read) {
+      api.markNotificationsAsRead({ notification_ids: [notif.id] }).catch(() => {});
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+    setIsNotificationsOpen(false);
+    if (notif.post_id) {
+      router.push(`/#post-${notif.post_id}`);
+    }
   };
 
   const displayName =
@@ -237,15 +299,155 @@ export function Topbar({
             </button>
           )}
 
-          {/* Notificações */}
-          <button
-            type="button"
-            className="relative h-9 w-9 hidden sm:flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-colors"
-            title="Notificações"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-amber-400" />
-          </button>
+          {/* Notificações (Desktop e Mobile) */}
+          {user && (
+            <div className="relative" ref={notificationsRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  if (!isNotificationsOpen) loadNotificationsData();
+                }}
+                className={cn(
+                  "relative h-9 w-9 flex items-center justify-center rounded-full transition-all cursor-pointer border",
+                  isNotificationsOpen
+                    ? "bg-white text-[#006CEB] border-white shadow-md"
+                    : "bg-white/15 hover:bg-white/25 text-white border-white/20 active:scale-95"
+                )}
+                aria-label="Notificações"
+                title="Notificações"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Popover / Dropdown de Notificações */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-2xl z-50 text-slate-800 dark:text-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {/* Cabeçalho do Popover */}
+                  <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900 dark:text-white">
+                        Notificações
+                      </span>
+                      {unreadCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                          {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Marcar lidas
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lista de Notificações */}
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {notifications.length === 0 ? (
+                      <div className="py-8 px-4 text-center">
+                        <Bell className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2 stroke-[1.5]" />
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          Nenhuma notificação por enquanto
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Você será avisado quando alguém curtir ou comentar suas publicações.
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const actorName =
+                          notif.actor?.full_name || notif.actor?.username || "Alguém";
+                        const isLike = notif.type === "post_like";
+
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => handleNotificationClick(notif)}
+                            className={cn(
+                              "flex items-start gap-3 p-3 transition-colors cursor-pointer text-left hover:bg-slate-50 dark:hover:bg-slate-800/60",
+                              !notif.is_read && "bg-blue-50/40 dark:bg-blue-950/20"
+                            )}
+                          >
+                            {/* Avatar com Badge de Ícone */}
+                            <div className="relative shrink-0 mt-0.5">
+                              {notif.actor?.avatar_url ? (
+                                <img
+                                  src={notif.actor.avatar_url}
+                                  alt=""
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                                  {actorName.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              <span
+                                className={cn(
+                                  "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] shadow-xs",
+                                  isLike ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
+                                )}
+                              >
+                                {isLike ? "❤️" : "💬"}
+                              </span>
+                            </div>
+
+                            {/* Conteúdo da Notificação */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug">
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                  {actorName}
+                                </span>{" "}
+                                {isLike
+                                  ? "curtiu sua publicação no feed."
+                                  : "comentou na sua publicação."}
+                              </p>
+                              {notif.content && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-1 mt-0.5">
+                                  "{notif.content}"
+                                </p>
+                              )}
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1 font-mono">
+                                {new Date(notif.created_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+
+                            {/* Ponto indicador de não lida */}
+                            {!notif.is_read && (
+                              <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1.5" />
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Rodapé do Popover */}
+                  <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-center">
+                    <Link
+                      href="/notificacoes"
+                      onClick={() => setIsNotificationsOpen(false)}
+                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Ver todas as notificações →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Alternador de Tema Claro / Escuro */}
           <button

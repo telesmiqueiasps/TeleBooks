@@ -30,7 +30,7 @@ import { useAuth } from "../components/auth/auth-provider";
 import { api } from "../lib/api";
 
 export default function HomePage() {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, isLoading: isAuthLoading, updateProfile } = useAuth();
   const router = useRouter();
 
   // Estados do Feed
@@ -57,7 +57,7 @@ export default function HomePage() {
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
   const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
 
-  // Carregar Feed Público
+  // Carregar Feed
   const loadFeed = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -71,8 +71,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
+    if (!isAuthLoading && !user) {
+      router.replace("/login");
+      return;
+    }
+    if (user) {
+      loadFeed();
+    }
+  }, [user, isAuthLoading, router, loadFeed]);
 
   // Busca rápida de livros para vincular à postagem
   useEffect(() => {
@@ -403,7 +409,7 @@ export default function HomePage() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{b.title}</p>
-                                <p className="text-[11px] text-slate-500 truncate">{b.author_name || "Autor"}</p>
+                                <p className="text-[11px] text-slate-500 truncate">{b.author_name || (b.authors && b.authors.length > 0 ? b.authors.map((a: any) => a.name).join(", ") : "Autor desconhecido")}</p>
                               </div>
                             </button>
                           ))}
@@ -635,7 +641,7 @@ export default function HomePage() {
                                 {post.book.title}
                               </p>
                               <p className="text-[11px] text-slate-500 truncate">
-                                {post.book.author_name || "Autor"}
+                                {post.book.author_name || "Autor desconhecido"}
                               </p>
                             </div>
                             <Badge variant="outline" size="sm" className="shrink-0 text-[10px] hidden sm:inline-flex">

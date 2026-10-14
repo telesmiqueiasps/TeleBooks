@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, get_optional_user
+from app.api.deps import get_current_user, get_db
 from app.core.security import CurrentUser
 from app.schemas.feed import (
     FeedCommentCreate,
@@ -28,9 +28,9 @@ def list_feed(
     page: Annotated[int, Query(ge=1, description="Número da página")] = 1,
     page_size: Annotated[int, Query(ge=1, le=50, description="Itens por página")] = 20,
     db: Session = Depends(get_db),
-    current_user: CurrentUser | None = Depends(get_optional_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    current_user_id = uuid.UUID(current_user.id) if current_user else None
+    current_user_id = uuid.UUID(current_user.id)
     items, total = FeedService.list_feed_posts(
         db=db,
         current_user_id=current_user_id,
@@ -71,9 +71,9 @@ def create_feed_post(
 def get_feed_post(
     post_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: CurrentUser | None = Depends(get_optional_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    current_user_id = uuid.UUID(current_user.id) if current_user else None
+    current_user_id = uuid.UUID(current_user.id)
     return FeedService.get_post_by_id(db=db, post_id=post_id, current_user_id=current_user_id)
 
 
@@ -100,6 +100,7 @@ def toggle_post_like(
 def list_post_comments(
     post_id: uuid.UUID,
     db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     return FeedService.list_comments(db=db, post_id=post_id)
 

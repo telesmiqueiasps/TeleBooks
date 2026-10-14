@@ -46,9 +46,11 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/redefinir-senha");
 
   const isProtectedRoute =
+    path === "/" ||
     path.startsWith("/perfil") ||
     path.startsWith("/configuracoes") ||
-    path.startsWith("/minha-biblioteca");
+    path.startsWith("/minha-biblioteca") ||
+    path.startsWith("/notificacoes");
 
   // Se a requisição contiver um código de autorização OAuth (ex: redirecionamento do Supabase/Google)
   // mas não estiver na rota de callback, redireciona para o callback para trocar o código pela sessão

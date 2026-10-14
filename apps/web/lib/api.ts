@@ -24,6 +24,8 @@ import type {
   FeedLikeResult,
   FeedPost,
   FeedPostCreateParams,
+  NotificationItem,
+  NotificationListResponse,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1137,4 +1139,112 @@ export const api = {
       if (error) throw error;
     }
   },
+
+  // =========================================================================
+  // Notificações Social
+  // =========================================================================
+  async getNotifications(
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<NotificationListResponse> {
+    try {
+      return await request<NotificationListResponse>(
+        `/notifications?limit=${limit}&offset=${offset}`,
+        {},
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { items: [], unread_count: 0, total: 0 };
+
+      const { data: notifications, count } = await supabase
+        .from("notifications")
+        .select(`
+          id,
+          user_id,
+          actor_id,
+          type,
+          post_id,
+          comment_id,
+          content,
+          is_read,
+          created_at,
+          actor:profiles!notifications_actor_id_fkey(id, username, full_name, avatar_url)
+        `, { count: "exact" })
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      const { count: unreadCount } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      return {
+        items: (notifications as any[]) || [],
+        unread_count: unreadCount || 0,
+        total: count || 0,
+      };
+    }
+  },
+
+  async getUnreadNotificationCount(): Promise<{ unread_count: number }> {
+    try {
+      return await request<{ unread_count: number }>(
+        "/notifications/unread-count",
+        {},
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { unread_count: 0 };
+
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      return { unread_count: count || 0 };
+    }
+  },
+
+  async markNotificationsAsRead(payload: {
+    notification_ids?: string[];
+    mark_all?: boolean;
+  }): Promise<{ success: boolean; updated_count: number }> {
+    try {
+      return await request<{ success: boolean; updated_count: number }>(
+        "/notifications/mark-read",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, updated_count: 0 };
+
+      let query = supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id);
+
+      if (payload.mark_all) {
+        query = query.eq("is_read", false);
+      } else if (payload.notification_ids && payload.notification_ids.length > 0) {
+        query = query.in("id", payload.notification_ids);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+      return { success: true, updated_count: 1 };
+    }
+  },
 };
+

@@ -15,6 +15,7 @@ Este diretório contém os esquemas, migrações versionadas, políticas RLS (Ro
   - `00007_add_author_name_to_books.sql`: Adiciona e sincroniza a coluna `author_name` na tabela `books`.
   - `00008_deduplicate_and_normalize_authors_publishers.sql`: Varredura e unificação de duplicatas em editoras e autores, e criação de índices únicos normalizados (`lower(trim(name))`).
   - `00009_create_feed_tables.sql`: Estrutura do feed público do MVP (`feed_posts`, `feed_post_likes`, `feed_post_comments`) com contadores atômicos e RLS.
+  - `00010_create_notifications_table.sql`: Sistema de notificações social (curtidas e comentários com triggers atômicos), sincronização de `books.author_name` e proteção de feed para usuários autenticados.
 - `seeds/`: Dados de inicialização e demonstração bibliográfica:
   - `001_initial_genres.sql`: Gêneros literários essenciais.
   - `002_demo_catalog.sql`: Editoras, autores clássicos e contemporâneos e livros de exemplo.

@@ -38,7 +38,7 @@ class FeedService:
             .where(visibility_filter)
             .options(
                 selectinload(FeedPost.author),
-                selectinload(FeedPost.book),
+                selectinload(FeedPost.book).selectinload(Book.authors),
                 selectinload(FeedPost.comments).selectinload(FeedPostComment.author),
             )
             .order_by(FeedPost.created_at.desc())
@@ -67,7 +67,18 @@ class FeedService:
         results: list[FeedPostOut] = []
         for p in posts:
             author_out = FeedAuthorOut.model_validate(p.author)
-            book_out = FeedBookOut.model_validate(p.book) if p.book else None
+            book_out = None
+            if p.book:
+                computed_author = p.book.author_name
+                if not computed_author and p.book.authors:
+                    computed_author = ", ".join(a.name for a in p.book.authors)
+                book_out = FeedBookOut(
+                    id=p.book.id,
+                    title=p.book.title,
+                    author_name=computed_author or "Autor desconhecido",
+                    cover_url=p.book.cover_url,
+                    page_count=p.book.page_count,
+                )
             comments_out = [
                 FeedCommentOut(
                     id=c.id,
@@ -145,9 +156,20 @@ class FeedService:
         author_out = FeedAuthorOut.model_validate(profile)
         book_out = None
         if post.book_id:
-            book = db.execute(select(Book).where(Book.id == post.book_id)).scalar_one_or_none()
+            book = db.execute(
+                select(Book).where(Book.id == post.book_id).options(selectinload(Book.authors))
+            ).scalar_one_or_none()
             if book:
-                book_out = FeedBookOut.model_validate(book)
+                computed_author = book.author_name
+                if not computed_author and book.authors:
+                    computed_author = ", ".join(a.name for a in book.authors)
+                book_out = FeedBookOut(
+                    id=book.id,
+                    title=book.title,
+                    author_name=computed_author or "Autor desconhecido",
+                    cover_url=book.cover_url,
+                    page_count=book.page_count,
+                )
 
         return FeedPostOut(
             id=post.id,
@@ -177,7 +199,7 @@ class FeedService:
             .where(FeedPost.id == post_id)
             .options(
                 selectinload(FeedPost.author),
-                selectinload(FeedPost.book),
+                selectinload(FeedPost.book).selectinload(Book.authors),
                 selectinload(FeedPost.comments).selectinload(FeedPostComment.author),
             )
         )
@@ -199,7 +221,18 @@ class FeedService:
             has_liked = bool(liked)
 
         author_out = FeedAuthorOut.model_validate(post.author)
-        book_out = FeedBookOut.model_validate(post.book) if post.book else None
+        book_out = None
+        if post.book:
+            computed_author = post.book.author_name
+            if not computed_author and post.book.authors:
+                computed_author = ", ".join(a.name for a in post.book.authors)
+            book_out = FeedBookOut(
+                id=post.book.id,
+                title=post.book.title,
+                author_name=computed_author or "Autor desconhecido",
+                cover_url=post.book.cover_url,
+                page_count=post.book.page_count,
+            )
         comments_out = [
             FeedCommentOut(
                 id=c.id,
