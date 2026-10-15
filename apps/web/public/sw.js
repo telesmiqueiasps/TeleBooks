@@ -1,10 +1,10 @@
 /**
  * TeleBooks Service Worker
- * Versão: 1.0.0
+ * Versão: 1.0.2
  * Estratégia: Cache-first para estáticos, Network-first para navegação, Fallback offline resiliente
  */
 
-const CACHE_VERSION = "telebooks-pwa-v1.0.0";
+const CACHE_VERSION = "telebooks-pwa-v1.0.2";
 const STATIC_CACHE = `telebooks-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `telebooks-pages-${CACHE_VERSION}`;
 const FONTS_CACHE = `telebooks-fonts-${CACHE_VERSION}`;
@@ -22,6 +22,38 @@ const PRECACHE_ASSETS = [
   "/icon-512.png",
   "/apple-touch-icon.png",
 ];
+
+/**
+ * Função utilitária segura para clonar e armazenar em cache.
+ * Evita exceções de "Response body is already used" ao clonar imediatamente
+ * de forma síncrona e tratar qualquer erro de forma silenciosa.
+ */
+function safeCloneAndCache(cacheName, request, networkResponse) {
+  if (
+    !networkResponse ||
+    networkResponse.status !== 200 ||
+    request.method !== "GET"
+  ) {
+    return;
+  }
+
+  // Se o body já foi consumido ou é nulo, não clonar
+  if (networkResponse.bodyUsed) {
+    return;
+  }
+
+  try {
+    const responseToCache = networkResponse.clone();
+    caches
+      .open(cacheName)
+      .then((cache) => {
+        cache.put(request, responseToCache).catch(() => {});
+      })
+      .catch(() => {});
+  } catch (_err) {
+    // Falha silenciosa se response já estiver em streaming/consumida
+  }
+}
 
 // Instalação do Service Worker
 self.addEventListener("install", (event) => {
@@ -62,6 +94,11 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // 0. Ignora esquemas não-http (ex: chrome-extension://, moz-extension://)
+  if (!url.protocol.startsWith("http")) {
+    return;
+  }
+
   // 1. Ignora métodos não-GET (POST, PUT, DELETE, PATCH nunca são cacheados)
   if (request.method !== "GET") {
     return;
@@ -101,9 +138,7 @@ self.addEventListener("fetch", (event) => {
         return cache.match(request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
           return fetch(request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(request, networkResponse.clone());
-            }
+            safeCloneAndCache(FONTS_CACHE, request, networkResponse);
             return networkResponse;
           });
         });
@@ -125,9 +160,7 @@ self.addEventListener("fetch", (event) => {
         return cache.match(request).then((cachedResponse) => {
           const fetchPromise = fetch(request)
             .then((networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                cache.put(request, networkResponse.clone());
-              }
+              safeCloneAndCache(COVERS_CACHE, request, networkResponse);
               return networkResponse;
             })
             .catch(() => cachedResponse);
@@ -151,9 +184,7 @@ self.addEventListener("fetch", (event) => {
             return cachedResponse;
           }
           return fetch(request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(request, networkResponse.clone());
-            }
+            safeCloneAndCache(STATIC_CACHE, request, networkResponse);
             return networkResponse;
           });
         });
@@ -178,7 +209,7 @@ self.addEventListener("fetch", (event) => {
                   resolve(cachedPage);
                 }
               });
-            });
+            }).catch(() => {});
           }
         }, 3500);
 
@@ -187,12 +218,7 @@ self.addEventListener("fetch", (event) => {
             clearTimeout(timeoutId);
             if (!hasResolved) {
               hasResolved = true;
-              if (networkResponse && networkResponse.status === 200) {
-                const responseToCache = networkResponse.clone();
-                caches.open(PAGES_CACHE).then((cache) => {
-                  cache.put(request, responseToCache);
-                });
-              }
+              safeCloneAndCache(PAGES_CACHE, request, networkResponse);
               resolve(networkResponse);
             }
           })
@@ -229,11 +255,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, networkResponse.clone());
-            });
-          }
+          safeCloneAndCache(STATIC_CACHE, request, networkResponse);
           return networkResponse;
         })
         .catch(() => cachedResponse);
