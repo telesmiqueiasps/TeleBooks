@@ -56,12 +56,10 @@ import type {
   UserBook,
   UserNote,
   UserQuote,
-  UserTag,
 } from "@telebooks/types";
 import { AppShell } from "../../../components/shell/app-shell";
 import { useAuth } from "../../../components/auth/auth-provider";
 import { api } from "../../../lib/api";
-import { BookFormModal } from "../../../components/catalog/book-form-modal";
 import { ReadingSessionModal } from "../../../components/shelf/reading-session-modal";
 import {
   PERSONAL_COLOR_PALETTE,
@@ -127,8 +125,6 @@ export default function BookDetailPage() {
   const [sliderPage, setSliderPage] = useState<number>(0);
   const [isEditingCurrentPage, setIsEditingCurrentPage] = useState(false);
   const [pageInputVal, setPageInputVal] = useState<string>("");
-  const [isSettingTotalPages, setIsSettingTotalPages] = useState(false);
-  const [totalPagesInputVal, setTotalPagesInputVal] = useState<string>("");
 
   // Estados de carregamento e feedback
   const [isLoading, setIsLoading] = useState(true);
@@ -136,18 +132,17 @@ export default function BookDetailPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Aba ativa: "overview" (visão geral), "sessions" (sessões), "notes" (notas), "quotes" (citações), "technical" (ficha técnica)
+  // Aba ativa no Desktop: "overview", "sessions", "notes", "quotes", "technical"
   const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "notes" | "quotes" | "technical">("overview");
+
+  // Seção ativa no Mobile: "sessions", "notes", "synopsis" ou null
+  const [mobileSection, setMobileSection] = useState<"sessions" | "notes" | "synopsis" | null>(null);
 
   // Estado de cópia de ISBN
   const [copiedIsbn, setCopiedIsbn] = useState<string | null>(null);
 
-  // Modal de edição de dados bibliográficos
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  // Estados de Coleções e Tags Pessoais
+  // Estados de Coleções Pessoais
   const [userCollections, setUserCollections] = useState<Collection[]>([]);
-  const [userTags, setUserTags] = useState<UserTag[]>([]);
   const [isCollectionsModalOpen, setIsCollectionsModalOpen] = useState(false);
 
   // Contadores reais da estante para o AppShell / Sidebar
@@ -187,12 +182,11 @@ export default function BookDetailPage() {
     setApiError(null);
 
     try {
-      const [bookData, userBookData, collectionsData, tagsData] =
+      const [bookData, userBookData, collectionsData] =
         await Promise.all([
           api.getBook(bookId),
           api.getShelfByBookId(bookId),
           api.getCollections().catch(() => []),
-          api.getUserTags().catch(() => []),
         ]);
 
       setBook(bookData);
@@ -200,7 +194,6 @@ export default function BookDetailPage() {
       setSliderPage(userBookData?.current_page || 0);
       setPageInputVal(String(userBookData?.current_page || 0));
       setUserCollections(collectionsData || []);
-      setUserTags(tagsData || []);
       setQuickNotesText(userBookData?.private_notes || "");
 
       // Carrega métricas da estante para manter a sidebar 100% precisa
@@ -407,8 +400,12 @@ export default function BookDetailPage() {
     setIsSaving(true);
     try {
       const updated = await api.updateShelfBook(userBook.id, {
-        started_at: startedAt ? new Date(startedAt).toISOString() : null,
-        finished_at: finishedAt ? new Date(finishedAt).toISOString() : null,
+        started_at: startedAt
+          ? (startedAt.includes("T") ? startedAt : new Date(`${startedAt}T12:00:00Z`).toISOString())
+          : null,
+        finished_at: finishedAt
+          ? (finishedAt.includes("T") ? finishedAt : new Date(`${finishedAt}T12:00:00Z`).toISOString())
+          : null,
       });
       setUserBook(updated);
       showToast("Datas de leitura atualizadas!");
@@ -501,24 +498,6 @@ export default function BookDetailPage() {
     }
   };
 
-  // Associar / Desassociar de Tag
-  const handleToggleTag = async (tagId: string) => {
-    if (!userBook) return;
-    const currentTagIds = userBook.tags?.map((t) => t.id) || [];
-    const nextTagIds = currentTagIds.includes(tagId)
-      ? currentTagIds.filter((id) => id !== tagId)
-      : [...currentTagIds, tagId];
-
-    try {
-      const updated = await api.updateShelfBook(userBook.id, {
-        tag_ids: nextTagIds,
-      });
-      setUserBook(updated);
-      showToast("Tags do exemplar atualizadas!");
-    } catch {
-      showToast("Erro ao atualizar tags");
-    }
-  };
 
   // --------------------------------------------------------------------------
   // Notas Privadas (User Notes)
@@ -713,11 +692,11 @@ export default function BookDetailPage() {
         </div>
       ) : (
         /* ESTADO: SUCESSO - PÁGINA PREMIUM DO LIVRO */
-        <div className="relative max-w-6xl mx-auto space-y-8 pb-12">
+        <div className="relative max-w-6xl w-full mx-auto space-y-3 sm:space-y-8 pb-32 overflow-x-hidden min-w-0">
           {/* Fundo Atmosférico de Capa com Backdrop Blur */}
           {book.cover_url && (
             <div
-              className="absolute -top-12 left-0 right-0 h-96 -z-10 overflow-hidden pointer-events-none opacity-20 dark:opacity-15 blur-3xl scale-125"
+              className="absolute -top-12 left-0 right-0 h-80 -z-10 overflow-hidden pointer-events-none opacity-20 dark:opacity-15 blur-3xl max-w-full"
               aria-hidden="true"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -735,9 +714,9 @@ export default function BookDetailPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors py-1.5 px-3 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors py-1.5 px-3 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/60"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>Voltar</span>
             </button>
 
@@ -756,7 +735,7 @@ export default function BookDetailPage() {
                     showToast("Link do livro copiado!");
                   }
                 }}
-                className="p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                className="p-1.5 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                 title="Compartilhar livro"
               >
                 <Share2 className="w-4 h-4" />
@@ -765,11 +744,680 @@ export default function BookDetailPage() {
           </div>
 
           {/* =========================================================================
-              HERO SECTION: CAPA 3D + METADADOS PRINCIPAIS + VÍNCULO RÁPIDO
+              VERSÃO MOBILE COMPACTA & RESPONSIVA (PWA)
+              Ajustada para máxima densidade vertical, sem scroll horizontal e sem edição de ficha
           ========================================================================= */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
-            {/* COLUNA ESQUERDA: Capa do Livro + Ações Primárias */}
-            <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center sm:items-start space-y-6">
+          <div className="block md:hidden space-y-2.5 w-full max-w-full min-w-0">
+            {/* 1. Topo: Capa no canto superior esquerdo + Dados à direita */}
+            <div className="p-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-start gap-3 min-w-0">
+              {/* Capa Menor no Canto Superior Esquerdo */}
+              <div className="relative shrink-0 w-20 aspect-[2/3] rounded-xl overflow-hidden shadow-md bg-[#e8e4dc] dark:bg-[#1a202c] border border-black/10 dark:border-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={
+                    book.cover_url ||
+                    "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600"
+                  }
+                  alt={`Capa de ${book.title}`}
+                  className="w-full h-full object-cover select-none"
+                />
+                <div
+                  className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/35 to-transparent pointer-events-none"
+                  aria-hidden="true"
+                />
+                {userBook?.personal_color && (
+                  <div
+                    className="absolute inset-y-0 left-0 w-1.5 z-10 shadow-sm"
+                    style={{ backgroundColor: userBook.personal_color }}
+                    title="Cor da lombada"
+                  />
+                )}
+                <div
+                  className="absolute inset-y-0 left-2 w-px bg-white/20 pointer-events-none"
+                  aria-hidden="true"
+                />
+              </div>
+
+              {/* Informações ao Lado da Capa */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                <div>
+                  <h1 className="font-display font-bold text-sm text-slate-900 dark:text-white leading-tight line-clamp-2">
+                    {book.title}
+                  </h1>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    {formattedAuthors}
+                  </p>
+
+                  {/* Metadados: Editora, ISBN, Qtd de páginas */}
+                  <div className="mt-1 space-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                    <div className="truncate">
+                      <span className="font-medium text-slate-400">Editora: </span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {book.publisher?.name || "Não inf."}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span>
+                        <strong className="font-medium text-slate-400">ISBN: </strong>
+                        <span className="font-mono">{book.isbn13 || book.isbn10 || "Não inf."}</span>
+                      </span>
+                      <span>•</span>
+                      <span>
+                        <strong className="font-medium text-slate-400">Págs: </strong>
+                        <span>{book.page_count ? `${book.page_count}` : "Não inf."}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status de Leitura, Estrelas e Favorito */}
+                <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1.5">
+                  {userBook ? (
+                    <>
+                      {/* Status de Leitura */}
+                      <select
+                        value={userBook.status}
+                        onChange={(e) => handleStatusChange(e.target.value as BookStatus)}
+                        className={`text-[10px] font-bold py-0.5 px-1.5 rounded-lg border outline-none cursor-pointer tracking-tight ${
+                          STATUS_CONFIG[userBook.status].bg
+                        } ${STATUS_CONFIG[userBook.status].color}`}
+                      >
+                        <option value="reading">Lendo</option>
+                        <option value="want_to_read">Quero Ler</option>
+                        <option value="read">Lido</option>
+                        <option value="paused">Pausado</option>
+                        <option value="abandoned">Abandonado</option>
+                      </select>
+
+                      {/* Estrelas */}
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const isFilled =
+                            userBook.rating !== null &&
+                            userBook.rating !== undefined &&
+                            userBook.rating >= star;
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => handleRatingChange(star)}
+                              className="p-0.5 text-slate-300 dark:text-slate-700 hover:text-amber-400"
+                            >
+                              <Star
+                                className={`w-3.5 h-3.5 ${
+                                  isFilled ? "fill-amber-400 text-amber-400 drop-shadow-xs" : ""
+                                }`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Favorito */}
+                      <button
+                        type="button"
+                        onClick={handleToggleFavorite}
+                        className={`p-1 rounded-lg transition-colors ${
+                          userBook.favorite
+                            ? "text-rose-500 bg-rose-500/10"
+                            : "text-slate-400 hover:text-rose-500"
+                        }`}
+                        title={userBook.favorite ? "Favoritado" : "Favoritar"}
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 ${userBook.favorite ? "fill-current" : ""}`}
+                        />
+                      </button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleAddToShelf("want_to_read")}
+                      isLoading={isSaving}
+                      className="w-full text-[11px] h-7 rounded-xl font-bold"
+                    >
+                      Adicionar à Minha Estante
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Seção de Meu Acompanhamento de Leitura */}
+            {userBook ? (
+              <div className="p-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                    <BookOpen className="w-3.5 h-3.5 text-primary" />
+                    <span>Acompanhamento de Leitura</span>
+                  </div>
+
+                  {/* Progresso % e Página Atual */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-primary text-xs">
+                      {progressPercent}%
+                    </span>
+                    {isEditingCurrentPage ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const p = parseInt(pageInputVal, 10);
+                          if (!isNaN(p)) {
+                            handlePageUpdate(p);
+                            setIsEditingCurrentPage(false);
+                          }
+                        }}
+                        className="flex items-center gap-1"
+                      >
+                        <input
+                          type="number"
+                          min={0}
+                          max={book.page_count && book.page_count > 0 ? book.page_count : 99999}
+                          value={pageInputVal}
+                          onChange={(e) => setPageInputVal(e.target.value)}
+                          autoFocus
+                          className="w-12 text-[11px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-primary text-slate-900 dark:text-white font-bold text-center"
+                        />
+                        <span className="text-[10px] text-slate-400">/{book.page_count || "?"}</span>
+                        <button
+                          type="submit"
+                          className="p-1 rounded bg-primary text-white text-[10px]"
+                        >
+                          <Check className="w-2.5 h-2.5" />
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPageInputVal(String(userBook.current_page || 0));
+                          setIsEditingCurrentPage(true);
+                        }}
+                        className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-primary transition-colors"
+                      >
+                        <span>
+                          Pág. <strong className="text-slate-800 dark:text-slate-200 font-bold">{userBook.current_page}</strong> de {book.page_count || "?"}
+                        </span>
+                        <Edit3 className="w-2.5 h-2.5 text-slate-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barra de Progresso Compacta */}
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary to-blue-400 rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                {/* Botões de Avanço Rápido */}
+                <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium">Avançar:</span>
+                    <button
+                      type="button"
+                      onClick={() => handlePageUpdate(userBook.current_page + 10)}
+                      className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+                    >
+                      +10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePageUpdate(userBook.current_page + 25)}
+                      className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+                    >
+                      +25
+                    </button>
+                  </div>
+
+                  {userBook.status !== "read" && book.page_count && (
+                    <button
+                      type="button"
+                      onClick={() => handlePageUpdate(book.page_count || userBook.current_page)}
+                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 active:scale-95 transition-all"
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Concluir</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-center space-y-2">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Adicione este título para registrar seu progresso de leitura.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleAddToShelf("reading")}
+                  isLoading={isSaving}
+                  className="w-full text-xs h-8 rounded-xl font-bold"
+                >
+                  Começar a Ler Agora
+                </Button>
+              </div>
+            )}
+
+            {/* 3. Seção: Dois Cards de Data de Início e Fim */}
+            {userBook && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <Calendar className="w-3 h-3 text-primary" />
+                    <span>Início</span>
+                  </div>
+                  <input
+                    type="date"
+                    value={toDateInputVal(userBook.started_at)}
+                    onChange={(e) =>
+                      handleDatesUpdate(
+                        e.target.value || undefined,
+                        userBook.finished_at || undefined
+                      )
+                    }
+                    className="w-full text-[11px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary h-7"
+                  />
+                </div>
+
+                <div className="p-2.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                    <span>Fim</span>
+                  </div>
+                  <input
+                    type="date"
+                    value={toDateInputVal(userBook.finished_at)}
+                    onChange={(e) =>
+                      handleDatesUpdate(
+                        userBook.started_at || undefined,
+                        e.target.value || undefined
+                      )
+                    }
+                    className="w-full text-[11px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary h-7"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 4. Seção: Card com Cores e Opções de Coleções (Sem Tags) */}
+            {userBook && (
+              <div className="p-2.5 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-2">
+                {/* Cor da Lombada */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Palette className="w-3 h-3 text-primary" />
+                      Cor da Lombada
+                    </span>
+                    {userBook.personal_color && (
+                      <button
+                        type="button"
+                        onClick={() => handlePersonalColorChange(null)}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        Padrão
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handlePersonalColorChange(null)}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0 transition-all ${
+                        !userBook.personal_color
+                          ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs"
+                          : "bg-slate-50 dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800"
+                      }`}
+                    >
+                      Padrão
+                    </button>
+                    {PERSONAL_COLOR_PALETTE.map((c) => {
+                      const isSelected =
+                        userBook.personal_color?.toLowerCase() === c.hex.toLowerCase();
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handlePersonalColorChange(c.hex)}
+                          className={`w-5 h-5 rounded-full shrink-0 transition-all flex items-center justify-center ${
+                            isSelected
+                              ? "ring-2 ring-offset-1 ring-primary scale-110 shadow-xs"
+                              : "opacity-80 hover:opacity-100"
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                          title={c.name}
+                        >
+                          {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Divisor */}
+                <div className="border-t border-slate-100 dark:border-slate-800/80" />
+
+                {/* Coleções */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <Folder className="w-3 h-3 text-primary" />
+                      Coleções
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCollectionsModalOpen(true)}
+                      className="text-[10px] text-primary font-bold hover:underline"
+                    >
+                      + Gerenciar
+                    </button>
+                  </div>
+                  {userCollections.length === 0 ? (
+                    <p className="text-[10px] text-slate-400">Nenhuma coleção cadastrada.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {userCollections.map((col) => {
+                        const isInCol =
+                          userBook.collections?.some((c) => c.id === col.id) ?? false;
+                        return (
+                          <button
+                            key={col.id}
+                            type="button"
+                            onClick={() => handleToggleCollection(col.id)}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all flex items-center gap-1 ${
+                              isInCol
+                                ? "bg-blue-500/10 text-primary border-blue-500/40 font-bold"
+                                : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500"
+                            }`}
+                          >
+                            <span>{col.name}</span>
+                            {isInCol && (
+                              <Check className="w-2.5 h-2.5 text-primary stroke-[3]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Seção: 2 Botões (Sessões e Notas) */}
+            {userBook && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMobileSection((prev) => (prev === "sessions" ? null : "sessions"))
+                    }
+                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-xs ${
+                      mobileSection === "sessions"
+                        ? "bg-primary text-white border-primary shadow-primary/20"
+                        : "bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Sessões</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        mobileSection === "sessions"
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      {readingSessions.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMobileSection((prev) => (prev === "notes" ? null : "notes"))
+                    }
+                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-bold transition-all shadow-xs ${
+                      mobileSection === "notes"
+                        ? "bg-primary text-white border-primary shadow-primary/20"
+                        : "bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800"
+                    }`}
+                  >
+                    <StickyNote className="w-3.5 h-3.5" />
+                    <span>Notas</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        mobileSection === "notes"
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      {notes.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Conteúdo Expansível: Sessões */}
+                {mobileSection === "sessions" && (
+                  <div className="p-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-2.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        Histórico de Sessões
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setIsSessionModalOpen(true)}
+                        leftIcon={<Plus className="w-3 h-3 stroke-[3]" />}
+                        className="text-[10px] h-6 px-2.5 rounded-lg font-bold"
+                      >
+                        Nova Sessão
+                      </Button>
+                    </div>
+
+                    {readingSessions.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-3 text-center">
+                        Nenhuma sessão registrada ainda.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
+                        {readingSessions.map((s) => {
+                          const pages = Math.max(0, s.end_page - s.start_page);
+                          const mins = s.duration_seconds
+                            ? Math.round(s.duration_seconds / 60)
+                            : null;
+                          return (
+                            <div
+                              key={s.id}
+                              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0">
+                                <div className="text-[11px] font-bold text-primary truncate">
+                                  +{pages} págs ({s.start_page} à {s.end_page})
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  {new Date(s.started_at).toLocaleDateString("pt-BR", {
+                                    day: "2-digit",
+                                    month: "short",
+                                  })}
+                                  {mins ? ` • ${mins} min` : ""}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm("Excluir sessão?")) {
+                                    await api.deleteReadingSession(s.id);
+                                    await loadBookData();
+                                  }
+                                }}
+                                className="p-1 text-slate-400 hover:text-rose-500"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Conteúdo Expansível: Notas */}
+                {mobileSection === "notes" && (
+                  <div className="p-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-2.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        Minhas Notas Privadas
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setIsNoteFormOpen(!isNoteFormOpen)}
+                        leftIcon={
+                          isNoteFormOpen ? (
+                            <X className="w-3 h-3" />
+                          ) : (
+                            <Plus className="w-3 h-3 stroke-[3]" />
+                          )
+                        }
+                        className="text-[10px] h-6 px-2.5 rounded-lg font-bold"
+                      >
+                        {isNoteFormOpen ? "Fechar" : "Nova Nota"}
+                      </Button>
+                    </div>
+
+                    {isNoteFormOpen && (
+                      <form onSubmit={handleCreateNote} className="space-y-2 pt-1">
+                        <textarea
+                          rows={3}
+                          required
+                          value={noteContent}
+                          onChange={(e) => setNoteContent(e.target.value)}
+                          placeholder="Escreva sua reflexão ou anotação..."
+                          className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={noteChapter}
+                            onChange={(e) => setNoteChapter(e.target.value)}
+                            placeholder="Capítulo (opc.)"
+                            className="text-[10px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          />
+                          <input
+                            type="number"
+                            value={notePage}
+                            onChange={(e) => setNotePage(e.target.value)}
+                            placeholder="Pág. (opc.)"
+                            className="text-[10px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <label className="text-[10px] flex items-center gap-1.5 text-slate-600 dark:text-slate-400 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={noteIsSpoiler}
+                              onChange={(e) => setNoteIsSpoiler(e.target.checked)}
+                              className="w-3 h-3 rounded text-primary"
+                            />
+                            <span>Spoiler</span>
+                          </label>
+                          <Button
+                            type="submit"
+                            variant="primary"
+                            size="sm"
+                            isLoading={isSaving}
+                            className="text-[10px] h-6 px-3 rounded-lg font-bold"
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {notes.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-3 text-center">
+                        Nenhuma anotação feita ainda.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
+                        {notes.map((n) => (
+                          <div
+                            key={n.id}
+                            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 space-y-1"
+                          >
+                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                              <span>
+                                {n.chapter && `Cap. ${n.chapter}`}
+                                {n.chapter && n.page_number && " • "}
+                                {n.page_number && `Pág. ${n.page_number}`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteNote(n.id)}
+                                className="p-0.5 text-slate-400 hover:text-rose-500"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                              {n.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Botão sutil para Sinopse no Mobile */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMobileSection((prev) => (prev === "synopsis" ? null : "synopsis"))
+                    }
+                    className="w-full text-center text-[10px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 py-1 transition-colors"
+                  >
+                    {mobileSection === "synopsis" ? "Ocultar Sinopse ▲" : "Ver Sinopse Editorial ▼"}
+                  </button>
+
+                  {mobileSection === "synopsis" && (
+                    <div className="p-3 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 space-y-2 mt-1 animate-in fade-in duration-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Sinopse Editorial
+                      </span>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                        {book.description || "Nenhuma sinopse cadastrada para este livro."}
+                      </p>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={handleRemoveFromShelf}
+                          className="text-[10px] text-rose-500 hover:underline flex items-center gap-1 py-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Remover livro da biblioteca
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* =========================================================================
+              VERSÃO DESKTOP (MD+)
+          ========================================================================= */}
+          <div className="hidden md:block space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
+              {/* COLUNA ESQUERDA: Capa do Livro + Ações Primárias */}
+              <div className="md:col-span-5 lg:col-span-4 flex flex-col items-center sm:items-start space-y-6">
               {/* Moldura 3D da Capa com Efeito Editorial de Lombada */}
               <div className="relative group w-48 sm:w-60 md:w-full max-w-[280px] aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-[#e8e4dc] dark:bg-[#1a202c] border border-black/10 dark:border-white/10">
                 {/* Imagem da Capa */}
@@ -1124,66 +1772,11 @@ export default function BookDetailPage() {
                     </div>
                   </div>
 
-                  {/* Alerta e Definição caso o livro não possua total de páginas */}
+                  {/* Indicador caso o livro não possua total de páginas */}
                   {(!book.page_count || book.page_count <= 0) && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                        <span>Este livro não possui a quantidade total de páginas cadastrada.</span>
-                      </div>
-                      {!isSettingTotalPages ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTotalPagesInputVal("");
-                            setIsSettingTotalPages(true);
-                          }}
-                          className="px-3 py-1 rounded-xl bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 transition-colors self-start sm:self-auto shrink-0 shadow-xs"
-                        >
-                          Definir total de páginas
-                        </button>
-                      ) : (
-                        <form
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const p = parseInt(totalPagesInputVal, 10);
-                            if (p > 0 && book) {
-                              try {
-                                const updatedBook = await api.updateBook(book.id, { page_count: p });
-                                setBook(updatedBook);
-                                setIsSettingTotalPages(false);
-                                showToast(`Total de páginas definido como ${p}!`);
-                              } catch {
-                                showToast("Erro ao atualizar total de páginas");
-                              }
-                            }
-                          }}
-                          className="flex items-center gap-1 self-start sm:self-auto shrink-0"
-                        >
-                          <input
-                            type="number"
-                            min={1}
-                            placeholder="Qtd."
-                            value={totalPagesInputVal}
-                            onChange={(e) => setTotalPagesInputVal(e.target.value)}
-                            className="w-16 px-2 py-1 text-xs rounded-lg bg-white dark:bg-slate-900 border border-amber-400 text-slate-900 dark:text-white"
-                            autoFocus
-                          />
-                          <button
-                            type="submit"
-                            className="px-2.5 py-1 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
-                          >
-                            Salvar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsSettingTotalPages(false)}
-                            className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs"
-                          >
-                            ✕
-                          </button>
-                        </form>
-                      )}
+                    <div className="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-slate-400" />
+                      <span>Quantidade total de páginas não informada no catálogo.</span>
                     </div>
                   )}
 
@@ -1418,63 +2011,6 @@ export default function BookDetailPage() {
                       )}
                     </div>
 
-                    {/* Tags Pessoais */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                          <Tag className="w-3.5 h-3.5 text-primary" />
-                          <span>Minhas Tags</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setIsCollectionsModalOpen(true)}
-                          className="text-[11px] text-primary hover:underline font-medium"
-                        >
-                          Gerenciar Tags
-                        </button>
-                      </div>
-
-                      {userTags.length === 0 ? (
-                        <div className="text-xs text-slate-400">
-                          Nenhuma tag criada ainda.{" "}
-                          <button
-                            type="button"
-                            onClick={() => setIsCollectionsModalOpen(true)}
-                            className="text-primary hover:underline font-medium"
-                          >
-                            Criar tags
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {userTags.map((tag) => {
-                            const hasTag =
-                              userBook.tags?.some((t) => t.id === tag.id) ?? false;
-                            return (
-                              <button
-                                key={tag.id}
-                                type="button"
-                                onClick={() => handleToggleTag(tag.id)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                                  hasTag
-                                    ? "bg-blue-500/10 text-primary border-blue-500/40 font-semibold"
-                                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                }`}
-                              >
-                                <span
-                                  className="w-2 h-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: tag.color || "#007BFF" }}
-                                />
-                                <span>#{tag.name}</span>
-                                {hasTag && (
-                                  <Check className="w-3 h-3 text-primary stroke-[2.5]" />
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               )}
@@ -2357,23 +2893,12 @@ export default function BookDetailPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditModalOpen(true)}
-                    leftIcon={<Edit3 className="w-3.5 h-3.5" />}
-                    className="rounded-full text-xs"
-                  >
-                    Editar Informações no Catálogo
-                  </Button>
-                </div>
               </div>
             </div>
           )}
+        </div>
 
-
-          {/* Modal de Gestão de Coleções e Tags */}
+          {/* Modal de Gestão de Coleções */}
           <CollectionsManagerModal
             isOpen={isCollectionsModalOpen}
             onClose={() => setIsCollectionsModalOpen(false)}

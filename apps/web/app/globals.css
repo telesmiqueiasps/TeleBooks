@@ -39,6 +39,8 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* Suporte completo a Safe Areas (Notches, Home Indicator no iOS/Android) */
