@@ -449,6 +449,19 @@ export interface BookSubmissionCreate {
   initial_shelf_status?: BookStatus;
 }
 
+export interface BookSubmissionUpdate {
+  title?: string;
+  subtitle?: string | null;
+  author_names?: string[];
+  publisher_name?: string | null;
+  description?: string | null;
+  isbn13?: string | null;
+  isbn10?: string | null;
+  page_count?: number | null;
+  cover_url?: string | null;
+  initial_shelf_status?: BookStatus;
+}
+
 export interface BookSubmissionReview {
   action: "approve" | "reject";
   rejection_reason?: string | null;

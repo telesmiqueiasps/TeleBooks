@@ -29,6 +29,7 @@ import type {
   BookSubmission,
   BookSubmissionCreate,
   BookSubmissionReview,
+  BookSubmissionUpdate,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1335,6 +1336,45 @@ export const api = {
 
   async approveBookSubmission(submissionId: string): Promise<BookSubmission> {
     return await request<BookSubmission>(`/book-submissions/${submissionId}/approve`, { method: "POST" }, true);
+  },
+
+  async updateBookSubmission(
+    submissionId: string,
+    payload: BookSubmissionUpdate
+  ): Promise<BookSubmission> {
+    try {
+      return await request<BookSubmission>(
+        `/book-submissions/${submissionId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const updateData: Record<string, unknown> = {};
+      if (payload.title !== undefined) updateData.title = payload.title;
+      if (payload.subtitle !== undefined) updateData.subtitle = payload.subtitle;
+      if (payload.author_names !== undefined) updateData.author_names = payload.author_names;
+      if (payload.publisher_name !== undefined) updateData.publisher_name = payload.publisher_name;
+      if (payload.description !== undefined) updateData.description = payload.description;
+      if (payload.isbn13 !== undefined) updateData.isbn13 = payload.isbn13;
+      if (payload.isbn10 !== undefined) updateData.isbn10 = payload.isbn10;
+      if (payload.page_count !== undefined) updateData.page_count = payload.page_count;
+      if (payload.cover_url !== undefined) updateData.cover_url = payload.cover_url;
+      if (payload.initial_shelf_status !== undefined) updateData.initial_shelf_status = payload.initial_shelf_status;
+
+      const { data, error } = await supabase
+        .from("book_submissions")
+        .update(updateData)
+        .eq("id", submissionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as BookSubmission;
+    }
   },
 
   async rejectBookSubmission(submissionId: string, reason?: string): Promise<BookSubmission> {

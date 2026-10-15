@@ -39,6 +39,15 @@ def test_reject_submission_unauthenticated(client: TestClient):
     assert response.status_code == 401
 
 
+def test_update_submission_unauthenticated(client: TestClient):
+    fake_id = str(uuid.uuid4())
+    response = client.patch(
+        f"/api/v1/book-submissions/{fake_id}",
+        json={"title": "Título Corrigido"},
+    )
+    assert response.status_code == 401
+
+
 def test_update_book_unauthenticated_forbidden(client: TestClient):
     fake_id = str(uuid.uuid4())
     response = client.patch(f"/api/v1/books/{fake_id}", json={"title": "Novo Título"})

@@ -9,6 +9,7 @@ from app.schemas.book_submission import (
     BookSubmissionCreate,
     BookSubmissionRead,
     BookSubmissionReview,
+    BookSubmissionUpdate,
 )
 from app.schemas.common import PaginatedResponse
 from app.services.book_submission_service import BookSubmissionService
@@ -83,6 +84,30 @@ def list_admin_submissions(
     )
     validated_items = [BookSubmissionRead.model_validate(item) for item in items]
     return PaginatedResponse.create(items=validated_items, total=total, page=page, page_size=page_size)
+
+
+@router.patch(
+    "/{submission_id}",
+    response_model=BookSubmissionRead,
+    summary="Editar dados de um livro submetido antes de aprovar (Apenas Admin)",
+)
+def update_book_submission(
+    submission_id: uuid.UUID,
+    payload: BookSubmissionUpdate,
+    db: Session = Depends(get_db),
+    admin: CurrentUser = Depends(get_current_admin),
+):
+    """
+    Permite ao administrador corrigir dados bibliográficos da obra
+    (título, subtítulo, autores, editora, páginas, ISBN, capa) antes de aprová-la.
+    """
+    submission = BookSubmissionService.update_submission(
+        db=db,
+        admin_id=uuid.UUID(admin.id),
+        submission_id=submission_id,
+        payload=payload,
+    )
+    return BookSubmissionRead.model_validate(submission)
 
 
 @router.post(

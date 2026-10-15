@@ -9,7 +9,7 @@ from app.models.book_submission import BookSubmission
 from app.models.notification import Notification
 from app.models.profile import Profile
 from app.models.shelf import BookStatus, UserBook
-from app.schemas.book_submission import BookSubmissionCreate
+from app.schemas.book_submission import BookSubmissionCreate, BookSubmissionUpdate
 from app.schemas.catalog import BookCreate
 from app.services.catalog_service import CatalogService
 
@@ -100,6 +100,71 @@ class BookSubmissionService:
         items = list(db.execute(stmt.offset(offset).limit(page_size)).scalars().all())
 
         return items, total
+
+    @staticmethod
+    def update_submission(
+        db: Session,
+        admin_id: uuid.UUID,
+        submission_id: uuid.UUID,
+        payload: BookSubmissionUpdate,
+    ) -> BookSubmission:
+        """
+        Permite ao administrador fazer correções nos dados do livro submetido antes de aprová-lo.
+        """
+        submission = db.execute(
+            select(BookSubmission)
+            .options(selectinload(BookSubmission.user))
+            .where(BookSubmission.id == submission_id)
+        ).scalar_one_or_none()
+
+        if not submission:
+            raise NotFoundError("Submissão de livro não encontrada.")
+
+        if payload.title is not None:
+            clean_title = payload.title.strip()
+            if not clean_title:
+                raise BadRequestError("O título da obra não pode ser vazio.")
+            submission.title = clean_title
+
+        if payload.subtitle is not None:
+            clean_subtitle = payload.subtitle.strip()
+            submission.subtitle = clean_subtitle if clean_subtitle else None
+
+        if payload.author_names is not None:
+            clean_authors = [a.strip() for a in payload.author_names if a.strip()]
+            if not clean_authors:
+                raise BadRequestError("Informe ao menos um autor para o livro.")
+            submission.author_names = clean_authors
+
+        if payload.publisher_name is not None:
+            clean_publisher = payload.publisher_name.strip()
+            submission.publisher_name = clean_publisher if clean_publisher else None
+
+        if payload.description is not None:
+            clean_desc = payload.description.strip()
+            submission.description = clean_desc if clean_desc else None
+
+        if payload.isbn13 is not None:
+            clean_isbn13 = payload.isbn13.strip()
+            submission.isbn13 = clean_isbn13 if clean_isbn13 else None
+
+        if payload.isbn10 is not None:
+            clean_isbn10 = payload.isbn10.strip()
+            submission.isbn10 = clean_isbn10 if clean_isbn10 else None
+
+        if payload.page_count is not None:
+            submission.page_count = payload.page_count
+
+        if payload.cover_url is not None:
+            clean_cover = payload.cover_url.strip()
+            submission.cover_url = clean_cover if clean_cover else None
+
+        if payload.initial_shelf_status is not None:
+            submission.initial_shelf_status = payload.initial_shelf_status
+
+        db.commit()
+        db.refresh(submission)
+        return submission
 
     @staticmethod
     def approve_submission(

@@ -22,12 +22,14 @@ import {
   ArrowLeft,
   AlertCircle,
   Filter,
+  Edit3,
+  Sparkles,
 } from "lucide-react";
 import { AppShell } from "../../components/shell/app-shell";
 import { useAuth } from "../../components/auth/auth-provider";
 import { api } from "../../lib/api";
 import { Button, Modal } from "@telebooks/ui";
-import type { BookSubmission, SubmissionStatus } from "@telebooks/types";
+import type { BookSubmission, BookSubmissionUpdate, SubmissionStatus } from "@telebooks/types";
 
 function formatRelativeTime(dateString: string): string {
   try {
@@ -64,6 +66,93 @@ export default function AdminModerationPage() {
   const [rejectingItem, setRejectingItem] = useState<BookSubmission | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Edição de Submissão antes de Aprovar
+  const [editingItem, setEditingItem] = useState<BookSubmission | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSubtitle, setEditSubtitle] = useState("");
+  const [editAuthors, setEditAuthors] = useState("");
+  const [editPublisher, setEditPublisher] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editIsbn13, setEditIsbn13] = useState("");
+  const [editIsbn10, setEditIsbn10] = useState("");
+  const [editPageCount, setEditPageCount] = useState("");
+  const [editCoverUrl, setEditCoverUrl] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleOpenEdit = (sub: BookSubmission) => {
+    setEditingItem(sub);
+    setEditTitle(sub.title || "");
+    setEditSubtitle(sub.subtitle || "");
+    setEditAuthors(sub.author_names?.join(", ") || "");
+    setEditPublisher(sub.publisher_name || "");
+    setEditDescription(sub.description || "");
+    setEditIsbn13(sub.isbn13 || "");
+    setEditIsbn10(sub.isbn10 || "");
+    setEditPageCount(sub.page_count ? String(sub.page_count) : "");
+    setEditCoverUrl(sub.cover_url || "");
+  };
+
+  const handleSaveEdit = async (andApprove: boolean = false) => {
+    if (!editingItem || isSavingEdit) return;
+
+    if (!editTitle.trim()) {
+      showToast("O título da obra é obrigatório.");
+      return;
+    }
+
+    const cleanAuthors = editAuthors
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+
+    if (cleanAuthors.length === 0) {
+      showToast("Informe ao menos um autor para a obra.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const payload: BookSubmissionUpdate = {
+        title: editTitle.trim(),
+        subtitle: editSubtitle.trim() || null,
+        author_names: cleanAuthors,
+        publisher_name: editPublisher.trim() || null,
+        description: editDescription.trim() || null,
+        isbn13: editIsbn13.trim() || null,
+        isbn10: editIsbn10.trim() || null,
+        page_count: editPageCount ? parseInt(editPageCount, 10) : null,
+        cover_url: editCoverUrl.trim() || null,
+      };
+
+      const updated = await api.updateBookSubmission(editingItem.id, payload);
+
+      if (andApprove) {
+        await api.approveBookSubmission(editingItem.id);
+        showToast(`Livro "${updated.title}" corrigido e aprovado com sucesso!`);
+        setSubmissions((prev) =>
+          prev.map((item) =>
+            item.id === editingItem.id ? { ...updated, status: "approved" as SubmissionStatus } : item
+          )
+        );
+        if (selectedStatus === "pending") {
+          setSubmissions((prev) => prev.filter((item) => item.id !== editingItem.id));
+        }
+      } else {
+        showToast("Correções salvas com sucesso!");
+        setSubmissions((prev) =>
+          prev.map((item) => (item.id === editingItem.id ? { ...item, ...updated } : item))
+        );
+      }
+
+      setEditingItem(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao salvar alterações.";
+      showToast(msg);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -414,6 +503,16 @@ export default function AdminModerationPage() {
                             variant="outline"
                             size="sm"
                             disabled={isProcessing}
+                            onClick={() => handleOpenEdit(sub)}
+                            leftIcon={<Edit3 className="w-3.5 h-3.5 text-blue-500" />}
+                            className="rounded-full text-xs font-semibold"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isProcessing}
                             onClick={() => {
                               setRejectingItem(sub);
                               setRejectReason("");
@@ -492,6 +591,182 @@ export default function AdminModerationPage() {
               </Button>
             </div>
           </div>
+        </Modal>
+
+        {/* Modal de Edição de Submissão antes de Aprovar */}
+        <Modal
+          isOpen={!!editingItem}
+          onClose={() => {
+            if (!isSavingEdit) setEditingItem(null);
+          }}
+          title="Editar Dados da Obra antes de Aprovar"
+          size="lg"
+        >
+          {editingItem && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-[#006CEB] shrink-0 mt-0.5" />
+                <p>
+                  Como administrador, você pode ajustar o título, autores, editora, páginas, ISBN ou capa para garantir a qualidade do catálogo compartilhado antes de aprovar.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Título da Obra *
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Ex: O Nome do Vento"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Subtítulo (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editSubtitle}
+                    onChange={(e) => setEditSubtitle(e.target.value)}
+                    placeholder="Ex: A Crônica do Matador do Rei: Primeiro Dia"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Autor(es) * (separados por vírgula se houver mais de um)
+                  </label>
+                  <input
+                    type="text"
+                    value={editAuthors}
+                    onChange={(e) => setEditAuthors(e.target.value)}
+                    placeholder="Ex: Patrick Rothfuss, Neil Gaiman"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Editora
+                  </label>
+                  <input
+                    type="text"
+                    value={editPublisher}
+                    onChange={(e) => setEditPublisher(e.target.value)}
+                    placeholder="Ex: Arqueiro, Companhia das Letras"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Total de Páginas
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editPageCount}
+                    onChange={(e) => setEditPageCount(e.target.value)}
+                    placeholder="Ex: 656"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    ISBN-13
+                  </label>
+                  <input
+                    type="text"
+                    value={editIsbn13}
+                    onChange={(e) => setEditIsbn13(e.target.value)}
+                    placeholder="Ex: 9788580419078"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    ISBN-10
+                  </label>
+                  <input
+                    type="text"
+                    value={editIsbn10}
+                    onChange={(e) => setEditIsbn10(e.target.value)}
+                    placeholder="Ex: 8580419077"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    URL da Imagem da Capa
+                  </label>
+                  <input
+                    type="url"
+                    value={editCoverUrl}
+                    onChange={(e) => setEditCoverUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Sinopse / Descrição
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Breve descrição da obra..."
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006CEB]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingItem(null)}
+                  disabled={isSavingEdit}
+                  className="rounded-full text-xs w-full sm:w-auto"
+                >
+                  Cancelar
+                </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSaveEdit(false)}
+                    isLoading={isSavingEdit}
+                    className="rounded-full text-xs w-full sm:w-auto font-semibold"
+                  >
+                    Salvar Correções
+                  </Button>
+                  {editingItem.status === "pending" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSaveEdit(true)}
+                      isLoading={isSavingEdit}
+                      leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                      className="rounded-full text-xs font-bold w-full sm:w-auto"
+                    >
+                      Salvar e Aprovar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </AppShell>

@@ -29,6 +29,22 @@ class BookSubmissionCreate(BaseModel):
     )
 
 
+class BookSubmissionUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=500, description="Título da obra")
+    subtitle: str | None = Field(default=None, max_length=500, description="Subtítulo da obra")
+    author_names: list[str] | None = Field(default=None, min_length=1, description="Lista com nomes dos autores")
+    publisher_name: str | None = Field(default=None, max_length=255, description="Nome da editora")
+    description: str | None = Field(default=None, description="Sinopse ou descrição do livro")
+    isbn13: str | None = Field(default=None, max_length=13, description="Código ISBN-13")
+    isbn10: str | None = Field(default=None, max_length=10, description="Código ISBN-10")
+    page_count: int | None = Field(default=None, ge=1, description="Número total de páginas")
+    cover_url: str | None = Field(default=None, description="URL da imagem da capa")
+    initial_shelf_status: str | None = Field(
+        default=None,
+        description="Status inicial na estante do leitor caso aprovado ('want_to_read', 'reading', etc.)",
+    )
+
+
 class BookSubmissionReview(BaseModel):
     action: str = Field(..., pattern="^(approve|reject)$", description="Ação: 'approve' ou 'reject'")
     rejection_reason: str | None = Field(default=None, description="Motivo caso rejeitado")
