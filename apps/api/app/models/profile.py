@@ -28,6 +28,7 @@ class Profile(Base, TimestampMixin):
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="user", nullable=False)
 
     __table_args__ = (CheckConstraint("char_length(username) >= 3", name="username_length"),)
 

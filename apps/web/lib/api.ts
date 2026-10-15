@@ -26,6 +26,9 @@ import type {
   FeedPostCreateParams,
   NotificationItem,
   NotificationListResponse,
+  BookSubmission,
+  BookSubmissionCreate,
+  BookSubmissionReview,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1245,6 +1248,104 @@ export const api = {
       if (error) throw error;
       return { success: true, updated_count: 1 };
     }
+  },
+
+  // ============================================================================
+  // Submissões Manuais de Livros e Moderação (Admin)
+  // ============================================================================
+  async createBookSubmission(payload: BookSubmissionCreate): Promise<BookSubmission> {
+    try {
+      return await request<BookSubmission>(
+        "/book-submissions",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+        true
+      );
+    } catch {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data, error } = await supabase
+        .from("book_submissions")
+        .insert({
+          user_id: user.id,
+          title: payload.title,
+          subtitle: payload.subtitle || null,
+          author_names: payload.author_names,
+          publisher_name: payload.publisher_name || null,
+          description: payload.description || null,
+          isbn13: payload.isbn13 || null,
+          isbn10: payload.isbn10 || null,
+          page_count: payload.page_count || null,
+          cover_url: payload.cover_url || null,
+          initial_shelf_status: payload.initial_shelf_status || "want_to_read",
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as BookSubmission;
+    }
+  },
+
+  async getAdminBookSubmissions(params?: {
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResult<BookSubmission>> {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+
+    try {
+      return await request<PaginatedResult<BookSubmission>>(`/book-submissions${query}`, {}, true);
+    } catch {
+      const supabase = createClient();
+      let dbQuery = supabase
+        .from("book_submissions")
+        .select("*, user:profiles!user_id(id, username, full_name, avatar_url)", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.status) {
+        dbQuery = dbQuery.eq("status", params.status);
+      }
+      const page = params?.page || 1;
+      const pageSize = params?.page_size || 20;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, count, error } = await dbQuery.range(from, to);
+      if (error) throw error;
+
+      return {
+        items: (data || []) as BookSubmission[],
+        total: count || 0,
+        page,
+        page_size: pageSize,
+        total_pages: Math.ceil((count || 0) / pageSize),
+      };
+    }
+  },
+
+  async approveBookSubmission(submissionId: string): Promise<BookSubmission> {
+    return await request<BookSubmission>(`/book-submissions/${submissionId}/approve`, { method: "POST" }, true);
+  },
+
+  async rejectBookSubmission(submissionId: string, reason?: string): Promise<BookSubmission> {
+    return await request<BookSubmission>(
+      `/book-submissions/${submissionId}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify({ action: "reject", rejection_reason: reason }),
+      },
+      true
+    );
   },
 };
 

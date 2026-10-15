@@ -742,16 +742,6 @@ export default function BookDetailPage() {
             </button>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditModalOpen(true)}
-                className="rounded-full text-xs text-slate-600 dark:text-slate-300"
-                leftIcon={<Edit3 className="w-3.5 h-3.5" />}
-              >
-                Editar Ficha
-              </Button>
-
               <button
                 type="button"
                 onClick={() => {
@@ -2382,19 +2372,6 @@ export default function BookDetailPage() {
             </div>
           )}
 
-          {/* Modal para Editar Metadados Globais do Catálogo */}
-          {book && (
-            <BookFormModal
-              isOpen={isEditModalOpen}
-              onClose={() => setIsEditModalOpen(false)}
-              bookToEdit={book}
-              onSuccess={(updatedBook) => {
-                setBook(updatedBook);
-                setIsEditModalOpen(false);
-                showToast("Dados do livro atualizados com sucesso!");
-              }}
-            />
-          )}
 
           {/* Modal de Gestão de Coleções e Tags */}
           <CollectionsManagerModal

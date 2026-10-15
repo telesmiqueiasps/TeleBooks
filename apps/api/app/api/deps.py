@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFoundError, UnauthorizedError
+from app.core.errors import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import CurrentUser, decode_access_token
 from app.db.session import get_db
 from app.models.profile import Profile
@@ -75,3 +75,17 @@ def get_current_profile(
     if not profile:
         raise NotFoundError("Perfil do usuário não encontrado no banco de dados.")
     return profile
+
+
+def get_current_admin(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CurrentUser:
+    """
+    Exige que o usuário autenticado possua papel (role) de 'admin' no perfil.
+    """
+    user_uuid = uuid.UUID(current_user.id)
+    profile = db.execute(select(Profile).where(Profile.id == user_uuid)).scalar_one_or_none()
+    if not profile or getattr(profile, "role", "user") != "admin":
+        raise ForbiddenError("Acesso restrito aos administradores do sistema.")
+    return current_user

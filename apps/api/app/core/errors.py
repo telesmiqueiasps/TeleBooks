@@ -38,6 +38,20 @@ class NotFoundError(AppException):
         )
 
 
+class BadRequestError(AppException):
+    def __init__(
+        self,
+        message: str = "Requisição inválida",
+        details: Any | None = None,
+    ):
+        super().__init__(
+            message=message,
+            code="BAD_REQUEST",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=details,
+        )
+
+
 class UnauthorizedError(AppException):
     def __init__(
         self,

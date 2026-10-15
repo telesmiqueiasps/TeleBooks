@@ -11,6 +11,8 @@ import {
   Link2,
   Trash2,
   CheckCircle2,
+  ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 import { Modal, Button, Input } from "@telebooks/ui";
 import type { Author, Book, Genre, Publisher, BookStatus } from "@telebooks/types";
@@ -55,6 +57,7 @@ export function BookFormModal({
   const [availableGenres, setAvailableGenres] = useState<Genre[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittedSuccess, setIsSubmittedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -201,31 +204,33 @@ export function BookFormModal({
     };
 
     try {
-      let savedBook: Book;
       if (bookToEdit) {
-        savedBook = await api.updateBook(bookToEdit.id, payload);
+        const savedBook = await api.updateBook(bookToEdit.id, payload);
+        onSuccess?.(savedBook);
+        onClose();
       } else {
-        savedBook = await api.createBook(payload, {
-          add_to_shelf: addToShelf,
-          shelf_status: shelfStatus,
+        await api.createBookSubmission({
+          title: title.trim(),
+          subtitle: null,
+          author_names: authorNames,
+          publisher_name: pubName || null,
+          description: description.trim() || null,
+          isbn13: isbn13.trim() || null,
+          page_count: pageCount ? parseInt(pageCount, 10) : null,
+          cover_url:
+            coverUrl.trim() ||
+            "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600",
+          initial_shelf_status: "want_to_read",
         });
-
-        // Garantia de vinculação à estante pessoal do leitor
-        if (addToShelf) {
-          try {
-            await api.addToShelf({
-              book_id: savedBook.id,
-              status: shelfStatus,
-            });
-          } catch {
-            // Se já foi adicionado pelo backend, ignora
-          }
-        }
+        setIsSubmittedSuccess(true);
+        setTimeout(() => {
+          setIsSubmittedSuccess(false);
+          onSuccess?.({} as Book);
+          onClose();
+        }, 2200);
       }
-      onSuccess?.(savedBook);
-      onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar livro.");
+      setError(err instanceof Error ? err.message : "Erro ao enviar livro para análise.");
     } finally {
       setIsSubmitting(false);
     }
@@ -235,9 +240,22 @@ export function BookFormModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={bookToEdit ? "Editar Dados Bibliográficos" : "Cadastrar Novo Livro"}
+      title={bookToEdit ? "Editar Dados Bibliográficos" : "Cadastrar Novo Livro Manualmente"}
       size="lg"
     >
+      {isSubmittedSuccess ? (
+        <div className="py-8 text-center space-y-3 animate-in fade-in">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            Livro enviado para análise com sucesso!
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+            Nossa equipe de moderação avaliará os dados cadastrados. Assim que aprovado pelo suporte, você receberá uma notificação e o livro entrará no catálogo e na sua biblioteca em até 24 horas.
+          </p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 text-sm bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg flex items-center gap-2">
@@ -526,51 +544,19 @@ export function BookFormModal({
           />
         </div>
 
-        {/* Opções de Vinculação à Minha Biblioteca */}
+        {/* Aviso de Moderação e Análise do Suporte */}
         {!bookToEdit && (
-          <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 space-y-3">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={addToShelf}
-                onChange={(e) => setAddToShelf(e.target.checked)}
-                className="w-4 h-4 rounded text-[#007BFF] focus:ring-[#007BFF]"
-              />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Adicionar este livro diretamente à minha biblioteca
-              </span>
-            </label>
-
-            {addToShelf && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 pl-6">
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Status de leitura inicial:
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {(
-                    [
-                      { id: "want_to_read", label: "Quero Ler" },
-                      { id: "reading", label: "Lendo Agora" },
-                      { id: "read", label: "Já Lido" },
-                      { id: "paused", label: "Pausado" },
-                    ] as const
-                  ).map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setShelfStatus(st.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        shelfStatus === st.id
-                          ? "bg-[#007BFF] text-white shadow-xs"
-                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-2">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span>Aviso sobre o Cadastro Manual</span>
+            </div>
+            <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed">
+              Como os dados dos livros são compartilhados com toda a comunidade do TeleBooks, as obras cadastradas manualmente passam por uma rápida análise da nossa equipe de suporte.
+              <strong className="block mt-1 font-semibold text-amber-800 dark:text-amber-300">
+                Caso aprovado, o livro entrará no catálogo e na sua biblioteca em até 24 horas.
+              </strong>
+            </p>
           </div>
         )}
 
@@ -583,12 +569,13 @@ export function BookFormModal({
             variant="primary"
             type="submit"
             isLoading={isSubmitting}
-            leftIcon={<Check className="h-4 w-4" />}
+            leftIcon={bookToEdit ? <Check className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
           >
-            {bookToEdit ? "Salvar Alterações" : "Cadastrar Livro"}
+            {bookToEdit ? "Salvar Alterações" : "Enviar para Análise"}
           </Button>
         </div>
       </form>
+      )}
     </Modal>
   );
 }

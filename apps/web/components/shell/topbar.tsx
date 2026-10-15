@@ -20,6 +20,7 @@ import {
   BookmarkCheck,
   Plus,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Dropdown,
@@ -265,6 +266,24 @@ export function Topbar({
               </span>
             )}
           </button>
+
+          {/* 5. Aba Moderação (Admin) */}
+          {profile?.role === "admin" && (
+            <button
+              type="button"
+              onClick={() => handleTabClick("admin", "/admin")}
+              className={cn(
+                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
+                pathname.startsWith("/admin")
+                  ? "bg-amber-400 text-slate-900 shadow-sm font-bold scale-[1.02]"
+                  : "bg-amber-400/20 text-amber-200 hover:text-white hover:bg-amber-400/30 border border-amber-300/30"
+              )}
+              title="Painel de Moderação de Livros"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              <span>Moderação</span>
+            </button>
+          )}
         </nav>
 
         {/* Global Search Input (Desktop expandido ou Tablet compacto) */}
@@ -522,6 +541,14 @@ export function Topbar({
                   >
                     Meu Perfil
                   </DropdownItem>
+                  {profile?.role === "admin" && (
+                    <DropdownItem
+                      icon={<ShieldCheck className="h-4 w-4 text-amber-500" />}
+                      onClick={() => router.push("/admin")}
+                    >
+                      Painel de Moderação
+                    </DropdownItem>
+                  )}
                   <DropdownItem
                     icon={<Settings className="h-4 w-4 text-slate-500" />}
                     onClick={() => router.push("/perfil")}

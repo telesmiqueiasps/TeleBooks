@@ -114,17 +114,27 @@ def test_crud_books(client):
     book_id = book["id"]
     assert book["title"] == title
 
-    # Update
-    update_res = client.patch(
-        f"/api/v1/books/{book_id}",
-        json={"subtitle": "Subtítulo Atualizado"},
+    from app.api.deps import get_current_admin
+    from app.core.security import CurrentUser
+    from main import app
+
+    app.dependency_overrides[get_current_admin] = lambda: CurrentUser(
+        id=str(uuid.uuid4()), email="admin@telebooks.com", role="authenticated"
     )
-    assert update_res.status_code == 200
-    assert update_res.json()["subtitle"] == "Subtítulo Atualizado"
+    try:
+        # Update
+        update_res = client.patch(
+            f"/api/v1/books/{book_id}",
+            json={"subtitle": "Subtítulo Atualizado"},
+        )
+        assert update_res.status_code == 200
+        assert update_res.json()["subtitle"] == "Subtítulo Atualizado"
 
-    # Delete
-    del_res = client.delete(f"/api/v1/books/{book_id}")
-    assert del_res.status_code == 204
+        # Delete
+        del_res = client.delete(f"/api/v1/books/{book_id}")
+        assert del_res.status_code == 204
 
-    # Confirm deleted
-    assert client.get(f"/api/v1/books/{book_id}").status_code == 404
+        # Confirm deleted
+        assert client.get(f"/api/v1/books/{book_id}").status_code == 404
+    finally:
+        app.dependency_overrides.pop(get_current_admin, None)

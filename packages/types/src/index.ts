@@ -17,6 +17,7 @@ export interface Profile {
   avatar_url?: string | null;
   bio?: string | null;
   is_public?: boolean;
+  role?: "user" | "admin";
   created_at: string;
   updated_at: string;
 }
@@ -376,7 +377,11 @@ export interface FeedLikeResult {
 }
 
 /** Sistema de Notificações */
-export type NotificationType = "post_like" | "post_comment";
+export type NotificationType =
+  | "post_like"
+  | "post_comment"
+  | "book_approved"
+  | "book_rejected";
 
 export interface NotificationActor {
   id: string;
@@ -392,6 +397,7 @@ export interface NotificationItem {
   type: NotificationType;
   post_id?: string | null;
   comment_id?: string | null;
+  book_id?: string | null;
   content?: string | null;
   is_read: boolean;
   created_at: string;
@@ -402,6 +408,50 @@ export interface NotificationListResponse {
   items: NotificationItem[];
   unread_count: number;
   total: number;
+}
+
+/** Sistema de Submissão Manual e Moderação de Livros */
+export type SubmissionStatus = "pending" | "approved" | "rejected";
+
+export interface BookSubmission {
+  id: string;
+  user_id: string;
+  title: string;
+  subtitle?: string | null;
+  author_names: string[];
+  publisher_name?: string | null;
+  description?: string | null;
+  isbn13?: string | null;
+  isbn10?: string | null;
+  page_count?: number | null;
+  cover_url?: string | null;
+  initial_shelf_status?: BookStatus;
+  status: SubmissionStatus;
+  rejection_reason?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  created_book_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: Profile | null;
+}
+
+export interface BookSubmissionCreate {
+  title: string;
+  subtitle?: string | null;
+  author_names: string[];
+  publisher_name?: string | null;
+  description?: string | null;
+  isbn13?: string | null;
+  isbn10?: string | null;
+  page_count?: number | null;
+  cover_url?: string | null;
+  initial_shelf_status?: BookStatus;
+}
+
+export interface BookSubmissionReview {
+  action: "approve" | "reject";
+  rejection_reason?: string | null;
 }
 
 

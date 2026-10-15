@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth,
     authors,
+    book_submissions,
     books,
     feed,
     genres,
@@ -23,6 +24,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 # Catálogo Bibliográfico Global
 api_router.include_router(books.router, prefix="/books", tags=["Books"])
+api_router.include_router(book_submissions.router, prefix="/book-submissions", tags=["Book Submissions"])
 api_router.include_router(authors.router, prefix="/authors", tags=["Authors"])
 api_router.include_router(publishers.router, prefix="/publishers", tags=["Publishers"])
 api_router.include_router(genres.router, prefix="/genres", tags=["Genres"])

@@ -35,6 +35,11 @@ class Notification(Base, UUIDPrimaryKeyMixin):
         ForeignKey("feed_post_comments.id", ondelete="CASCADE"),
         nullable=True,
     )
+    book_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("books.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(

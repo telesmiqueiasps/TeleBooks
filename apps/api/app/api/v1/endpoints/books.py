@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_optional_user
+from app.api.deps import get_current_admin, get_db, get_optional_user
 from app.core.security import CurrentUser
 from app.models.shelf import BookStatus
 from app.schemas.book_search import (
@@ -204,12 +204,13 @@ def create_book(
 @router.patch(
     "/{book_id}",
     response_model=BookRead,
-    summary="Atualizar informações de um livro existente",
+    summary="Atualizar informações de um livro existente (Apenas Administradores)",
 )
 def update_book(
     book_id: uuid.UUID,
     book_update: BookUpdate,
     db: Session = Depends(get_db),
+    _admin: CurrentUser = Depends(get_current_admin),
 ):
     updated_book = CatalogService.update_book(db=db, book_id=book_id, book_update=book_update)
     return BookRead.model_validate(updated_book)
@@ -218,11 +219,12 @@ def update_book(
 @router.delete(
     "/{book_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Remover livro do catálogo global",
+    summary="Remover livro do catálogo global (Apenas Administradores)",
 )
 def delete_book(
     book_id: uuid.UUID,
     db: Session = Depends(get_db),
+    _admin: CurrentUser = Depends(get_current_admin),
 ):
     CatalogService.delete_book(db=db, book_id=book_id)
     return None

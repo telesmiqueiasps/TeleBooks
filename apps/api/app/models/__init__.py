@@ -1,4 +1,5 @@
 from app.db.base import Base
+from app.models.book_submission import BookSubmission
 from app.models.catalog import (
     Author,
     Book,
@@ -58,4 +59,5 @@ __all__ = [
     "FeedPostLike",
     "FeedPostComment",
     "Notification",
+    "BookSubmission",
 ]
