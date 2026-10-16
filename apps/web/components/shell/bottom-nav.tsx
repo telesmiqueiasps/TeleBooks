@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Library, Plus, Users, BookmarkCheck } from "lucide-react";
+import { Home, Library, Plus, Users, User } from "lucide-react";
 import { cn } from "@telebooks/ui";
 
 export interface BottomNavProps {
@@ -26,8 +26,8 @@ export function BottomNav({
     pathname.startsWith("/minha-biblioteca") || currentTab === "library";
   const isCommunityActive =
     pathname.startsWith("/comunidade") || currentTab === "community";
-  const isReadingActive =
-    pathname.startsWith("/leitura-atual") || currentTab === "reading";
+  const isProfileActive =
+    pathname.startsWith("/perfil") || currentTab === "profile";
 
   const handleCenterPlusClick = () => {
     if (onAddBookClick) {
@@ -149,42 +149,33 @@ export function BottomNav({
             )}
           </button>
 
-          {/* 5. Lendo */}
+          {/* 5. Perfil */}
           <button
             type="button"
             onClick={() => {
-              onSelectTab("reading");
-              if (!pathname.startsWith("/leitura-atual")) {
-                router.push("/leitura-atual");
+              onSelectTab("profile");
+              if (!pathname.startsWith("/perfil")) {
+                router.push("/perfil");
               }
             }}
             className={cn(
-              "relative flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
-              isReadingActive
+              "flex flex-col items-center justify-center h-full min-h-[48px] transition-all duration-200 select-none group active:scale-95",
+              isProfileActive
                 ? "text-[#007BFF] dark:text-[#38BDF8]"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
             )}
-            aria-label="Lendo"
+            aria-label="Perfil"
           >
-            <div className="relative">
-              <BookmarkCheck
-                className={cn("w-5 h-5", isReadingActive ? "stroke-[2.5]" : "stroke-[2]")}
-              />
-              {readingCount && readingCount > 0 ? (
-                <span className="absolute -top-1.5 -right-2 h-4 min-w-[16px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border border-white dark:border-[#0F172A]">
-                  {readingCount}
-                </span>
-              ) : null}
-            </div>
+            <User className={cn("w-5 h-5", isProfileActive ? "stroke-[2.5]" : "stroke-[2]")} />
             <span
               className={cn(
                 "text-[10px] tracking-tight leading-none mt-1",
-                isReadingActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
+                isProfileActive ? "font-bold text-[#007BFF] dark:text-[#38BDF8]" : "font-medium"
               )}
             >
-              Lendo
+              Perfil
             </span>
-            {isReadingActive && (
+            {isProfileActive && (
               <span className="w-1 h-1 rounded-full bg-[#007BFF] dark:bg-[#38BDF8] mt-0.5" />
             )}
           </button>

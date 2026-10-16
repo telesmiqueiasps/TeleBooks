@@ -286,23 +286,6 @@ export function Topbar({
           )}
         </nav>
 
-        {/* Global Search Input (Desktop expandido ou Tablet compacto) */}
-        <div className="flex-1 max-w-xs relative hidden lg:block">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-200/90 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar títulos, autores..."
-            className="w-full rounded-full border border-white/20 bg-white/15 focus:bg-white text-xs sm:text-sm text-white focus:text-[#0F172A] placeholder:text-blue-100/75 focus:placeholder:text-[#94A3B8] pl-9 pr-11 py-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-sm"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden xl:flex items-center pointer-events-none">
-            <kbd className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
-              ⌘K
-            </kbd>
-          </div>
-        </div>
-
         {/* Lado Direito: Ações de Usuário, Tema e Menu */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Botão de Adicionar Livro (se fornecido callback) */}

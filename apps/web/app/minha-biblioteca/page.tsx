@@ -570,13 +570,27 @@ function MinhaBibliotecaContent() {
             </p>
           </div>
 
-          {/* Badges de Contagem e Botão Coleções & Tags */}
+          {/* Badges de Contagem, Botão Lendo e Botão Coleções & Tags */}
           <div className="flex items-center gap-2 sm:self-center flex-wrap">
+            {/* Botão de Atalho para Aba Lendo no Canto Superior */}
+            <Link href="/leitura-atual">
+              <Button
+                variant="primary"
+                size="sm"
+                className="rounded-full text-xs px-3.5 h-8 bg-gradient-to-r from-[#006CEB] to-[#007BFF] text-white shadow-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
+                leftIcon={<BookmarkCheck className="w-4 h-4 stroke-[2.2]" />}
+              >
+                <span>Lendo</span>
+                {readingCount !== undefined && readingCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                    {readingCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
               <span>{totalItems} no acervo</span>
-              {readingCount > 0 && (
-                <span className="text-[#007BFF]">• {readingCount} lendo</span>
-              )}
             </div>
 
             <Button
@@ -981,7 +995,12 @@ function MinhaBibliotecaContent() {
       {/* Modal de Busca Externa & Importação Inteligente */}
       <BookSearchImportModal
         isOpen={isSearchImportModalOpen}
-        onClose={() => setIsSearchImportModalOpen(false)}
+        onClose={() => {
+          setIsSearchImportModalOpen(false);
+          if (searchParams?.get("action") === "search") {
+            router.replace("/minha-biblioteca");
+          }
+        }}
         onSuccess={() => {
           loadShelf();
           loadAuxiliaryData();

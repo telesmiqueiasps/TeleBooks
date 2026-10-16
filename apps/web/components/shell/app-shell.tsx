@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
 import { useAuth } from "../auth/auth-provider";
@@ -19,7 +20,7 @@ export interface AppShellProps {
 
 export function AppShell({
   children,
-  onAddBookClick = () => {},
+  onAddBookClick,
   searchQuery = "",
   onSearchChange = () => {},
   bookCount: controlledBookCount,
@@ -27,6 +28,7 @@ export function AppShell({
   currentTab: controlledTab,
   onSelectTab: controlledOnSelectTab,
 }: AppShellProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const [internalTab, setInternalTab] = useState("home");
   const [fetchedCounts, setFetchedCounts] = useState<{
@@ -61,6 +63,12 @@ export function AppShell({
   const bookCount = controlledBookCount ?? fetchedCounts.totalBooks;
   const readingCount = controlledReadingCount ?? fetchedCounts.readingCount;
 
+  const handleAddBook =
+    onAddBookClick ||
+    (() => {
+      router.push("/minha-biblioteca?action=search");
+    });
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Faixa Superior com Logo, 04 Abas Exclusivas e Ações */}
@@ -69,7 +77,7 @@ export function AppShell({
         onSelectTab={onSelectTab}
         bookCount={bookCount}
         readingCount={readingCount}
-        onAddBookClick={onAddBookClick}
+        onAddBookClick={handleAddBook}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
       />
@@ -84,7 +92,7 @@ export function AppShell({
         currentTab={currentTab}
         onSelectTab={onSelectTab}
         readingCount={readingCount}
-        onAddBookClick={onAddBookClick}
+        onAddBookClick={handleAddBook}
       />
     </div>
   );
