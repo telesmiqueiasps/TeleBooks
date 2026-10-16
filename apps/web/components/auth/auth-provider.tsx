@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import type { Profile } from "@telebooks/types";
 import { createClient } from "../../lib/supabase/client";
+import { api } from "../../lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -302,20 +303,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user?.id) return { error: "Usuário não autenticado." };
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          ...data,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      try {
+        const updated = await api.updateMyProfile({
+          username: data.username,
+          full_name: data.full_name,
+          bio: data.bio,
+          avatar_url: data.avatar_url,
+          is_public: data.is_public,
+        });
+        setProfile(updated);
+        return {};
+      } catch (apiErr: any) {
+        if (
+          apiErr?.message &&
+          !apiErr.message.includes("fetch failed") &&
+          !apiErr.message.includes("Failed to fetch")
+        ) {
+          return { error: apiErr.message };
+        }
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            ...data,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
 
-      if (error) {
-        return { error: mapErrorMessage(error) };
+        if (error) {
+          return { error: mapErrorMessage(error) };
+        }
+
+        await refreshProfile();
+        return {};
       }
-
-      await refreshProfile();
-      return {};
     } catch (err: any) {
       return { error: mapErrorMessage(err) };
     }

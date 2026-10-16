@@ -10,6 +10,8 @@ export type BookStatus =
   | "paused"
   | "abandoned";
 
+export type FollowStatus = "self" | "following" | "requested" | "none";
+
 export interface Profile {
   id: string;
   username: string;
@@ -18,8 +20,55 @@ export interface Profile {
   bio?: string | null;
   is_public?: boolean;
   role?: "user" | "admin";
+  followers_count?: number;
+  following_count?: number;
+  posts_count?: number;
+  follow_status?: FollowStatus;
+  can_view_content?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserSearchItem {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  is_public: boolean;
+  followers_count: number;
+  follow_status: FollowStatus;
+}
+
+export interface FollowActionResponse {
+  success: boolean;
+  follow_status: FollowStatus;
+  message: string;
+}
+
+export interface FollowUserItem {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  is_public: boolean;
+  follow_status: FollowStatus;
+  followed_at: string;
+}
+
+export interface FollowRequestItem {
+  id: string;
+  created_at: string;
+  user: UserSearchItem;
+}
+
+export interface ProfileUpdateParams {
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  is_public?: boolean | null;
 }
 
 export interface Author {

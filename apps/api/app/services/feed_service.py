@@ -398,3 +398,87 @@ class FeedService:
 
         db.delete(post)
         db.commit()
+
+    @staticmethod
+    def list_user_posts(
+        db: Session,
+        target_user_id: uuid.UUID,
+        current_user_id: uuid.UUID | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[FeedPostOut], int]:
+        stmt = (
+            select(FeedPost)
+            .where(FeedPost.user_id == target_user_id)
+            .options(
+                selectinload(FeedPost.author),
+                selectinload(FeedPost.book).selectinload(Book.authors),
+                selectinload(FeedPost.comments).selectinload(FeedPostComment.author),
+            )
+            .order_by(FeedPost.created_at.desc())
+        )
+
+        count_stmt = (
+            select(func.count(FeedPost.id))
+            .where(FeedPost.user_id == target_user_id)
+        )
+        total = db.execute(count_stmt).scalar_one()
+
+        offset = (page - 1) * page_size
+        posts = db.execute(stmt.offset(offset).limit(page_size)).scalars().all()
+
+        liked_post_ids: set[uuid.UUID] = set()
+        if current_user_id and posts:
+            post_ids = [p.id for p in posts]
+            likes_stmt = select(FeedPostLike.post_id).where(
+                FeedPostLike.user_id == current_user_id,
+                FeedPostLike.post_id.in_(post_ids),
+            )
+            liked_post_ids = set(db.execute(likes_stmt).scalars().all())
+
+        results: list[FeedPostOut] = []
+        for p in posts:
+            author_out = FeedAuthorOut.model_validate(p.author)
+            book_out = None
+            if p.book:
+                computed_author = p.book.author_name
+                if not computed_author and p.book.authors:
+                    computed_author = ", ".join(a.name for a in p.book.authors)
+                book_out = FeedBookOut(
+                    id=p.book.id,
+                    title=p.book.title,
+                    author_name=computed_author or "Autor desconhecido",
+                    cover_url=p.book.cover_url,
+                    page_count=p.book.page_count,
+                )
+            comments_out = [
+                FeedCommentOut(
+                    id=c.id,
+                    post_id=c.post_id,
+                    user_id=c.user_id,
+                    content=c.content,
+                    created_at=c.created_at,
+                    author=FeedAuthorOut.model_validate(c.author) if c.author else None,
+                )
+                for c in (p.comments or [])
+            ]
+
+            results.append(
+                FeedPostOut(
+                    id=p.id,
+                    user_id=p.user_id,
+                    book_id=p.book_id,
+                    content=p.content,
+                    page_number=p.page_number,
+                    likes_count=p.likes_count,
+                    comments_count=p.comments_count,
+                    created_at=p.created_at,
+                    updated_at=p.updated_at,
+                    has_liked=p.id in liked_post_ids,
+                    author=author_out,
+                    book=book_out,
+                    comments=comments_out,
+                )
+            )
+
+        return results, total

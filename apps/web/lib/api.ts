@@ -30,6 +30,12 @@ import type {
   BookSubmissionCreate,
   BookSubmissionReview,
   BookSubmissionUpdate,
+  Profile,
+  ProfileUpdateParams,
+  UserSearchItem,
+  FollowActionResponse,
+  FollowUserItem,
+  FollowRequestItem,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -192,6 +198,8 @@ async function request<T>(
       const errorData = await response.json();
       if (errorData?.error?.message) {
         errorMessage = errorData.error.message;
+      } else if (errorData?.detail) {
+        errorMessage = typeof errorData.detail === "string" ? errorData.detail : JSON.stringify(errorData.detail);
       }
     } catch {
       // Ignora erro de parsing JSON
@@ -1134,6 +1142,15 @@ export const api = {
     }
   },
 
+  async deleteFeedComment(postId: string, commentId: string): Promise<void> {
+    try {
+      await request<void>(`/feed/${postId}/comments/${commentId}`, { method: "DELETE" }, true);
+    } catch {
+      const supabase = createClient();
+      await supabase.from("feed_post_comments").delete().eq("id", commentId);
+    }
+  },
+
   async deleteFeedPost(postId: string): Promise<void> {
     try {
       await request<void>(`/feed/${postId}`, { method: "DELETE" }, true);
@@ -1384,6 +1401,108 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ action: "reject", rejection_reason: reason }),
       },
+      true
+    );
+  },
+
+  // ============================================================================
+  // Perfis & Comunidade (Seguidores / Seguindo)
+  // ============================================================================
+  async getMyProfile(): Promise<Profile> {
+    return request<Profile>("/profiles/me", {}, true);
+  },
+
+  async updateMyProfile(payload: ProfileUpdateParams): Promise<Profile> {
+    return request<Profile>(
+      "/profiles/me",
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
+  },
+
+  async searchUsers(query: string, limit = 20): Promise<UserSearchItem[]> {
+    const q = encodeURIComponent(query.trim());
+    return request<UserSearchItem[]>(
+      `/profiles/search?q=${q}&limit=${limit}`,
+      {},
+      true
+    );
+  },
+
+  async getFollowRequests(): Promise<FollowRequestItem[]> {
+    return request<FollowRequestItem[]>("/profiles/me/follow-requests", {}, true);
+  },
+
+  async acceptFollowRequest(requestId: string): Promise<FollowActionResponse> {
+    return request<FollowActionResponse>(
+      `/profiles/follow-requests/${requestId}/accept`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  async rejectFollowRequest(requestId: string): Promise<FollowActionResponse> {
+    return request<FollowActionResponse>(
+      `/profiles/follow-requests/${requestId}/reject`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  async getUserProfile(username: string): Promise<Profile> {
+    return request<Profile>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}`,
+      {},
+      true
+    );
+  },
+
+  async followUser(username: string): Promise<FollowActionResponse> {
+    return request<FollowActionResponse>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/follow`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  async unfollowUser(username: string): Promise<FollowActionResponse> {
+    return request<FollowActionResponse>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/unfollow`,
+      { method: "POST" },
+      true
+    );
+  },
+
+  async getUserFollowers(username: string): Promise<FollowUserItem[]> {
+    return request<FollowUserItem[]>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/followers`,
+      {},
+      true
+    );
+  },
+
+  async getUserFollowing(username: string): Promise<FollowUserItem[]> {
+    return request<FollowUserItem[]>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/following`,
+      {},
+      true
+    );
+  },
+
+  async getUserPublications(
+    username: string,
+    params?: { page?: number; page_size?: number }
+  ): Promise<PaginatedResult<FeedPost>> {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return request<PaginatedResult<FeedPost>>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/posts${query}`,
+      {},
       true
     );
   },

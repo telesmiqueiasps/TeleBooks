@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     genres,
     health,
     notifications,
+    profiles,
     publishers,
     shelf,
     storage,
@@ -19,8 +20,9 @@ api_router = APIRouter()
 # Health check
 api_router.include_router(health.router, tags=["Health"])
 
-# Autenticação e Perfil
+# Autenticação e Perfis
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+api_router.include_router(profiles.router, prefix="/profiles", tags=["Profiles"])
 
 # Catálogo Bibliográfico Global
 api_router.include_router(books.router, prefix="/books", tags=["Books"])

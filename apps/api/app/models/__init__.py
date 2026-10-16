@@ -14,6 +14,7 @@ from app.models.feed import (
     FeedPostComment,
     FeedPostLike,
 )
+from app.models.follow import UserFollow
 from app.models.notification import Notification
 from app.models.profile import Profile
 from app.models.shelf import (
@@ -36,6 +37,7 @@ from app.models.social import (
 __all__ = [
     "Base",
     "Profile",
+    "UserFollow",
     "Publisher",
     "Author",
     "Genre",

@@ -567,7 +567,10 @@ export default function HomePage() {
                         
                         {/* Topo do Card: Autor e Data */}
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3 min-w-0">
+                          <Link
+                            href={`/perfil/${post.author.username}`}
+                            className="flex items-center gap-3 min-w-0 group"
+                          >
                             {post.author.avatar_url ? (
                               <img
                                 src={post.author.avatar_url}
@@ -582,7 +585,7 @@ export default function HomePage() {
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate group-hover:text-[#007BFF] transition-colors">
                                   {post.author.full_name || post.author.username}
                                 </span>
                                 <span className="text-[11px] text-slate-400 truncate">
@@ -602,7 +605,7 @@ export default function HomePage() {
                                 )}
                               </div>
                             </div>
-                          </div>
+                          </Link>
 
                           {/* Ações do Autor (Excluir) */}
                           {isAuthor && (
@@ -730,9 +733,12 @@ export default function HomePage() {
                                     className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800 text-xs space-y-1"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-slate-900 dark:text-white">
+                                      <Link
+                                        href={`/perfil/${comment.author?.username}`}
+                                        className="font-bold text-slate-900 dark:text-white hover:text-[#007BFF] transition-colors"
+                                      >
                                         {comment.author?.full_name || comment.author?.username || "Leitor"}
-                                      </span>
+                                      </Link>
                                       <span className="text-[10px] text-slate-400">
                                         {formatTimeAgo(comment.created_at)}
                                       </span>
