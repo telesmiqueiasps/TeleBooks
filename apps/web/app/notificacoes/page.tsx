@@ -143,7 +143,7 @@ export default function NotificacoesPage() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
     if (notif.book_id) {
-      router.push(`/livro/${notif.book_id}`);
+      router.push(`/livros/${notif.book_id}`);
     } else if (notif.post_id) {
       router.push(`/#post-${notif.post_id}`);
     } else if (notif.actor?.username) {

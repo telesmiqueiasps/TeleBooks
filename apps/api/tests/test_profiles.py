@@ -32,6 +32,11 @@ def test_get_user_posts_unauthenticated(client: TestClient):
     assert response.status_code == 401
 
 
+def test_get_user_shelf_unauthenticated(client: TestClient):
+    response = client.get("/api/v1/profiles/teste/shelf")
+    assert response.status_code == 401
+
+
 def test_profiles_endpoints_mocked(client: TestClient):
     test_user_id = str(uuid.uuid4())
     mock_user = CurrentUser(

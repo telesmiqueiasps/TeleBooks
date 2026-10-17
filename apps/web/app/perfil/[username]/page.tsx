@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle,
   Share2,
+  Library,
 } from "lucide-react";
 import {
   Button,
@@ -30,6 +31,7 @@ import { AppShell } from "../../../components/shell/app-shell";
 import { api } from "../../../lib/api";
 import { FollowersModal } from "../../../components/profile/followers-modal";
 import { ProfilePostCard } from "../../../components/profile/profile-post-card";
+import { ProfileShelfView } from "../../../components/profile/profile-shelf-view";
 
 export default function VisitorProfilePage() {
   const params = useParams();
@@ -55,6 +57,10 @@ export default function VisitorProfilePage() {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Aba Ativa: "posts" | "shelf"
+  const [activeTab, setActiveTab] = useState<"posts" | "shelf">("posts");
+  const [booksCount, setBooksCount] = useState<number>(0);
+
   // Modal de Conexões
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
@@ -68,6 +74,9 @@ export default function VisitorProfilePage() {
       setProfileError(null);
       const data = await api.getUserProfile(username);
       setProfile(data);
+      if (data.books_count !== undefined) {
+        setBooksCount(data.books_count);
+      }
     } catch (err: any) {
       setProfileError(err.message || "Usuário não encontrado.");
     } finally {
@@ -369,18 +378,46 @@ export default function VisitorProfilePage() {
               )}
 
               {/* Contadores */}
-              <div className="flex items-center gap-6 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                <div className="flex items-baseline gap-1.5 select-none">
-                  <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-5 sm:gap-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex-wrap">
+                {/* 1. Publicações */}
+                <button
+                  type="button"
+                  disabled={!profile.can_view_content}
+                  onClick={() => setActiveTab("posts")}
+                  className={cn(
+                    "flex items-baseline gap-1.5 transition-colors group",
+                    profile.can_view_content ? "hover:text-[#007BFF] cursor-pointer" : "cursor-default select-none"
+                  )}
+                >
+                  <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
                     {profile.posts_count ?? 0}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
                     {(profile.posts_count ?? 0) === 1 ? "publicação" : "publicações"}
                   </span>
-                </div>
+                </button>
+
+                {/* 2. Estante / Livros */}
+                <button
+                  type="button"
+                  disabled={!profile.can_view_content}
+                  onClick={() => setActiveTab("shelf")}
+                  className={cn(
+                    "flex items-baseline gap-1.5 transition-colors group",
+                    profile.can_view_content ? "hover:text-[#007BFF] cursor-pointer" : "cursor-default select-none"
+                  )}
+                >
+                  <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
+                    {booksCount}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
+                    {booksCount === 1 ? "livro na estante" : "livros na estante"}
+                  </span>
+                </button>
 
                 {profile.can_view_content ? (
                   <>
+                    {/* 3. Seguidores (Clicável) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -397,6 +434,7 @@ export default function VisitorProfilePage() {
                       </span>
                     </button>
 
+                    {/* 4. Seguindo (Clicável) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -440,7 +478,7 @@ export default function VisitorProfilePage() {
         </div>
 
         {/* =========================================================================
-            2. Barreira de Privacidade ou Feed de Publicações
+            2. Barreira de Privacidade ou Abas (Publicações / Estante)
             ========================================================================= */}
         {!profile.can_view_content ? (
           /* Card Elegante de Perfil Privado */
@@ -453,7 +491,7 @@ export default function VisitorProfilePage() {
                 Este perfil é privado
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Envie uma solicitação para seguir @{profile.username} e ver suas publicações literárias e conexões.
+                Envie uma solicitação para seguir @{profile.username} e ver sua estante literária, publicações e conexões.
               </p>
             </div>
 
@@ -485,76 +523,137 @@ export default function VisitorProfilePage() {
             </div>
           </Card>
         ) : (
-          /* Feed de Publicações Acessível */
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 px-1">
-              <MessageSquare className="w-5 h-5 text-[#007BFF]" />
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Publicações de @{profile.username}
-              </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
-                {postsTotal}
-              </span>
+          <div className="space-y-6">
+            {/* Seletor de Abas: Publicações e Estante */}
+            <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("posts")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                  activeTab === "posts"
+                    ? "bg-[#007BFF] text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Publicações</span>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-[11px] font-bold",
+                    activeTab === "posts"
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  )}
+                >
+                  {postsTotal}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("shelf")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                  activeTab === "shelf"
+                    ? "bg-[#007BFF] text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                <Library className="w-4 h-4" />
+                <span>Estante</span>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-[11px] font-bold",
+                    activeTab === "shelf"
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  )}
+                >
+                  {booksCount}
+                </span>
+              </button>
             </div>
 
-            {isLoadingPosts ? (
+            {/* Conteúdo da Aba Selecionada */}
+            {activeTab === "posts" ? (
               <div className="space-y-4">
-                {[1, 2].map((i) => (
-                  <Card key={i} className="rounded-3xl p-5 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="w-9 h-9 rounded-full" />
-                      <div className="space-y-1">
-                        <Skeleton className="h-4 w-28" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-12 w-full" />
-                  </Card>
-                ))}
-              </div>
-            ) : posts.length === 0 ? (
-              <Card className="rounded-3xl border-dashed border-2 border-slate-200 dark:border-slate-800 p-8 sm:p-12 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#007BFF] flex items-center justify-center mx-auto">
-                  <BookOpen className="w-6 h-6" />
+                <div className="flex items-center gap-2 px-1">
+                  <MessageSquare className="w-5 h-5 text-[#007BFF]" />
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    Publicações de @{profile.username}
+                  </h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                    {postsTotal}
+                  </span>
                 </div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Nenhuma publicação por enquanto
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  @{profile.username} ainda não compartilhou notas ou citações no feed literário.
-                </p>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {posts.map((post) => (
-                  <ProfilePostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={user?.id}
-                    onPostDeleted={handlePostDeleted}
-                  />
-                ))}
 
-                {hasMorePosts && (
-                  <div className="text-center pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full text-xs px-5"
-                      onClick={() => loadPosts(postsPage + 1, true)}
-                      disabled={isLoadingMore}
-                      leftIcon={
-                        isLoadingMore ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : undefined
-                      }
-                    >
-                      {isLoadingMore ? "Carregando mais..." : "Carregar Mais Publicações"}
-                    </Button>
+                {isLoadingPosts ? (
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => (
+                      <Card key={i} className="rounded-3xl p-5 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="w-9 h-9 rounded-full" />
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-28" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-12 w-full" />
+                      </Card>
+                    ))}
+                  </div>
+                ) : posts.length === 0 ? (
+                  <Card className="rounded-3xl border-dashed border-2 border-slate-200 dark:border-slate-800 p-8 sm:p-12 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#007BFF] flex items-center justify-center mx-auto">
+                      <BookOpen className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Nenhuma publicação por enquanto
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                      @{profile.username} ainda não compartilhou notas ou citações no feed literário.
+                    </p>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map((post) => (
+                      <ProfilePostCard
+                        key={post.id}
+                        post={post}
+                        currentUserId={user?.id}
+                        onPostDeleted={handlePostDeleted}
+                      />
+                    ))}
+
+                    {hasMorePosts && (
+                      <div className="text-center pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full text-xs px-5"
+                          onClick={() => loadPosts(postsPage + 1, true)}
+                          disabled={isLoadingMore}
+                          leftIcon={
+                            isLoadingMore ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : undefined
+                          }
+                        >
+                          {isLoadingMore ? "Carregando mais..." : "Carregar Mais Publicações"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            ) : (
+              <ProfileShelfView
+                username={profile.username}
+                isOwner={false}
+                onTotalBooksChange={(total) => setBooksCount(total)}
+              />
             )}
           </div>
         )}

@@ -23,6 +23,7 @@ export interface Profile {
   followers_count?: number;
   following_count?: number;
   posts_count?: number;
+  books_count?: number;
   follow_status?: FollowStatus;
   can_view_content?: boolean;
   created_at: string;

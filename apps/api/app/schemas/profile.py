@@ -29,6 +29,7 @@ class ProfileRead(ProfileBase):
     followers_count: int = 0
     following_count: int = 0
     posts_count: int = 0
+    books_count: int = 0
     follow_status: str = "none"  # "self", "following", "requested", "none"
     can_view_content: bool = True
     role: str = "user"

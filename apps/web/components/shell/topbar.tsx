@@ -191,7 +191,7 @@ export function Topbar({
     }
     setIsNotificationsOpen(false);
     if (notif.book_id) {
-      router.push(`/livro/${notif.book_id}`);
+      router.push(`/livros/${notif.book_id}`);
     } else if (notif.post_id) {
       router.push(`/#post-${notif.post_id}`);
     } else if (notif.actor?.username) {

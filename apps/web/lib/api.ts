@@ -1506,5 +1506,21 @@ export const api = {
       true
     );
   },
+
+  async getUserShelf(
+    username: string,
+    params?: { status?: BookStatus; page?: number; page_size?: number }
+  ): Promise<PaginatedResult<UserBook>> {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return request<PaginatedResult<UserBook>>(
+      `/profiles/${encodeURIComponent(username.trim().toLowerCase())}/shelf${query}`,
+      {},
+      true
+    );
+  },
 };
 

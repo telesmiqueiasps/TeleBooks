@@ -12,6 +12,8 @@ from app.core.security import CurrentUser
 from app.models.feed import FeedPost
 from app.models.follow import UserFollow
 from app.models.profile import Profile
+from app.models.shelf import BookStatus, UserBook
+from app.schemas.common import PaginatedResponse
 from app.schemas.profile import (
     FollowActionResponse,
     FollowRequestItem,
@@ -20,7 +22,9 @@ from app.schemas.profile import (
     ProfileUpdate,
     UserSearchItem,
 )
+from app.schemas.shelf import UserBookRead
 from app.services.feed_service import FeedService
+from app.services.shelf_service import ShelfService
 
 router = APIRouter()
 
@@ -66,6 +70,10 @@ def _build_profile_read(
         select(func.count(FeedPost.id)).where(FeedPost.user_id == profile.id)
     ).scalar_one()
 
+    books_count = db.execute(
+        select(func.count(UserBook.id)).where(UserBook.user_id == profile.id)
+    ).scalar_one()
+
     return ProfileRead(
         id=profile.id,
         username=profile.username,
@@ -77,6 +85,7 @@ def _build_profile_read(
         followers_count=profile.followers_count,
         following_count=profile.following_count,
         posts_count=posts_count,
+        books_count=books_count,
         follow_status=follow_status,
         can_view_content=can_view,
         created_at=profile.created_at,
@@ -633,3 +642,60 @@ def list_user_publications(
         "page_size": page_size,
         "total_pages": total_pages,
     }
+
+
+@router.get(
+    "/{username}/shelf",
+    response_model=PaginatedResponse[UserBookRead],
+    summary="Listar livros da estante de um usuário",
+)
+def list_user_shelf_books(
+    username: str,
+    status: BookStatus | None = Query(default=None, description="Filtrar por status de leitura"),
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 24,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user_id = uuid.UUID(current_user.id)
+    clean_username = username.strip().lower()
+
+    target_profile = db.execute(
+        select(Profile).where(Profile.username == clean_username)
+    ).scalar_one_or_none()
+
+    if not target_profile:
+        raise NotFoundError(f"Usuário '@{clean_username}' não encontrado.")
+
+    follow_status = _get_follow_status(db, current_user_id, target_profile.id)
+    can_view = (
+        target_profile.id == current_user_id
+        or target_profile.is_public is True
+        or follow_status == "following"
+    )
+
+    if not can_view:
+        raise ForbiddenError("Este perfil é privado. Siga para ver a estante de livros.")
+
+    items, total = ShelfService.list_user_shelf(
+        db=db,
+        user_id=target_profile.id,
+        status=status,
+        page=page,
+        page_size=page_size,
+        sort_by="updated_at_desc",
+    )
+
+    is_owner = target_profile.id == current_user_id
+    user_book_reads: list[UserBookRead] = []
+    for ub in items:
+        read_item = UserBookRead.model_validate(ub)
+        if not is_owner:
+            read_item.private_notes = None
+            read_item.purchase_price = None
+        user_book_reads.append(read_item)
+
+    return PaginatedResponse.create(
+        items=user_book_reads, total=total, page=page, page_size=page_size
+    )
+
