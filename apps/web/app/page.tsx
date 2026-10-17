@@ -886,9 +886,9 @@ export default function HomePage() {
                       Minha Estante
                     </Button>
                   </Link>
-                  <Link href="/leitura-atual" className="flex-1">
+                  <Link href="/perfil" className="flex-1">
                     <Button size="sm" className="w-full rounded-full text-xs bg-[#007BFF] text-white">
-                      Lendo Agora
+                      Meu Perfil
                     </Button>
                   </Link>
                 </div>

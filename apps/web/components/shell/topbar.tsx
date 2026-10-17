@@ -17,7 +17,6 @@ import {
   Home,
   Library,
   Users,
-  BookmarkCheck,
   Plus,
   Sparkles,
   ShieldCheck,
@@ -133,7 +132,7 @@ export function Topbar({
     profile?.username || user?.user_metadata?.username || "leitor";
   const initials = displayName.substring(0, 2).toUpperCase();
 
-  // Estados ativos das 04 abas principais
+  // Estados ativos das abas principais
   const isHomeActive = pathname === "/" && (currentTab === "home" || !currentTab);
   const isLibraryActive =
     pathname.startsWith("/minha-biblioteca") ||
@@ -141,8 +140,6 @@ export function Topbar({
     currentTab === "library";
   const isCommunityActive =
     pathname.startsWith("/comunidade") || currentTab === "community";
-  const isReadingActive =
-    pathname.startsWith("/leitura-atual") || currentTab === "reading";
 
   const handleTabClick = (tabId: string, route: string) => {
     if (onSelectTab) {
@@ -171,7 +168,7 @@ export function Topbar({
           </Link>
         </div>
 
-        {/* Centro / Desktop: As 04 Abas Exclusivas do Sistema */}
+        {/* Centro / Desktop: Abas Exclusivas do Sistema */}
         <nav
           aria-label="Navegação Principal"
           className="hidden md:flex items-center gap-1 bg-black/15 dark:bg-black/25 p-1 rounded-full border border-white/20 backdrop-blur-md shadow-inner shrink-0"
@@ -244,27 +241,6 @@ export function Topbar({
             >
               Em Breve
             </span>
-          </button>
-
-          {/* 4. Aba Lendo */}
-          <button
-            type="button"
-            onClick={() => handleTabClick("reading", "/leitura-atual")}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer",
-              isReadingActive
-                ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
-                : "text-white/85 hover:text-white hover:bg-white/15"
-            )}
-            title="Leituras em Andamento"
-          >
-            <BookmarkCheck className={cn("h-4 w-4", isReadingActive ? "stroke-[2.5]" : "stroke-[2]")} />
-            <span>Lendo</span>
-            {readingCount !== undefined && readingCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none bg-rose-500 text-white animate-pulse">
-                {readingCount}
-              </span>
-            )}
           </button>
 
           {/* 5. Aba Moderação (Admin) */}

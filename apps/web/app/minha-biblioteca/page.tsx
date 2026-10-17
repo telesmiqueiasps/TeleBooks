@@ -26,6 +26,7 @@ import {
   Users,
   FolderPlus,
   Globe,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -58,6 +59,7 @@ import {
 import { BookshelfView } from "../../components/shelf/bookshelf-view";
 import { ShelfListView } from "../../components/shelf/shelf-list-view";
 import { CollectionsManagerModal } from "../../components/shelf/collections-manager-modal";
+import { CollectionsDropdown } from "../../components/shelf/collections-dropdown";
 
 import { BookDetailsModal } from "../../components/catalog/book-details-modal";
 import { BookFormModal } from "../../components/catalog/book-form-modal";
@@ -535,6 +537,11 @@ function MinhaBibliotecaContent() {
     [userBooks]
   );
 
+  const activeCollection = useMemo(
+    () => collections.find((c) => c.id === filters.collection_id),
+    [collections, filters.collection_id]
+  );
+
   const hasAnyFilterActive =
     Boolean(filters.q) ||
     filters.status !== "all" ||
@@ -570,40 +577,60 @@ function MinhaBibliotecaContent() {
             </p>
           </div>
 
-          {/* Badges de Contagem, Botão Lendo e Botão Coleções & Tags */}
+          {/* Badges de Contagem e Seletor de Coleções */}
           <div className="flex items-center gap-2 sm:self-center flex-wrap">
-            {/* Botão de Atalho para Aba Lendo no Canto Superior */}
-            <Link href="/leitura-atual">
-              <Button
-                variant="primary"
-                size="sm"
-                className="rounded-full text-xs px-3.5 h-8 bg-gradient-to-r from-[#006CEB] to-[#007BFF] text-white shadow-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                leftIcon={<BookmarkCheck className="w-4 h-4 stroke-[2.2]" />}
-              >
-                <span>Lendo</span>
-                {readingCount !== undefined && readingCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                    {readingCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            {/* Botão Coleções com Dropdown de Seleção Imediata */}
+            <CollectionsDropdown
+              collections={collections}
+              activeCollectionId={filters.collection_id}
+              onSelectCollection={(colId) => {
+                setFilters((prev) => ({ ...prev, collection_id: colId }));
+                setCurrentPage(1);
+              }}
+              onOpenManageModal={() => setIsCollectionsModalOpen(true)}
+              totalBooks={statusCounts.all || totalItems}
+            />
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
               <span>{totalItems} no acervo</span>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCollectionsModalOpen(true)}
-              leftIcon={<FolderPlus className="w-4 h-4 text-[#007BFF]" />}
-              className="rounded-full text-xs px-3.5 h-8"
-            >
-              Coleções & Tags
-            </Button>
           </div>
         </div>
+
+        {/* Banner Informativo quando Filtrando por Coleção */}
+        {activeCollection && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200/90 dark:border-blue-900/60 shadow-xs animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-xl bg-[#006CEB] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Folder className="w-4 h-4 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                  Coleção:{" "}
+                  <span className="text-[#006CEB] dark:text-blue-400 font-extrabold">
+                    {activeCollection.name}
+                  </span>
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Exibindo apenas livros desta coleção ({totalItems}{" "}
+                  {totalItems === 1 ? "livro" : "livros"})
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFilters((prev) => ({ ...prev, collection_id: undefined }));
+                setCurrentPage(1);
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors shadow-xs cursor-pointer active:scale-95"
+              title="Limpar filtro de coleção e exibir todos os livros"
+            >
+              <X className="w-3.5 h-3.5 text-slate-500" />
+              <span>Ver todos os livros</span>
+            </button>
+          </div>
+        )}
 
         {/* Barra de Busca, Filtros, Ordenação, Agrupamento e Modos de Exibição */}
         <ShelfFilters

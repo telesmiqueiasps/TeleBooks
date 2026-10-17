@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   BookOpen,
-  BookmarkCheck,
   FolderHeart,
   BarChart3,
   Home,
@@ -59,7 +58,6 @@ export function Sidebar({
     pathname.startsWith("/minha-biblioteca") ||
     pathname.startsWith("/livros") ||
     currentTab === "library";
-  const isReadingActive = pathname.startsWith("/leitura-atual") || currentTab === "reading";
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || "Leitor";
   const displayUsername = profile?.username || user?.user_metadata?.username || "leitor";
@@ -96,17 +94,6 @@ export function Sidebar({
             onClick={() => {
               onSelectTab("library");
               if (!pathname.startsWith("/minha-biblioteca")) router.push("/minha-biblioteca");
-            }}
-          />
-          <NavItem
-            variant="brand"
-            label="Leitura Atual"
-            icon={<BookmarkCheck className="h-4 w-4" />}
-            active={isReadingActive}
-            badge={readingCount && readingCount > 0 ? readingCount : undefined}
-            onClick={() => {
-              onSelectTab("reading");
-              if (!pathname.startsWith("/leitura-atual")) router.push("/leitura-atual");
             }}
           />
           <NavItem

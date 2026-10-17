@@ -37,10 +37,10 @@
       ]
     },
     {
-      "name": "Leitura Atual",
-      "short_name": "Lendo",
-      "description": "Acompanhe seu progresso de leitura atual",
-      "url": "/leitura-atual",
+      "name": "Meu Perfil",
+      "short_name": "Perfil",
+      "description": "Veja seu perfil, publicações e conexões",
+      "url": "/perfil",
       "icons": [
         {
           "src": "/icon-192.png",
