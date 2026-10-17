@@ -20,6 +20,7 @@ import {
   Plus,
   Sparkles,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import {
   Dropdown,
@@ -112,6 +113,74 @@ export function Topbar({
     }
   };
 
+  const getNotificationInfo = (notif: NotificationItem) => {
+    const isSystem = notif.type === "book_approved" || notif.type === "book_rejected";
+    const actorName =
+      notif.actor?.full_name ||
+      notif.actor?.username ||
+      (isSystem ? "Suporte TeleBooks" : "Alguém");
+
+    switch (notif.type) {
+      case "book_approved":
+        return {
+          actorName,
+          actionText: "aprovou sua sugestão de livro!",
+          badgeBg: "bg-emerald-600 text-white",
+          badgeIcon: "📚",
+          isSystem: true,
+        };
+      case "book_rejected":
+        return {
+          actorName,
+          actionText: "revisou sua sugestão de livro.",
+          badgeBg: "bg-rose-600 text-white",
+          badgeIcon: "❌",
+          isSystem: true,
+        };
+      case "follow":
+        return {
+          actorName,
+          actionText: "começou a seguir você.",
+          badgeBg: "bg-indigo-600 text-white",
+          badgeIcon: "👤",
+          isSystem: false,
+        };
+      case "follow_request":
+        return {
+          actorName,
+          actionText: "solicitou seguir seu perfil.",
+          badgeBg: "bg-amber-600 text-white",
+          badgeIcon: "👋",
+          isSystem: false,
+        };
+      case "follow_accepted":
+        return {
+          actorName,
+          actionText: "aceitou sua solicitação para seguir.",
+          badgeBg: "bg-emerald-600 text-white",
+          badgeIcon: "✨",
+          isSystem: false,
+        };
+      case "post_like":
+        return {
+          actorName,
+          actionText: "curtiu sua publicação no feed.",
+          badgeBg: "bg-rose-500 text-white",
+          badgeIcon: "❤️",
+          isSystem: false,
+        };
+      case "post_comment":
+      default:
+        return {
+          actorName,
+          actionText: "comentou na sua publicação.",
+          badgeBg: "bg-blue-600 text-white",
+          badgeIcon: "💬",
+          isSystem: false,
+        };
+    }
+  };
+
   const handleNotificationClick = async (notif: NotificationItem) => {
     if (!notif.is_read) {
       api.markNotificationsAsRead({ notification_ids: [notif.id] }).catch(() => {});
@@ -121,8 +190,14 @@ export function Topbar({
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
     setIsNotificationsOpen(false);
-    if (notif.post_id) {
+    if (notif.book_id) {
+      router.push(`/livro/${notif.book_id}`);
+    } else if (notif.post_id) {
       router.push(`/#post-${notif.post_id}`);
+    } else if (notif.actor?.username) {
+      router.push(`/perfil/${notif.actor.username}`);
+    } else if (notif.type === "book_approved" || notif.type === "book_rejected") {
+      router.push("/minha-biblioteca");
     }
   };
 
@@ -305,124 +380,143 @@ export function Topbar({
 
               {/* Popover / Dropdown de Notificações */}
               {isNotificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 shadow-2xl z-50 text-slate-800 dark:text-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                  {/* Cabeçalho do Popover */}
-                  <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 dark:text-white">
-                        Notificações
-                      </span>
-                      {unreadCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
-                          {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+                <>
+                  {/* Backdrop no mobile para fechar ao tocar fora */}
+                  <div
+                    className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] sm:hidden animate-in fade-in duration-150"
+                    onClick={() => setIsNotificationsOpen(false)}
+                    aria-hidden="true"
+                  />
+
+                  <div className="fixed inset-x-3 top-[4.25rem] max-w-sm mx-auto sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-none sm:mx-0 rounded-2xl bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl z-50 text-slate-800 dark:text-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    {/* Cabeçalho do Popover */}
+                    <div className="flex items-center justify-between p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          Notificações
                         </span>
+                        {unreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                            {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleMarkAllRead}
+                            className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Marcar lidas
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="sm:hidden p-1 -mr-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          aria-label="Fechar"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista de Notificações */}
+                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 px-4 text-center">
+                          <Bell className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2 stroke-[1.5]" />
+                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                            Nenhuma notificação por enquanto
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Você será avisado quando houver interações, aprovações e novos seguidores.
+                          </p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => {
+                          const details = getNotificationInfo(notif);
+
+                          return (
+                            <div
+                              key={notif.id}
+                              onClick={() => handleNotificationClick(notif)}
+                              className={cn(
+                                "flex items-start gap-3 p-3 transition-colors cursor-pointer text-left hover:bg-slate-50 dark:hover:bg-slate-800/60",
+                                !notif.is_read && "bg-blue-50/40 dark:bg-blue-950/20"
+                              )}
+                            >
+                              {/* Avatar com Badge de Ícone */}
+                              <div className="relative shrink-0 mt-0.5">
+                                {notif.actor?.avatar_url ? (
+                                  <img
+                                    src={notif.actor.avatar_url}
+                                    alt=""
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                ) : details.isSystem ? (
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
+                                    TB
+                                  </div>
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                                    {details.actorName.substring(0, 2).toUpperCase()}
+                                  </div>
+                                )}
+                                <span
+                                  className={cn(
+                                    "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] shadow-xs",
+                                    details.badgeBg
+                                  )}
+                                >
+                                  {details.badgeIcon}
+                                </span>
+                              </div>
+
+                              {/* Conteúdo da Notificação */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug">
+                                  <span className="font-bold text-slate-900 dark:text-white">
+                                    {details.actorName}
+                                  </span>{" "}
+                                  {details.actionText}
+                                </p>
+                                {notif.content && (
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-2 mt-0.5">
+                                    &ldquo;{notif.content}&rdquo;
+                                  </p>
+                                )}
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1 font-mono">
+                                  {new Date(notif.created_at).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+
+                              {/* Ponto indicador de não lida */}
+                              {!notif.is_read && (
+                                <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1.5" />
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleMarkAllRead}
-                        className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+
+                    {/* Rodapé do Popover */}
+                    <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-center">
+                      <Link
+                        href="/notificacoes"
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        Marcar lidas
-                      </button>
-                    )}
+                        Ver todas as notificações →
+                      </Link>
+                    </div>
                   </div>
-
-                  {/* Lista de Notificações */}
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {notifications.length === 0 ? (
-                      <div className="py-8 px-4 text-center">
-                        <Bell className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2 stroke-[1.5]" />
-                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                          Nenhuma notificação por enquanto
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Você será avisado quando alguém curtir ou comentar suas publicações.
-                        </p>
-                      </div>
-                    ) : (
-                      notifications.map((notif) => {
-                        const actorName =
-                          notif.actor?.full_name || notif.actor?.username || "Alguém";
-                        const isLike = notif.type === "post_like";
-
-                        return (
-                          <div
-                            key={notif.id}
-                            onClick={() => handleNotificationClick(notif)}
-                            className={cn(
-                              "flex items-start gap-3 p-3 transition-colors cursor-pointer text-left hover:bg-slate-50 dark:hover:bg-slate-800/60",
-                              !notif.is_read && "bg-blue-50/40 dark:bg-blue-950/20"
-                            )}
-                          >
-                            {/* Avatar com Badge de Ícone */}
-                            <div className="relative shrink-0 mt-0.5">
-                              {notif.actor?.avatar_url ? (
-                                <img
-                                  src={notif.actor.avatar_url}
-                                  alt=""
-                                  className="w-8 h-8 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                                  {actorName.substring(0, 2).toUpperCase()}
-                                </div>
-                              )}
-                              <span
-                                className={cn(
-                                  "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] shadow-xs",
-                                  isLike ? "bg-rose-500 text-white" : "bg-blue-500 text-white"
-                                )}
-                              >
-                                {isLike ? "❤️" : "💬"}
-                              </span>
-                            </div>
-
-                            {/* Conteúdo da Notificação */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug">
-                                <span className="font-bold text-slate-900 dark:text-white">
-                                  {actorName}
-                                </span>{" "}
-                                {isLike
-                                  ? "curtiu sua publicação no feed."
-                                  : "comentou na sua publicação."}
-                              </p>
-                              {notif.content && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-1 mt-0.5">
-                                  &ldquo;{notif.content}&rdquo;
-                                </p>
-                              )}
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-1 font-mono">
-                                {new Date(notif.created_at).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            </div>
-
-                            {/* Ponto indicador de não lida */}
-                            {!notif.is_read && (
-                              <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1.5" />
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Rodapé do Popover */}
-                  <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-center">
-                    <Link
-                      href="/notificacoes"
-                      onClick={() => setIsNotificationsOpen(false)}
-                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      Ver todas as notificações →
-                    </Link>
-                  </div>
-                </div>
+                </>
               )}
             </div>
           )}

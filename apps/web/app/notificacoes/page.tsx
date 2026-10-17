@@ -11,6 +11,11 @@ import {
   MessageSquare,
   ArrowLeft,
   Sparkles,
+  BookOpen,
+  CheckCircle2,
+  XCircle,
+  UserCheck,
+  UserPlus,
 } from "lucide-react";
 import type { NotificationItem } from "@telebooks/types";
 import { Card, CardContent, Button, Badge, Skeleton, cn } from "@telebooks/ui";
@@ -61,6 +66,74 @@ export default function NotificacoesPage() {
     }
   };
 
+  const getNotificationInfo = (notif: NotificationItem) => {
+    const isSystem = notif.type === "book_approved" || notif.type === "book_rejected";
+    const actorName =
+      notif.actor?.full_name ||
+      notif.actor?.username ||
+      (isSystem ? "Suporte TeleBooks" : "Alguém");
+
+    switch (notif.type) {
+      case "book_approved":
+        return {
+          actorName,
+          actionText: "aprovou sua sugestão de livro!",
+          badgeBg: "bg-emerald-600 text-white",
+          icon: <BookOpen className="w-2.5 h-2.5" />,
+          isSystem: true,
+        };
+      case "book_rejected":
+        return {
+          actorName,
+          actionText: "revisou sua sugestão de livro.",
+          badgeBg: "bg-rose-600 text-white",
+          icon: <XCircle className="w-2.5 h-2.5" />,
+          isSystem: true,
+        };
+      case "follow":
+        return {
+          actorName,
+          actionText: "começou a seguir você.",
+          badgeBg: "bg-indigo-600 text-white",
+          icon: <UserCheck className="w-2.5 h-2.5" />,
+          isSystem: false,
+        };
+      case "follow_request":
+        return {
+          actorName,
+          actionText: "solicitou seguir seu perfil.",
+          badgeBg: "bg-amber-600 text-white",
+          icon: <UserPlus className="w-2.5 h-2.5" />,
+          isSystem: false,
+        };
+      case "follow_accepted":
+        return {
+          actorName,
+          actionText: "aceitou sua solicitação para seguir.",
+          badgeBg: "bg-emerald-600 text-white",
+          icon: <CheckCircle2 className="w-2.5 h-2.5" />,
+          isSystem: false,
+        };
+      case "post_like":
+        return {
+          actorName,
+          actionText: "curtiu sua publicação no feed.",
+          badgeBg: "bg-rose-500 text-white",
+          icon: <Heart className="w-2.5 h-2.5 fill-current" />,
+          isSystem: false,
+        };
+      case "post_comment":
+      default:
+        return {
+          actorName,
+          actionText: "comentou em sua publicação.",
+          badgeBg: "bg-blue-600 text-white",
+          icon: <MessageSquare className="w-2.5 h-2.5 fill-current" />,
+          isSystem: false,
+        };
+    }
+  };
+
   const handleNotificationClick = async (notif: NotificationItem) => {
     if (!notif.is_read) {
       api.markNotificationsAsRead({ notification_ids: [notif.id] }).catch(() => {});
@@ -69,8 +142,14 @@ export default function NotificacoesPage() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-    if (notif.post_id) {
+    if (notif.book_id) {
+      router.push(`/livro/${notif.book_id}`);
+    } else if (notif.post_id) {
       router.push(`/#post-${notif.post_id}`);
+    } else if (notif.actor?.username) {
+      router.push(`/perfil/${notif.actor.username}`);
+    } else if (notif.type === "book_approved" || notif.type === "book_rejected") {
+      router.push("/minha-biblioteca");
     }
   };
 
@@ -192,8 +271,7 @@ export default function NotificacoesPage() {
         ) : (
           <div className="space-y-2.5">
             {filteredNotifications.map((notif) => {
-              const actorName = notif.actor?.full_name || notif.actor?.username || "Alguém";
-              const isLike = notif.type === "post_like";
+              const details = getNotificationInfo(notif);
 
               return (
                 <div
@@ -214,18 +292,22 @@ export default function NotificacoesPage() {
                         alt=""
                         className="w-10 h-10 rounded-full object-cover shadow-xs"
                       />
+                    ) : details.isSystem ? (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                        TB
+                      </div>
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                        {actorName.substring(0, 2).toUpperCase()}
+                        {details.actorName.substring(0, 2).toUpperCase()}
                       </div>
                     )}
                     <span
                       className={cn(
                         "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] shadow-xs text-white",
-                        isLike ? "bg-rose-500" : "bg-blue-600"
+                        details.badgeBg
                       )}
                     >
-                      {isLike ? <Heart className="w-2.5 h-2.5 fill-current" /> : <MessageSquare className="w-2.5 h-2.5 fill-current" />}
+                      {details.icon}
                     </span>
                   </div>
 
@@ -233,11 +315,9 @@ export default function NotificacoesPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-100 leading-snug">
                       <span className="font-bold text-slate-900 dark:text-white">
-                        {actorName}
+                        {details.actorName}
                       </span>{" "}
-                      {isLike
-                        ? "curtiu sua publicação no feed."
-                        : "comentou em sua publicação."}
+                      {details.actionText}
                     </p>
 
                     {notif.content && (

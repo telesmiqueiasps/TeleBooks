@@ -430,7 +430,10 @@ export type NotificationType =
   | "post_like"
   | "post_comment"
   | "book_approved"
-  | "book_rejected";
+  | "book_rejected"
+  | "follow"
+  | "follow_request"
+  | "follow_accepted";
 
 export interface NotificationActor {
   id: string;
