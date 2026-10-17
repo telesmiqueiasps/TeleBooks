@@ -135,7 +135,7 @@ export function Logo({
           style={{ width: cfg.iconSize, height: cfg.iconSize }}
         >
           <Image
-            src="/icone.png"
+            src="/icone_sem_fundo.png"
             alt="TeleBooks"
             width={cfg.iconSize}
             height={cfg.iconSize}
@@ -192,7 +192,7 @@ export function Logo({
         >
           {!iconFileError ? (
             <Image
-              src="/icone.png"
+              src="/icone_sem_fundo.png"
               alt="TeleBooks"
               width={cfg.iconSize}
               height={cfg.iconSize}
