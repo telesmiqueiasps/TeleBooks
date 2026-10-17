@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -27,12 +29,12 @@ export async function GET(request: Request) {
       redirectUrl = `https://${forwardedHost}${next}`;
     }
 
-    const response = NextResponse.redirect(redirectUrl);
-
     const supabaseUrl =
       process.env.NEXT_PUBLIC_SUPABASE_URL || "https://plunoacxwgwsjayzwmdl.supabase.co";
     const supabaseAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_-6EwtyA5ZMDK1XaVkjW21A_r1rMfS_-";
+
+    const cookiesToSetLater: { name: string; value: string; options: any }[] = [];
 
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
@@ -40,12 +42,14 @@ export async function GET(request: Request) {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-            // IMPORTANTE: Define o cookie diretamente no objeto de resposta do redirecionamento
-            // para que o navegador persista a sessão no redirect HTTP 307
-            response.cookies.set(name, value, options);
-          });
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+              cookiesToSetLater.push({ name, value, options });
+            });
+          } catch {
+            // Ignora em contexto não mutável
+          }
         },
       },
     });
@@ -53,14 +57,20 @@ export async function GET(request: Request) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
+      const response = NextResponse.redirect(redirectUrl);
+      cookiesToSetLater.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
       return response;
     }
 
     console.error("[OAuth exchangeCodeForSession Error]:", exchangeError);
+
+    // Se o servidor não encontrou o code-verifier nos cookies HTTP
+    // (ex: cross-domain proxy, Netlify serverless header stripping ou partitioning),
+    // redireciona para a página cliente /auth/confirm para troca direta via browser storage/cookies.
     return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(
-        exchangeError.message || "Erro ao validar sessão do Google."
-      )}`
+      `${origin}/auth/confirm?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`
     );
   }
 

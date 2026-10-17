@@ -210,6 +210,9 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(
     urlError === "auth_callback_failed"
       ? "Não foi possível concluir o login com o Google. Tente novamente."
+      : urlError?.toLowerCase().includes("pkce") ||
+        urlError?.toLowerCase().includes("verifier")
+      ? "A sessão de autenticação expirou. Por favor, tente entrar com o Google novamente."
       : urlError
       ? decodeURIComponent(urlError)
       : null

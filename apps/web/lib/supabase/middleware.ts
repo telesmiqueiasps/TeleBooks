@@ -2,6 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // 1. As rotas internas de autenticação e callback (/auth/callback, /auth/confirm)
+  // NUNCA devem ser interceptadas pelo middleware para não limpar nem alterar
+  // os cookies de PKCE (code-verifier) antes da troca do token.
+  if (path.startsWith("/auth")) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -38,7 +47,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
   const isAuthRoute =
     path.startsWith("/login") ||
     path.startsWith("/cadastro") ||
