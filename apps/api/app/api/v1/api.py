@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     notifications,
     profiles,
     publishers,
+    rabiscos,
     shelf,
     storage,
 )
@@ -36,6 +37,9 @@ api_router.include_router(shelf.router, prefix="/shelf", tags=["Shelf"])
 
 # Feed Público Literário
 api_router.include_router(feed.router, prefix="/feed", tags=["Feed"])
+
+# Rabiscos (Stories Efêmeros de 24h)
+api_router.include_router(rabiscos.router, prefix="/rabiscos", tags=["Rabiscos"])
 
 # Notificações
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])

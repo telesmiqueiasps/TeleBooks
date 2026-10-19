@@ -28,6 +28,7 @@ import { Button, Card, CardContent, Badge, Skeleton, cn } from "@telebooks/ui";
 import { AppShell } from "../components/shell/app-shell";
 import { useAuth } from "../components/auth/auth-provider";
 import { api } from "../lib/api";
+import { RabiscosBar } from "../components/rabiscos/rabiscos-bar";
 
 export default function HomePage() {
   const { user, profile, isLoading: isAuthLoading, updateProfile } = useAuth();
@@ -302,6 +303,13 @@ export default function HomePage() {
           ========================================================================= */}
           <div className="lg:col-span-2 space-y-6">
             
+            {/* Barra de Rabiscos (Stories Efêmeros de 24 horas) */}
+            <RabiscosBar
+              currentUserId={user?.id}
+              currentUserAvatar={profile?.avatar_url}
+              currentUserName={profile?.full_name || profile?.username || user?.user_metadata?.full_name}
+            />
+
             {/* 1. Caixa de Criação de Postagem */}
             <Card className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-6 space-y-4">

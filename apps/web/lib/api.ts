@@ -36,6 +36,9 @@ import type {
   FollowActionResponse,
   FollowUserItem,
   FollowRequestItem,
+  Rabisco,
+  RabiscoUserGroup,
+  CreateRabiscoInput,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1522,5 +1525,32 @@ export const api = {
       true
     );
   },
+
+  // ============================================================================
+  // Rabiscos (Stories Efêmeros de 24h)
+  // ============================================================================
+  async getRabiscosFeed(): Promise<RabiscoUserGroup[]> {
+    return request<RabiscoUserGroup[]>("/rabiscos/feed", {}, true);
+  },
+
+  async createRabisco(payload: CreateRabiscoInput): Promise<Rabisco> {
+    return request<Rabisco>("/rabiscos", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async viewRabisco(rabiscoId: string): Promise<void> {
+    return request<void>(`/rabiscos/${rabiscoId}/view`, {
+      method: "POST",
+    });
+  },
+
+  async deleteRabisco(rabiscoId: string): Promise<void> {
+    return request<void>(`/rabiscos/${rabiscoId}`, {
+      method: "DELETE",
+    });
+  },
 };
+
 

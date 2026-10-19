@@ -520,4 +520,57 @@ export interface BookSubmissionReview {
   rejection_reason?: string | null;
 }
 
+// ============================================================================
+// Rabiscos (Stories Efêmeros de 24h)
+// ============================================================================
+
+export type RabiscoBackground =
+  | "gradient-blue"
+  | "gradient-purple"
+  | "gradient-sunset"
+  | "gradient-emerald"
+  | "gradient-amber"
+  | "gradient-rose"
+  | "paper-dark"
+  | "classic-slate";
+
+export type RabiscoFontStyle = "sans" | "serif" | "mono" | "handwriting";
+
+export interface RabiscoAuthor {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface Rabisco {
+  id: string;
+  user_id: string;
+  content: string;
+  background_style: RabiscoBackground | string;
+  font_style: RabiscoFontStyle | string;
+  created_at: string;
+  expires_at: string;
+  author: RabiscoAuthor;
+  views_count: number;
+  has_viewed: boolean;
+}
+
+export interface RabiscoUserGroup {
+  user_id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  has_unseen: boolean;
+  latest_created_at: string;
+  rabiscos: Rabisco[];
+}
+
+export interface CreateRabiscoInput {
+  content: string;
+  background_style?: RabiscoBackground | string;
+  font_style?: RabiscoFontStyle | string;
+}
+
+
 

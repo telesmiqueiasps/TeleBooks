@@ -17,6 +17,7 @@ from app.models.feed import (
 from app.models.follow import UserFollow
 from app.models.notification import Notification
 from app.models.profile import Profile
+from app.models.rabisco import Rabisco, RabiscoView
 from app.models.shelf import (
     BookStatus,
     Collection,
@@ -62,4 +63,6 @@ __all__ = [
     "FeedPostComment",
     "Notification",
     "BookSubmission",
+    "Rabisco",
+    "RabiscoView",
 ]
