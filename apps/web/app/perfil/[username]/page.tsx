@@ -266,16 +266,16 @@ export default function VisitorProfilePage() {
             1. Cartão Principal de Perfil do Visitado
             ========================================================================= */}
         <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-sm">
-          {/* Banner Gradiente Decorativo */}
-          <div className="h-28 sm:h-36 bg-gradient-to-r from-[#006CEB] via-[#007BFF] to-[#38BDF8] relative">
+          {/* Banner Gradiente Decorativo (Mais fino verticalmente para economizar tela) */}
+          <div className="h-16 sm:h-24 bg-gradient-to-r from-[#006CEB] via-[#007BFF] to-[#38BDF8] relative">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/20 via-transparent to-black/20" />
           </div>
 
-          <div className="px-5 sm:px-8 pb-6 sm:pb-8 pt-0 relative">
-            {/* Avatar Flutuante e Botão de Ação */}
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0 relative">
+            {/* Avatar Flutuante à esquerda e Botão de Ação no canto superior direito logo abaixo da faixa azul */}
+            <div className="flex items-end justify-between gap-3 -mt-9 sm:-mt-12 mb-2.5">
               {/* Avatar */}
-              <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-[#0F172A] shadow-xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] flex items-center justify-center text-white text-2xl sm:text-3xl font-extrabold shrink-0 overflow-hidden">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 sm:border-4 border-white dark:border-[#0F172A] shadow-lg bg-gradient-to-tr from-[#006CEB] to-[#007BFF] flex items-center justify-center text-white text-xl sm:text-2xl font-extrabold shrink-0 overflow-hidden">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -288,7 +288,7 @@ export default function VisitorProfilePage() {
               </div>
 
               {/* Botão Seguir / Seguindo / Solicitado */}
-              <div className="pt-2 sm:pt-0">
+              <div className="pb-0.5">
                 <Button
                   type="button"
                   size="sm"
@@ -300,7 +300,7 @@ export default function VisitorProfilePage() {
                       : "primary"
                   }
                   className={cn(
-                    "rounded-full text-xs h-8 px-5 font-bold shadow-xs transition-all",
+                    "rounded-full text-xs h-7 sm:h-8 px-4 font-bold shadow-xs transition-all",
                     isFollowing &&
                       "border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-rose-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30",
                     isRequested &&
@@ -335,17 +335,17 @@ export default function VisitorProfilePage() {
             </div>
 
             {/* Dados do Perfil */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                     {profile.full_name || profile.username}
                   </h1>
 
                   {/* Badge de Privacidade */}
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold",
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold",
                       profile.is_public
                         ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900"
                         : "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900"
@@ -353,19 +353,19 @@ export default function VisitorProfilePage() {
                   >
                     {profile.is_public ? (
                       <>
-                        <Globe className="w-3 h-3" />
+                        <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         <span>Público</span>
                       </>
                     ) : (
                       <>
-                        <Lock className="w-3 h-3" />
+                        <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         <span>Privado</span>
                       </>
                     )}
                   </span>
                 </div>
 
-                <p className="text-xs sm:text-sm font-mono text-[#007BFF] dark:text-[#38BDF8] font-bold">
+                <p className="text-xs sm:text-sm font-mono text-[#007BFF] dark:text-[#38BDF8] font-bold mt-0.5">
                   @{profile.username}
                 </p>
               </div>
@@ -377,23 +377,23 @@ export default function VisitorProfilePage() {
                 </p>
               )}
 
-              {/* Contadores */}
-              <div className="flex items-center gap-5 sm:gap-6 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex-wrap">
+              {/* Card Horizontal de Indicadores (Publicações, Estante, Seguidores, Seguindo) */}
+              <div className="grid grid-cols-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-1.5 sm:p-2.5 divide-x divide-slate-200/60 dark:divide-slate-800/60 text-center shadow-2xs mt-1">
                 {/* 1. Publicações */}
                 <button
                   type="button"
                   disabled={!profile.can_view_content}
                   onClick={() => setActiveTab("posts")}
                   className={cn(
-                    "flex items-baseline gap-1.5 transition-colors group",
-                    profile.can_view_content ? "hover:text-[#007BFF] cursor-pointer" : "cursor-default select-none"
+                    "flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 transition-colors group",
+                    profile.can_view_content ? "cursor-pointer" : "cursor-default select-none opacity-80"
                   )}
                 >
-                  <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
+                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors leading-tight">
                     {profile.posts_count ?? 0}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
-                    {(profile.posts_count ?? 0) === 1 ? "publicação" : "publicações"}
+                  <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF] transition-colors font-medium mt-0.5 truncate w-full">
+                    Publicações
                   </span>
                 </button>
 
@@ -403,74 +403,72 @@ export default function VisitorProfilePage() {
                   disabled={!profile.can_view_content}
                   onClick={() => setActiveTab("shelf")}
                   className={cn(
-                    "flex items-baseline gap-1.5 transition-colors group",
-                    profile.can_view_content ? "hover:text-[#007BFF] cursor-pointer" : "cursor-default select-none"
+                    "flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 transition-colors group",
+                    profile.can_view_content ? "cursor-pointer" : "cursor-default select-none opacity-80"
                   )}
                 >
-                  <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
+                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors leading-tight">
                     {booksCount}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
-                    {booksCount === 1 ? "livro na estante" : "livros na estante"}
+                  <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF] transition-colors font-medium mt-0.5 truncate w-full">
+                    Estante
                   </span>
                 </button>
 
+                {/* 3. Seguidores */}
                 {profile.can_view_content ? (
-                  <>
-                    {/* 3. Seguidores (Clicável) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFollowersModalTab("followers");
-                        setIsFollowersModalOpen(true);
-                      }}
-                      className="flex items-baseline gap-1.5 hover:text-[#007BFF] transition-colors cursor-pointer group"
-                    >
-                      <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
-                        {profile.followers_count ?? 0}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
-                        {(profile.followers_count ?? 0) === 1 ? "seguidor" : "seguidores"}
-                      </span>
-                    </button>
-
-                    {/* 4. Seguindo (Clicável) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFollowersModalTab("following");
-                        setIsFollowersModalOpen(true);
-                      }}
-                      className="flex items-baseline gap-1.5 hover:text-[#007BFF] transition-colors cursor-pointer group"
-                    >
-                      <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF]">
-                        {profile.following_count ?? 0}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF]">
-                        seguindo
-                      </span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFollowersModalTab("followers");
+                      setIsFollowersModalOpen(true);
+                    }}
+                    className="flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 transition-colors group cursor-pointer"
+                  >
+                    <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors leading-tight">
+                      {profile.followers_count ?? 0}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF] transition-colors font-medium mt-0.5 truncate w-full">
+                      Seguidores
+                    </span>
+                  </button>
                 ) : (
-                  <>
-                    <div className="flex items-baseline gap-1.5 select-none">
-                      <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                        {profile.followers_count ?? 0}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        seguidores
-                      </span>
-                    </div>
+                  <div className="flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 select-none opacity-80">
+                    <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+                      {profile.followers_count ?? 0}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate w-full">
+                      Seguidores
+                    </span>
+                  </div>
+                )}
 
-                    <div className="flex items-baseline gap-1.5 select-none">
-                      <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                        {profile.following_count ?? 0}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        seguindo
-                      </span>
-                    </div>
-                  </>
+                {/* 4. Seguindo */}
+                {profile.can_view_content ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFollowersModalTab("following");
+                      setIsFollowersModalOpen(true);
+                    }}
+                    className="flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 transition-colors group cursor-pointer"
+                  >
+                    <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors leading-tight">
+                      {profile.following_count ?? 0}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 group-hover:text-[#007BFF] transition-colors font-medium mt-0.5 truncate w-full">
+                      Seguindo
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-1 sm:py-1.5 px-0.5 select-none opacity-80">
+                    <span className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+                      {profile.following_count ?? 0}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate w-full">
+                      Seguindo
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -530,20 +528,20 @@ export default function VisitorProfilePage() {
                 type="button"
                 onClick={() => setActiveTab("posts")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                  "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs",
                   activeTab === "posts"
                     ? "bg-[#007BFF] text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-300/80 dark:hover:bg-slate-700/80"
                 )}
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Publicações</span>
                 <span
                   className={cn(
-                    "px-2 py-0.5 rounded-full text-[11px] font-bold",
+                    "px-1.5 sm:px-2 py-0.2 rounded-full text-[10px] sm:text-[11px] font-bold",
                     activeTab === "posts"
                       ? "bg-white/20 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                      : "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                   )}
                 >
                   {postsTotal}
@@ -554,20 +552,20 @@ export default function VisitorProfilePage() {
                 type="button"
                 onClick={() => setActiveTab("shelf")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                  "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs",
                   activeTab === "shelf"
                     ? "bg-[#007BFF] text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:bg-slate-300/80 dark:hover:bg-slate-700/80"
                 )}
               >
-                <Library className="w-4 h-4" />
+                <Library className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Estante</span>
                 <span
                   className={cn(
-                    "px-2 py-0.5 rounded-full text-[11px] font-bold",
+                    "px-1.5 sm:px-2 py-0.2 rounded-full text-[10px] sm:text-[11px] font-bold",
                     activeTab === "shelf"
                       ? "bg-white/20 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                      : "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                   )}
                 >
                   {booksCount}
@@ -578,12 +576,12 @@ export default function VisitorProfilePage() {
             {/* Conteúdo da Aba Selecionada */}
             {activeTab === "posts" ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                  <MessageSquare className="w-5 h-5 text-[#007BFF]" />
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-1">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-[#007BFF] shrink-0" />
+                  <h2 className="text-xs sm:text-base md:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight truncate whitespace-nowrap">
                     Publicações de @{profile.username}
                   </h2>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                  <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold shrink-0">
                     {postsTotal}
                   </span>
                 </div>

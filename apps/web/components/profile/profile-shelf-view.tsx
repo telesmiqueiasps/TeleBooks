@@ -156,14 +156,14 @@ export function ProfileShelfView({
         </div>
       </div>
 
-      {/* Grid de Cards Compactos de Livros */}
+      {/* Grid de Cards Compactos de Livros (Mínimo de 5 por linha no mobile) */}
       {isLoading ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
-              <Skeleton className="aspect-[2/3] w-full rounded-xl" />
-              <Skeleton className="h-3 w-4/5 rounded-md" />
-              <Skeleton className="h-2.5 w-3/5 rounded-md" />
+        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1.5 sm:gap-2.5">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} className="space-y-1">
+              <Skeleton className="aspect-[2/3] w-full rounded-lg sm:rounded-xl" />
+              <Skeleton className="h-2.5 w-4/5 rounded-md" />
+              <Skeleton className="h-2 w-3/5 rounded-md" />
             </div>
           ))}
         </div>
@@ -198,7 +198,7 @@ export function ProfileShelfView({
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1.5 sm:gap-2.5">
             {books.map((ub) => {
               const book = ub.book;
               const title = book?.title || "Sem título";
@@ -221,7 +221,7 @@ export function ProfileShelfView({
                   title={`${title} - ${authorName}`}
                 >
                   {/* Container da Capa Compacta */}
-                  <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-800 shadow-xs group-hover:shadow-md transition-shadow">
+                  <div className="relative aspect-[2/3] w-full rounded-lg sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-800 shadow-2xs group-hover:shadow-md transition-shadow">
                     {coverUrl ? (
                       <img
                         src={coverUrl}
@@ -230,9 +230,9 @@ export function ProfileShelfView({
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 text-slate-500">
-                        <BookOpen className="w-6 h-6 mb-1 opacity-50" />
-                        <span className="text-[10px] font-bold line-clamp-2 leading-tight">
+                      <div className="w-full h-full flex flex-col items-center justify-center p-1 sm:p-2 text-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 text-slate-500">
+                        <BookOpen className="w-4 h-4 mb-0.5 opacity-50" />
+                        <span className="text-[8px] sm:text-[9px] font-bold line-clamp-2 leading-tight">
                           {title}
                         </span>
                       </div>
@@ -240,8 +240,8 @@ export function ProfileShelfView({
 
                     {/* Selo de Avaliação (se houver) */}
                     {ub.rating && Number(ub.rating) > 0 && (
-                      <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1 py-0.5 rounded bg-black/65 backdrop-blur-xs text-amber-300 text-[9px] font-bold shadow-xs">
-                        <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                      <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 px-1 py-0.2 rounded bg-black/70 backdrop-blur-xs text-amber-300 text-[8px] sm:text-[9px] font-bold shadow-xs">
+                        <Star className="w-2 h-2 fill-amber-300 text-amber-300" />
                         <span>{Number(ub.rating).toFixed(1)}</span>
                       </div>
                     )}
@@ -250,7 +250,7 @@ export function ProfileShelfView({
                     {statusBadge && (
                       <div
                         className={cn(
-                          "absolute top-1 right-1 px-1 py-0.5 rounded text-[8px] font-extrabold text-white shadow-xs leading-none",
+                          "absolute top-0.5 right-0.5 px-1 py-0.2 rounded text-[7px] sm:text-[8px] font-bold text-white shadow-xs leading-none",
                           statusBadge.bg
                         )}
                       >
@@ -260,7 +260,7 @@ export function ProfileShelfView({
 
                     {/* Barra de Progresso (apenas para livros Lendo) */}
                     {ub.status === "reading" && progressPercent !== null && (
-                      <div className="absolute bottom-0 inset-x-0 h-1 bg-black/40 overflow-hidden">
+                      <div className="absolute bottom-0 inset-x-0 h-0.5 sm:h-1 bg-black/40 overflow-hidden">
                         <div
                           className="h-full bg-blue-500 transition-all duration-300"
                           style={{ width: `${progressPercent}%` }}
@@ -270,11 +270,11 @@ export function ProfileShelfView({
                   </div>
 
                   {/* Informações Textuais Compactas */}
-                  <div className="mt-1.5 min-w-0">
-                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-[#007BFF] transition-colors">
+                  <div className="mt-1 min-w-0">
+                    <p className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-[#007BFF] transition-colors">
                       {title}
                     </p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5 font-normal">
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5 font-normal">
                       {authorName}
                     </p>
                   </div>
