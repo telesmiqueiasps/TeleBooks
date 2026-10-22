@@ -160,7 +160,7 @@ export function RabiscosBar({
         className="flex items-center gap-3 sm:gap-4 overflow-x-auto scrollbar-none py-1 px-1 scroll-smooth"
       >
         {/* ===================================================================
-            1. Círculo do Usuário Atual (Novo Folium / + Adicionar)
+            1. Círculo do Usuário Atual (Novo Rabisco / + Adicionar)
             =================================================================== */}
         <div className="flex flex-col items-center gap-1 shrink-0 select-none">
           <div className="relative group">
@@ -176,7 +176,7 @@ export function RabiscosBar({
               title={
                 ownGroup && ownGroup.rabiscos.length > 0
                   ? "Ver seus rabiscos ativos"
-                  : "Criar novo Folium"
+                  : "Criar novo Rabisco"
               }
             >
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-[#0F172A] overflow-hidden flex items-center justify-center text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -196,14 +196,14 @@ export function RabiscosBar({
                 setIsCreateOpen(true);
               }}
               className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#007BFF] text-white flex items-center justify-center shadow-md border-2 border-white dark:border-[#0F172A] hover:bg-[#006CEB] transition-colors cursor-pointer"
-              title="Publicar novo Folium"
+              title="Publicar novo Rabisco"
             >
               <Plus className="w-3 h-3 stroke-[3]" />
             </button>
           </div>
 
           <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[72px] text-center leading-tight">
-            {ownGroup && ownGroup.rabiscos.length > 0 ? "Seu Folium" : "Novo Folium"}
+            {ownGroup && ownGroup.rabiscos.length > 0 ? "Seu Rabisco" : "Novo Rabisco"}
           </span>
         </div>
 

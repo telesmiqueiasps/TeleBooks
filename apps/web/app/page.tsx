@@ -232,15 +232,20 @@ export default function HomePage() {
               updateProfile={updateProfile}
             />
 
-            {/* 2. Espaço Dedicado aos Rabiscos (Folium - Stories Efêmeros de 24 horas) */}
+            {/* 2. Espaço Dedicado aos Rabiscos (Stories Efêmeros de 24 horas) */}
             <RabiscosBar
               currentUserId={user?.id}
               currentUserAvatar={profile?.avatar_url}
               currentUserName={profile?.full_name || profile?.username || user?.user_metadata?.full_name}
             />
 
-            {/* 3. Linha Horizontal que separa as publicações temporárias do conteúdo permanente */}
-            <div className="border-b border-slate-200/80 dark:border-slate-800 my-1 sm:my-2" />
+            {/* 3. Linha separadora com identificador "Publicações" discreto rente à linha à esquerda */}
+            <div className="flex items-center gap-3 pt-1 pb-0.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 select-none shrink-0 tracking-wide">
+                Publicações
+              </span>
+              <div className="flex-1 h-px bg-slate-200/80 dark:bg-slate-800" />
+            </div>
 
             {/* 4. Lista de Publicações do Feed (sem filtros) */}
             {isLoading ? (
