@@ -174,3 +174,19 @@ class BookRead(BookBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class IncompleteBooksCounts(BaseModel):
+    all: int
+    missing_author: int
+    missing_pages: int
+    missing_cover: int
+
+
+class IncompleteBooksResponse(BaseModel):
+    items: list[BookRead]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    counts: IncompleteBooksCounts

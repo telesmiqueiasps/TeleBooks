@@ -13,7 +13,13 @@ from app.schemas.book_search import (
     CoverOption,
     ExternalBookItem,
 )
-from app.schemas.catalog import BookCreate, BookRead, BookUpdate
+from app.schemas.catalog import (
+    BookCreate,
+    BookRead,
+    BookUpdate,
+    IncompleteBooksCounts,
+    IncompleteBooksResponse,
+)
 from app.schemas.common import PaginatedResponse
 from app.services.book_cover_service import BookCoverService
 from app.services.book_integration_service import book_integration_service
@@ -163,6 +169,44 @@ def get_book_by_isbn(
 ):
     book = CatalogService.get_book_by_isbn(db=db, isbn=isbn)
     return BookRead.model_validate(book)
+
+
+@router.get(
+    "/admin/incomplete",
+    response_model=IncompleteBooksResponse,
+    summary="Listar livros do catálogo com informações incompletas (Apenas Admin)",
+)
+def list_incomplete_books(
+    filter_type: str = Query(
+        default="all",
+        alias="filter",
+        description="'all', 'missing_author', 'missing_pages', 'missing_cover'",
+    ),
+    q: str | None = Query(default=None, description="Busca textual por título, autor ou ISBN"),
+    page: int = Query(default=1, ge=1, description="Número da página"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Quantidade por página"),
+    db: Session = Depends(get_db),
+    _admin: CurrentUser = Depends(get_current_admin),
+):
+    """
+    Retorna livros do catálogo que necessitam de ajustes (sem autor, sem páginas ou sem capa).
+    """
+    books, total, counts = CatalogService.list_incomplete_books(
+        db=db,
+        filter_type=filter_type,
+        query=q,
+        page=page,
+        page_size=page_size,
+    )
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+    return IncompleteBooksResponse(
+        items=[BookRead.model_validate(b) for b in books],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        counts=IncompleteBooksCounts(**counts),
+    )
 
 
 @router.get(

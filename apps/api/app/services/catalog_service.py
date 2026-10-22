@@ -332,6 +332,10 @@ class CatalogService:
         # Atualiza relações de autores N:N se fornecidas por IDs ou nomes
         author_ids = update_dict.pop("author_ids", None)
         author_names = update_dict.pop("author_names", None)
+        # Se author_names não foi enviado mas author_name foi atualizado, extraímos os nomes para vincular
+        if author_names is None and "author_name" in update_dict and update_dict["author_name"]:
+            author_names = [a.strip() for a in update_dict["author_name"].split(",") if a.strip()]
+
         if author_ids is not None or author_names is not None:
             resolved_author_ids: list[uuid.UUID] = (
                 list(author_ids) if author_ids is not None else []
@@ -375,7 +379,94 @@ class CatalogService:
             setattr(book, field, value)
 
         db.commit()
+        db.expire_all()
         return CatalogService.get_book_by_id(db, book.id)
+
+    @staticmethod
+    def list_incomplete_books(
+        db: Session,
+        filter_type: str = "all",
+        query: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Book], int, dict[str, int]]:
+        """
+        Lista livros do catálogo que possuem dados faltantes ou inconsistentes
+        (sem autor definido, sem páginas cadastradas ou sem capa).
+        """
+        author_cond = or_(
+            Book.author_name.is_(None),
+            Book.author_name == "",
+            Book.author_name.ilike("%desconhecido%"),
+            Book.author_name.ilike("%unknown%"),
+            ~Book.authors.any(),
+        )
+
+        page_cond = or_(
+            Book.page_count.is_(None),
+            Book.page_count <= 0,
+        )
+
+        cover_cond = or_(
+            Book.cover_url.is_(None),
+            Book.cover_url == "",
+        )
+
+        all_incomplete_cond = or_(author_cond, page_cond, cover_cond)
+
+        if filter_type == "missing_author":
+            active_filter = author_cond
+        elif filter_type == "missing_pages":
+            active_filter = page_cond
+        elif filter_type == "missing_cover":
+            active_filter = cover_cond
+        else:
+            active_filter = all_incomplete_cond
+
+        stmt = (
+            select(Book)
+            .options(
+                selectinload(Book.publisher),
+                selectinload(Book.authors),
+                selectinload(Book.genres),
+            )
+            .where(active_filter)
+            .order_by(Book.updated_at.desc(), Book.title.asc())
+        )
+
+        count_stmt = select(func.count(func.distinct(Book.id))).where(active_filter)
+
+        if query:
+            search = f"%{query.strip()}%"
+            filter_search = or_(
+                Book.title.ilike(search),
+                Book.subtitle.ilike(search),
+                Book.author_name.ilike(search),
+                Book.isbn10.ilike(search),
+                Book.isbn13.ilike(search),
+            )
+            stmt = stmt.where(filter_search)
+            count_stmt = count_stmt.where(filter_search)
+
+        total = db.execute(count_stmt).scalar_one()
+
+        c_all = db.execute(select(func.count(func.distinct(Book.id))).where(all_incomplete_cond)).scalar_one()
+        c_author = db.execute(select(func.count(func.distinct(Book.id))).where(author_cond)).scalar_one()
+        c_pages = db.execute(select(func.count(func.distinct(Book.id))).where(page_cond)).scalar_one()
+        c_cover = db.execute(select(func.count(func.distinct(Book.id))).where(cover_cond)).scalar_one()
+
+        counts = {
+            "all": c_all,
+            "missing_author": c_author,
+            "missing_pages": c_pages,
+            "missing_cover": c_cover,
+        }
+
+        offset = (page - 1) * page_size
+        stmt = stmt.offset(offset).limit(page_size)
+        books = db.execute(stmt).scalars().all()
+
+        return list(books), total, counts
 
     @staticmethod
     def delete_book(db: Session, book_id: uuid.UUID) -> None:

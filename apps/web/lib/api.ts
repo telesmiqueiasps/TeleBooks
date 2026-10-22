@@ -39,6 +39,9 @@ import type {
   Rabisco,
   RabiscoUserGroup,
   CreateRabiscoInput,
+  IncompleteBooksCounts,
+  IncompleteBooksResponse,
+  BookUpdatePayload,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1406,6 +1409,62 @@ export const api = {
       },
       true
     );
+  },
+
+  // ============================================================================
+  // Curadoria & Ajustes de Livros do Catálogo (Admin)
+  // ============================================================================
+  async getAdminIncompleteBooks(params?: {
+    filter?: "all" | "missing_author" | "missing_pages" | "missing_cover";
+    q?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<IncompleteBooksResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.filter) searchParams.set("filter", params.filter);
+    if (params?.q) searchParams.set("q", params.q.trim());
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return await request<IncompleteBooksResponse>(`/books/admin/incomplete${query}`, {}, true);
+  },
+
+  async updateCatalogBook(
+    bookId: string,
+    payload: BookUpdatePayload
+  ): Promise<Book> {
+    try {
+      return await request<Book>(
+        `/books/${bookId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+        true
+      );
+    } catch {
+      // Fallback para Supabase se backend estiver offline
+      const supabase = createClient();
+      const updateData: Record<string, unknown> = {};
+      if (payload.title !== undefined) updateData.title = payload.title;
+      if (payload.subtitle !== undefined) updateData.subtitle = payload.subtitle;
+      if (payload.author_name !== undefined) updateData.author_name = payload.author_name;
+      if (payload.page_count !== undefined) updateData.page_count = payload.page_count;
+      if (payload.isbn13 !== undefined) updateData.isbn13 = payload.isbn13;
+      if (payload.isbn10 !== undefined) updateData.isbn10 = payload.isbn10;
+      if (payload.cover_url !== undefined) updateData.cover_url = payload.cover_url;
+      if (payload.description !== undefined) updateData.description = payload.description;
+
+      const { data, error } = await supabase
+        .from("books")
+        .update(updateData)
+        .eq("id", bookId)
+        .select("*, authors(*), publisher:publishers(*)")
+        .single();
+
+      if (error) throw error;
+      return data as unknown as Book;
+    }
   },
 
   // ============================================================================

@@ -23,3 +23,9 @@ def test_get_book_by_isbn_not_found(client):
     data = response.json()
     assert "error" in data
     assert data["error"]["code"] == "NOT_FOUND"
+
+
+def test_list_incomplete_books_unauthenticated(client):
+    response = client.get("/api/v1/books/admin/incomplete")
+    assert response.status_code == 401
+

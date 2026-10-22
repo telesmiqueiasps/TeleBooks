@@ -572,5 +572,37 @@ export interface CreateRabiscoInput {
   font_style?: RabiscoFontStyle | string;
 }
 
+export interface IncompleteBooksCounts {
+  all: number;
+  missing_author: number;
+  missing_pages: number;
+  missing_cover: number;
+}
+
+export interface IncompleteBooksResponse {
+  items: Book[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  counts: IncompleteBooksCounts;
+}
+
+export interface BookUpdatePayload {
+  title?: string;
+  subtitle?: string | null;
+  description?: string | null;
+  isbn10?: string | null;
+  isbn13?: string | null;
+  language?: string | null;
+  page_count?: number | null;
+  publication_date?: string | null;
+  cover_url?: string | null;
+  thumbnail_url?: string | null;
+  author_name?: string | null;
+  publisher_name?: string | null;
+  author_names?: string[];
+}
+
 
 
