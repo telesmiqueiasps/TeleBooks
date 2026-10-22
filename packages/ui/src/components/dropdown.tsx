@@ -51,13 +51,16 @@ export function Dropdown({ children }: { children: React.ReactNode }) {
   );
 }
 
+export interface DropdownTriggerProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  className?: string;
+}
+
 export function DropdownTrigger({
   children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  ...props
+}: DropdownTriggerProps) {
   const context = useContext(DropdownContext);
   if (!context) throw new Error("DropdownTrigger must be used within Dropdown");
 
@@ -68,6 +71,7 @@ export function DropdownTrigger({
         context.setIsOpen((prev) => !prev);
       }}
       className={cn("cursor-pointer inline-flex", className)}
+      {...props}
     >
       {children}
     </div>
