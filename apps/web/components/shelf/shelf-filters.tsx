@@ -323,8 +323,8 @@ export function ShelfFilters({
         </div>
       </div>
 
-      {/* Cards Quadrados de Status com Cantos Arredondados e Contador */}
-      <div className="grid grid-cols-5 gap-1.5 sm:gap-3 w-full select-none">
+      {/* 5 Cards de Filtros de Status (Compactos no Desktop e Mobile) */}
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 md:gap-3 w-full select-none">
         {[
           {
             id: "all",
@@ -371,42 +371,55 @@ export function ShelfFilters({
               type="button"
               onClick={() => handleStatusChange(card.id)}
               className={cn(
-                "relative flex flex-col items-center justify-between p-1.5 sm:p-2.5 rounded-2xl border transition-all duration-200 cursor-pointer aspect-square min-h-[66px] sm:min-h-[82px] active:scale-95 group focus:outline-none",
+                "relative flex transition-all duration-200 cursor-pointer active:scale-95 group focus:outline-none",
+                // Mobile: vertical compacto
+                "flex-col items-center justify-between p-1.5 min-h-[58px] rounded-xl border",
+                // Desktop / Tablet (sm+): horizontal super compacto (reduz a altura vertical de 200px para ~46px)
+                "sm:min-h-0 sm:h-11 md:h-12 sm:flex-row sm:items-center sm:justify-between sm:px-3 sm:py-1.5 sm:rounded-2xl",
                 isActive
-                  ? "bg-gradient-to-tr from-[#006CEB] to-[#007BFF] border-[#006CEB] text-white shadow-md shadow-[#007BFF]/25 scale-[1.02]"
+                  ? "bg-gradient-to-tr from-[#006CEB] to-[#007BFF] border-[#006CEB] text-white shadow-sm shadow-[#007BFF]/25 scale-[1.02]"
                   : "bg-white dark:bg-[#0F172A] border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
               )}
             >
-              {/* Contador no cantinho superior direito */}
+              {/* No desktop: agrupamento de ícone e rótulo à esquerda */}
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 sm:justify-start justify-center pt-1 sm:pt-0">
+                <Icon
+                  className={cn(
+                    "w-4 h-4 sm:w-4 sm:h-4 shrink-0 transition-transform group-hover:scale-110",
+                    isActive ? "text-white" : card.iconColor
+                  )}
+                />
+                <span
+                  className={cn(
+                    "hidden sm:inline text-xs font-semibold truncate leading-tight",
+                    isActive ? "text-white font-bold" : "text-slate-700 dark:text-slate-300"
+                  )}
+                >
+                  {card.label}
+                </span>
+              </div>
+
+              {/* Rótulo no mobile (aparece na base) */}
               <span
                 className={cn(
-                  "absolute top-1 sm:top-1.5 right-1 sm:right-1.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold leading-none shadow-xs",
+                  "sm:hidden text-[9px] tracking-tight leading-none text-center font-semibold truncate max-w-full px-0.5 pb-0.5",
+                  isActive ? "text-white font-bold" : "text-slate-700 dark:text-slate-300"
+                )}
+              >
+                {card.label}
+              </span>
+
+              {/* Contador (canto superior no mobile, pílula elegante à direita no desktop) */}
+              <span
+                className={cn(
+                  "rounded-full text-[9px] sm:text-[11px] font-bold leading-none shadow-xs shrink-0",
+                  "absolute top-1 right-1 px-1 py-0.5 sm:static sm:top-auto sm:right-auto sm:px-2 sm:py-0.5",
                   isActive
                     ? "bg-white text-[#006CEB]"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60"
                 )}
               >
                 {card.count}
-              </span>
-
-              {/* Ícone no centro */}
-              <div className="flex-1 flex items-center justify-center pt-2 sm:pt-1">
-                <Icon
-                  className={cn(
-                    "w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110",
-                    isActive ? "text-white" : card.iconColor
-                  )}
-                />
-              </div>
-
-              {/* Rótulo na base */}
-              <span
-                className={cn(
-                  "text-[9px] sm:text-[11px] tracking-tight leading-none text-center font-semibold truncate max-w-full px-0.5 pb-0.5",
-                  isActive ? "text-white font-bold" : "text-slate-700 dark:text-slate-300"
-                )}
-              >
-                {card.label}
               </span>
             </button>
           );

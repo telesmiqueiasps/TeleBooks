@@ -94,7 +94,7 @@ function MinhaBibliotecaContent() {
     personal_color: undefined,
     min_rating: undefined,
     sort_by: "updated_at_desc",
-    page_size: 18,
+    page_size: 24,
     groupBy: "none",
   });
 
@@ -681,7 +681,7 @@ function MinhaBibliotecaContent() {
         {isLoading ? (
           // Skeletons de Carregamento
           viewMode === "grid" ? (
-            <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
+            <div className="grid grid-cols-4 min-[360px]:grid-cols-5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2.5 md:gap-3 lg:gap-3.5">
               {[...Array(filters.page_size)].map((_, idx) => (
                 <BookCardSkeleton key={idx} />
               ))}
@@ -736,7 +736,7 @@ function MinhaBibliotecaContent() {
                     personal_color: undefined,
                     min_rating: undefined,
                     sort_by: "updated_at_desc",
-                    page_size: 18,
+                    page_size: 24,
                     groupBy: "none",
                   })
                 }
@@ -814,7 +814,7 @@ function MinhaBibliotecaContent() {
 
                 {/* Livros do Grupo no Modo Escolhido */}
                 {viewMode === "grid" && (
-                  <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
+                  <div className="grid grid-cols-4 min-[360px]:grid-cols-5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2.5 md:gap-3 lg:gap-3.5">
                     {group.books.map((userBook) => (
                       <BookCard
                         key={userBook.id}
@@ -856,7 +856,7 @@ function MinhaBibliotecaContent() {
           // =========================================================================
           <>
             {viewMode === "grid" && (
-              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
+              <div className="grid grid-cols-4 min-[360px]:grid-cols-5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-1.5 sm:gap-2.5 md:gap-3 lg:gap-3.5">
                 {userBooks.map((userBook) => (
                   <BookCard
                     key={userBook.id}

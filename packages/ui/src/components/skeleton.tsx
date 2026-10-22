@@ -34,14 +34,14 @@ export function BookCoverSkeleton({
 
 export function BookCardSkeleton() {
   return (
-    <div className="flex flex-col space-y-3">
-      <BookCoverSkeleton />
-      <div className="space-y-1.5 pt-1">
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-3 w-1/2" />
+    <div className="flex flex-col space-y-1.5 sm:space-y-2">
+      <BookCoverSkeleton className="rounded-md sm:rounded-lg" />
+      <div className="space-y-1 pt-0.5">
+        <Skeleton className="h-2.5 sm:h-3 w-5/6 rounded" />
+        <Skeleton className="h-2 sm:h-2.5 w-1/2 rounded" />
       </div>
-      <div className="flex items-center gap-2 pt-1">
-        <Skeleton className="h-5 w-16 rounded-full" />
+      <div className="flex items-center gap-1 pt-0.5">
+        <Skeleton className="h-3 sm:h-3.5 w-10 sm:w-12 rounded-full" />
       </div>
     </div>
   );
