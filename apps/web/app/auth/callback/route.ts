@@ -37,6 +37,10 @@ export async function GET(request: Request) {
     const cookiesToSetLater: { name: string; value: string; options: any }[] = [];
 
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookieOptions: {
+        path: "/",
+        sameSite: "lax",
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

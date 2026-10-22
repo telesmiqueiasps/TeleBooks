@@ -9,6 +9,7 @@ function AuthConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasAttemptedRef = React.useRef(false);
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -19,18 +20,54 @@ function AuthConfirmContent() {
       return;
     }
 
-    const supabase = createClient();
+    if (hasAttemptedRef.current) return;
+    hasAttemptedRef.current = true;
 
+    const supabase = createClient();
     let isSubscribed = true;
 
     async function handleClientExchange() {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        // 1. Verifica se a sessão já está presente (ex: criada pelo auto-detect do Supabase ou pelo servidor)
+        const {
+          data: { session: existingSession },
+        } = await supabase.auth.getSession();
+        if (existingSession) {
+          if (isSubscribed) {
+            router.replace(next);
+            router.refresh();
+          }
+          return;
+        }
+
+        // 2. Tenta a troca do código por sessão
+        const { error } = await supabase.auth.exchangeCodeForSession(code!);
 
         if (!isSubscribed) return;
 
         if (error) {
-          console.error("[Client Auth Exchange Error]:", error);
+          // 3. Antes de exibir erro ao usuário, re-verifica se a sessão foi gravada em paralelo
+          const {
+            data: { session: recheckSession },
+          } = await supabase.auth.getSession();
+          if (recheckSession) {
+            router.replace(next);
+            router.refresh();
+            return;
+          }
+
+          // Aguarda breve propagação de cookies (300ms)
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const {
+            data: { session: delayedSession },
+          } = await supabase.auth.getSession();
+          if (delayedSession) {
+            router.replace(next);
+            router.refresh();
+            return;
+          }
+
+          console.warn("[Client Auth Exchange]: Código já consumido ou sessão pendente. Redirecionando.");
           setErrorMessage(
             "Não foi possível concluir o login com o Google. Por favor, tente novamente."
           );
@@ -46,6 +83,18 @@ function AuthConfirmContent() {
           router.refresh();
         }
       } catch (err: any) {
+        // Em caso de exceção, verifica mais uma vez a sessão antes de falhar
+        const {
+          data: { session: catchSession },
+        } = await supabase.auth.getSession();
+        if (catchSession) {
+          if (isSubscribed) {
+            router.replace(next);
+            router.refresh();
+          }
+          return;
+        }
+
         console.error("[Client Auth Exchange Exception]:", err);
         if (!isSubscribed) return;
         setErrorMessage("Erro ao validar sessão. Redirecionando...");
