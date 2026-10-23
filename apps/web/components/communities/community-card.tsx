@@ -35,15 +35,33 @@ export function CommunityCard({
   return (
     <Card className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs hover:shadow-md hover:border-blue-400/50 transition-all flex flex-col justify-between overflow-hidden group">
       <div>
-        {/* Banner de cabeçalho sutil */}
+        {/* Banner de cabeçalho sutil ou capa personalizada */}
         <div
           className={cn(
-            "h-16 w-full relative p-3 flex items-start justify-between",
-            community.is_private
-              ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 dark:from-amber-950/40 dark:to-slate-900"
-              : "bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-blue-500/5 dark:from-blue-950/40 dark:to-slate-900"
+            "w-full relative p-3 flex items-start justify-between overflow-hidden transition-all",
+            community.cover_url ? "h-22" : "h-16"
           )}
         >
+          {community.cover_url ? (
+            <>
+              <img
+                src={community.cover_url}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/75" />
+            </>
+          ) : (
+            <div
+              className={cn(
+                "absolute inset-0",
+                community.is_private
+                  ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 dark:from-amber-950/40 dark:to-slate-900"
+                  : "bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-blue-500/5 dark:from-blue-950/40 dark:to-slate-900"
+              )}
+            />
+          )}
+
           {/* Badges de Privacidade e Permissão */}
           <div className="flex flex-wrap items-center gap-1.5 z-10">
             {community.is_private ? (
@@ -83,7 +101,7 @@ export function CommunityCard({
           {(isOwner || isAdmin) && (
             <Badge
               size="sm"
-              className="bg-blue-600 text-white font-extrabold text-[10px] py-0.5 border-none shadow-xs"
+              className="bg-blue-600 text-white font-extrabold text-[10px] py-0.5 border-none shadow-xs z-10"
             >
               <ShieldCheck className="w-2.5 h-2.5 mr-1" />
               {isOwner ? "Criador" : "Admin"}

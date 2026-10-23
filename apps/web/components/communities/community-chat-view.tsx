@@ -14,9 +14,7 @@ import {
   Send,
   Loader2,
   X,
-  Plus,
-  Settings,
-  LogOut,
+  Menu,
   CheckCircle2,
 } from "lucide-react";
 import { Button, Badge, cn } from "@telebooks/ui";
@@ -62,7 +60,7 @@ export function CommunityChatView({
   // Modais
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+  const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
 
   // Estado para rolagem
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,7 +85,7 @@ export function CommunityChatView({
       try {
         const [commData, msgsData] = await Promise.all([
           api.getCommunity(initialCommunity.id),
-          api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 50 }),
+          api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 60 }),
         ]);
         setCommunity(commData);
         setMessages(msgsData.items || []);
@@ -179,24 +177,31 @@ export function CommunityChatView({
     );
 
     try {
-      const res = await api.likeCommunityMessage(messageId);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? { ...msg, has_liked: res.liked, likes_count: res.likes_count }
-            : msg
-        )
-      );
+      await api.likeCommunityMessage(messageId);
     } catch {
-      // Reverter em caso de falha
-      loadMessages(false);
+      // Reverter se falhar
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            const rollbackLiked = !msg.has_liked;
+            return {
+              ...msg,
+              has_liked: rollbackLiked,
+              likes_count: rollbackLiked
+                ? msg.likes_count + 1
+                : Math.max(0, msg.likes_count - 1),
+            };
+          }
+          return msg;
+        })
+      );
     }
   };
 
   // Votar em Enquete
   const handleVotePoll = async (pollId: string, optionId: string) => {
     try {
-      const updatedPoll: CommunityPoll = await api.voteCommunityPoll(pollId, optionId);
+      const updatedPoll = await api.voteCommunityPoll(pollId, optionId);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.poll && msg.poll.id === pollId
@@ -209,35 +214,26 @@ export function CommunityChatView({
     }
   };
 
-  // Sair da Comunidade
-  const handleLeave = async () => {
-    if (!confirm(`Tem certeza de que deseja sair de "${community.name}"?`)) return;
-    try {
-      await api.leaveCommunity(community.id);
-      onLeaveCommunity?.();
-    } catch (err: any) {
-      alert(err?.message || "Erro ao sair da comunidade.");
-    }
-  };
-
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[550px] max-w-4xl mx-auto bg-white dark:bg-[#0F172A] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 h-[100dvh] w-full flex flex-col bg-white dark:bg-[#0F172A] sm:static sm:inset-auto sm:z-auto sm:h-[calc(100vh-140px)] sm:max-w-4xl sm:mx-auto sm:rounded-3xl sm:border sm:border-slate-200/80 sm:dark:border-slate-800 sm:shadow-md overflow-hidden animate-in fade-in duration-200">
       {/* =========================================================================
           1. Cabeçalho do Chat
+          - No Mobile: Ocupa toda a largura, apenas seta à esquerda, título/avatar central e 3 tracinhos à direita
           ========================================================================= */}
-      <div className="px-4 sm:px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Seta no canto superior esquerdo para sair/voltar */}
           <button
             type="button"
             onClick={onBack}
-            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
             title="Voltar para a lista de comunidades"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 sm:w-5 sm:h-5" />
           </button>
 
           {/* Avatar da Comunidade */}
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0 overflow-hidden">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-xs shrink-0 overflow-hidden">
             {community.avatar_url ? (
               <img
                 src={community.avatar_url}
@@ -245,21 +241,21 @@ export function CommunityChatView({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Users className="w-5 h-5" />
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </div>
 
-          {/* Título & Badges */}
+          {/* Título & Badges da Comunidade */}
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-display text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="font-display text-xs sm:text-base font-extrabold text-slate-900 dark:text-white truncate max-w-[170px] sm:max-w-[340px]">
                 {community.name}
               </h2>
               {community.is_private ? (
                 <Badge
                   variant="outline"
                   size="sm"
-                  className="bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 text-[9px] py-0 px-1.5 font-bold"
+                  className="bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 text-[9px] py-0 px-1 font-bold"
                 >
                   <Lock className="w-2.5 h-2.5 mr-0.5 text-amber-600" />
                   Privada
@@ -268,7 +264,7 @@ export function CommunityChatView({
                 <Badge
                   variant="outline"
                   size="sm"
-                  className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 text-[9px] py-0 px-1.5 font-bold"
+                  className="bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 text-[9px] py-0 px-1 font-bold"
                 >
                   <Globe className="w-2.5 h-2.5 mr-0.5 text-emerald-600" />
                   Pública
@@ -276,7 +272,7 @@ export function CommunityChatView({
               )}
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 truncate">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
               <span>
                 {community.members_count}{" "}
                 {community.members_count === 1 ? "membro" : "membros"}
@@ -286,7 +282,7 @@ export function CommunityChatView({
                   <span>•</span>
                   <span className="text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-0.5">
                     <Megaphone className="w-2.5 h-2.5" />
-                    Apenas Admins publicam
+                    Mural Admins
                   </span>
                 </>
               )}
@@ -294,37 +290,24 @@ export function CommunityChatView({
           </div>
         </div>
 
-        {/* Ações da Comunidade */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
+        {/* Botão de 3 Tracinhos (Apenas 3 tracinhos para Ajustes & Membros) */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsMembersModalOpen(true)}
-            className="rounded-full text-xs h-8 px-3 border-slate-300 dark:border-slate-700"
-            leftIcon={<Settings className="w-3.5 h-3.5 text-slate-500" />}
+            onClick={() => setIsMenuModalOpen(true)}
+            className="p-1.5 sm:p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Ajustes e Membros da Comunidade"
+            aria-label="Ajustes da comunidade"
           >
-            <span className="hidden sm:inline">Membros & Ajustes</span>
-            <span className="sm:hidden">Membros</span>
-          </Button>
-
-          {!isOwner && (
-            <button
-              type="button"
-              onClick={handleLeave}
-              className="p-2 text-slate-400 hover:text-rose-500 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-              title="Sair da comunidade"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
       {/* =========================================================================
-          2. Feed de Mensagens
+          2. Feed de Mensagens (Estreitado verticalmente para exibir mais mensagens na tela)
           ========================================================================= */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/10">
+      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-1 sm:space-y-1.5 bg-slate-50/40 dark:bg-slate-900/10">
         {isLoadingMessages ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
             <Loader2 className="w-6 h-6 animate-spin text-[#007BFF] mb-2" />
@@ -359,12 +342,12 @@ export function CommunityChatView({
               <div
                 key={msg.id}
                 className={cn(
-                  "flex items-start gap-2.5 max-w-[85%] sm:max-w-[75%]",
+                  "flex items-start gap-1.5 sm:gap-2 max-w-[92%] sm:max-w-[78%]",
                   isMe ? "ml-auto flex-row-reverse" : "mr-auto"
                 )}
               >
-                {/* Avatar do Autor */}
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-[11px] shrink-0 overflow-hidden shadow-xs mt-1">
+                {/* Avatar do Autor Compacto */}
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-[9px] sm:text-[10px] shrink-0 overflow-hidden shadow-2xs mt-0.5">
                   {msg.author?.avatar_url ? (
                     <img
                       src={msg.author.avatar_url}
@@ -376,51 +359,73 @@ export function CommunityChatView({
                   )}
                 </div>
 
-                {/* Balão da Mensagem */}
+                {/* Balão da Mensagem Estreitado Verticalmente */}
                 <div
                   className={cn(
-                    "rounded-2xl p-3.5 space-y-2.5 shadow-xs border text-left",
+                    "rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 space-y-1 shadow-2xs border text-left",
                     isMe
                       ? "bg-[#007BFF] text-white border-blue-600 rounded-tr-xs"
                       : "bg-white dark:bg-[#1E293B] text-slate-900 dark:text-white border-slate-200/80 dark:border-slate-800 rounded-tl-xs"
                   )}
                 >
-                  {/* Cabeçalho do balão: Autor & Hora */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-2 text-[11px] font-semibold",
-                      isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
-                    )}
-                  >
-                    <span className="font-bold truncate">
-                      {msg.author?.full_name || `@${msg.author?.username}`}
-                    </span>
-                    <span>•</span>
-                    <span className="text-[10px] opacity-80">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                  {/* Cabeçalho do balão: Autor, Hora e Botão de Curtir tudo em uma linha compacta */}
+                  <div className="flex items-center justify-between gap-2 text-[10px] sm:text-[11px] leading-tight font-medium">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-bold truncate max-w-[130px] sm:max-w-[200px]">
+                        {msg.author?.full_name || `@${msg.author?.username}`}
+                      </span>
+                      <span className="opacity-40 text-[9px]">•</span>
+                      <span className="opacity-75 text-[9px] sm:text-[10px] whitespace-nowrap">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Botão de curtir ultra-compacto integrado no topo */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLike(msg.id)}
+                      className={cn(
+                        "flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-colors cursor-pointer shrink-0",
+                        msg.has_liked
+                          ? isMe
+                            ? "bg-white/20 text-rose-300 font-bold"
+                            : "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-bold"
+                          : isMe
+                          ? "text-blue-100 hover:bg-white/10"
+                          : "text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                      title={msg.has_liked ? "Descurtir" : "Curtir"}
+                    >
+                      <Heart
+                        className={cn(
+                          "w-3 h-3",
+                          msg.has_liked ? "fill-current text-rose-500" : ""
+                        )}
+                      />
+                      {msg.likes_count > 0 && <span>{msg.likes_count}</span>}
+                    </button>
                   </div>
 
                   {/* Conteúdo textual da Mensagem */}
-                  <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-sans">
+                  <div className="text-xs sm:text-[13px] leading-snug whitespace-pre-wrap break-words font-sans">
                     {msg.content}
                   </div>
 
-                  {/* Cartão de Livro Vinculado (se houver) */}
+                  {/* Cartão de Livro Vinculado Compacto (se houver) */}
                   {msg.book && (
                     <div
                       className={cn(
-                        "rounded-xl p-2.5 flex items-center gap-3 border transition-colors",
+                        "rounded-lg p-1.5 sm:p-2 flex items-center gap-2 border transition-colors",
                         isMe
                           ? "bg-white/10 border-white/20 text-white"
                           : "bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white"
                       )}
                     >
-                      {/* Capa do Livro vinculada do catálogo */}
-                      <div className="w-10 h-14 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 shadow-xs flex items-center justify-center">
+                      {/* Capa do Livro compacta */}
+                      <div className="w-7 h-10 rounded overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 shadow-2xs flex items-center justify-center">
                         {msg.book.cover_url ? (
                           <img
                             src={msg.book.cover_url}
@@ -428,21 +433,21 @@ export function CommunityChatView({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <BookOpen className="w-5 h-5 opacity-40" />
+                          <BookOpen className="w-3.5 h-3.5 opacity-40" />
                         )}
                       </div>
 
-                      <div className="min-w-0 pr-1">
-                        <div className="flex items-center gap-1 text-[10px] font-bold opacity-75 uppercase tracking-wider">
+                      <div className="min-w-0 pr-1 leading-tight">
+                        <div className="flex items-center gap-1 text-[9px] font-bold opacity-75 uppercase tracking-wider">
                           <BookOpen className="w-2.5 h-2.5" />
-                          <span>Livro Recomendado</span>
+                          <span>Livro</span>
                         </div>
-                        <h5 className="text-xs sm:text-sm font-bold truncate">
+                        <h5 className="text-[11px] sm:text-xs font-bold truncate">
                           {msg.book.title}
                         </h5>
                         <p
                           className={cn(
-                            "text-[11px] truncate mt-0.5",
+                            "text-[10px] truncate mt-0.5",
                             isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
                           )}
                         >
@@ -452,29 +457,29 @@ export function CommunityChatView({
                     </div>
                   )}
 
-                  {/* Enquete Interativa (se houver) */}
+                  {/* Enquete Interativa Compacta (se houver) */}
                   {msg.poll && (
                     <div
                       className={cn(
-                        "rounded-xl p-3 space-y-2 border",
+                        "rounded-lg p-2 sm:p-2.5 space-y-1 border",
                         isMe
                           ? "bg-white/15 border-white/25 text-white"
                           : "bg-purple-50/40 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-900/60 text-slate-900 dark:text-white"
                       )}
                     >
-                      <div className="flex items-center justify-between text-xs font-bold gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <BarChart2 className="w-3.5 h-3.5 text-purple-400" />
-                          <span>{msg.poll.question}</span>
+                      <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold gap-2">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <BarChart2 className="w-3 h-3 text-purple-400 shrink-0" />
+                          <span className="truncate">{msg.poll.question}</span>
                         </div>
-                        <span className="text-[10px] font-normal opacity-80 shrink-0">
+                        <span className="text-[9px] font-normal opacity-80 shrink-0">
                           {msg.poll.total_votes}{" "}
                           {msg.poll.total_votes === 1 ? "voto" : "votos"}
                         </span>
                       </div>
 
-                      {/* Opções da Enquete */}
-                      <div className="space-y-1.5 pt-1">
+                      {/* Opções da Enquete Compactas */}
+                      <div className="space-y-1 pt-0.5">
                         {msg.poll.options.map((opt) => {
                           const hasVotedThis =
                             msg.poll?.user_voted_option_id === opt.id;
@@ -485,7 +490,7 @@ export function CommunityChatView({
                               type="button"
                               onClick={() => handleVotePoll(msg.poll!.id, opt.id)}
                               className={cn(
-                                "w-full text-left p-2 rounded-lg border text-xs relative overflow-hidden transition-all group cursor-pointer",
+                                "w-full text-left py-1 px-2 rounded-md border text-[10px] sm:text-[11px] relative overflow-hidden transition-all group cursor-pointer",
                                 isMe
                                   ? hasVotedThis
                                     ? "border-white bg-white/30 font-bold"
@@ -504,14 +509,14 @@ export function CommunityChatView({
                                 style={{ width: `${opt.percentage}%` }}
                               />
 
-                              <div className="relative z-10 flex items-center justify-between gap-2">
-                                <span className="truncate flex items-center gap-1.5">
+                              <div className="relative z-10 flex items-center justify-between gap-1.5">
+                                <span className="truncate flex items-center gap-1">
                                   {hasVotedThis && (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                                   )}
                                   <span>{opt.option_text}</span>
                                 </span>
-                                <span className="text-[10px] font-semibold opacity-90 shrink-0">
+                                <span className="text-[9px] font-semibold opacity-90 shrink-0">
                                   {opt.percentage.toFixed(0)}% ({opt.votes_count})
                                 </span>
                               </div>
@@ -521,32 +526,6 @@ export function CommunityChatView({
                       </div>
                     </div>
                   )}
-
-                  {/* Rodapé da Mensagem: Curtir */}
-                  <div className="flex items-center justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleLike(msg.id)}
-                      className={cn(
-                        "flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full transition-colors cursor-pointer",
-                        msg.has_liked
-                          ? isMe
-                            ? "bg-white/25 text-rose-300 font-bold"
-                            : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold"
-                          : isMe
-                          ? "text-blue-100 hover:bg-white/10"
-                          : "text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      <Heart
-                        className={cn(
-                          "w-3.5 h-3.5",
-                          msg.has_liked ? "fill-current" : ""
-                        )}
-                      />
-                      {msg.likes_count > 0 && <span>{msg.likes_count}</span>}
-                    </button>
-                  </div>
                 </div>
               </div>
             );
@@ -556,33 +535,33 @@ export function CommunityChatView({
       </div>
 
       {/* =========================================================================
-          3. Barra de Envio / Compositor
+          3. Barra de Envio / Compositor Compacto
           ========================================================================= */}
-      <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F172A] shrink-0">
+      <div className="p-2 sm:p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F172A] shrink-0">
         {!canPost ? (
           /* Aviso de comunidade restrita a administradores */
-          <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 rounded-2xl flex items-center gap-3 text-purple-700 dark:text-purple-300 text-xs">
-            <Megaphone className="w-4 h-4 shrink-0 text-purple-600" />
-            <span className="leading-relaxed">
-              Nesta comunidade, apenas os administradores podem enviar mensagens. Você pode interagir curtindo e votando nas enquetes!
+          <div className="p-2 sm:p-2.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/60 rounded-xl flex items-center gap-2 text-purple-700 dark:text-purple-300 text-[11px] sm:text-xs">
+            <Megaphone className="w-3.5 h-3.5 shrink-0 text-purple-600" />
+            <span className="leading-snug">
+              Nesta comunidade, apenas os administradores publicam mensagens. Você pode curtir e votar nas enquetes!
             </span>
           </div>
         ) : (
-          /* Formulário de Envio */
-          <form onSubmit={handleSendMessage} className="space-y-2">
+          /* Formulário de Envio Compacto */
+          <form onSubmit={handleSendMessage} className="space-y-1.5">
             {/* Chips de Anexos Prévios (Livro ou Enquete) */}
             {(selectedBook || pollDraft) && (
-              <div className="flex flex-wrap items-center gap-2 pb-1">
+              <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
                 {selectedBook && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#007BFF] text-xs font-semibold">
+                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#007BFF] text-[11px] font-semibold">
                     <BookOpen className="w-3 h-3" />
-                    <span className="truncate max-w-[180px]">
+                    <span className="truncate max-w-[150px]">
                       {selectedBook.title}
                     </span>
                     <button
                       type="button"
                       onClick={() => setSelectedBook(null)}
-                      className="ml-1 hover:text-rose-500 rounded-full"
+                      className="ml-0.5 hover:text-rose-500 rounded-full"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -590,15 +569,15 @@ export function CommunityChatView({
                 )}
 
                 {pollDraft && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-300 text-xs font-semibold">
+                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-300 text-[11px] font-semibold">
                     <BarChart2 className="w-3 h-3" />
-                    <span className="truncate max-w-[180px]">
+                    <span className="truncate max-w-[150px]">
                       Enquete: {pollDraft.question}
                     </span>
                     <button
                       type="button"
                       onClick={() => setPollDraft(null)}
-                      className="ml-1 hover:text-rose-500 rounded-full"
+                      className="ml-0.5 hover:text-rose-500 rounded-full"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -608,7 +587,7 @@ export function CommunityChatView({
             )}
 
             {/* Campo de Texto e Botão de Envio */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <input
                 type="text"
                 value={inputText}
@@ -616,15 +595,15 @@ export function CommunityChatView({
                 placeholder="Escreva uma mensagem..."
                 maxLength={3000}
                 disabled={isSubmitting}
-                className="flex-1 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs sm:text-sm text-slate-900 dark:text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
+                className="flex-1 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs sm:text-sm text-slate-900 dark:text-white px-3.5 py-2 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
               />
 
               <Button
                 type="submit"
                 variant="primary"
-                size="md"
+                size="sm"
                 disabled={isSubmitting || !inputText.trim()}
-                className="rounded-full w-11 h-11 p-0 shrink-0 bg-gradient-to-tr from-[#006CEB] to-[#007BFF] shadow-sm shadow-blue-500/20 active:scale-95"
+                className="rounded-full w-9 h-9 sm:w-10 sm:h-10 p-0 shrink-0 bg-gradient-to-tr from-[#006CEB] to-[#007BFF] shadow-xs active:scale-95 flex items-center justify-center"
                 title="Enviar mensagem"
               >
                 {isSubmitting ? (
@@ -635,29 +614,25 @@ export function CommunityChatView({
               </Button>
             </div>
 
-            {/* Ações de Anexo: Vincular Livro & Criar Enquete */}
-            <div className="flex items-center gap-2 pt-0.5">
-              <Button
+            {/* Ações de Anexo Compactas: Vincular Livro & Criar Enquete */}
+            <div className="flex items-center gap-1.5">
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => setIsBookModalOpen(true)}
-                className="rounded-full text-[11px] h-7 px-3 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-[#007BFF]"
-                leftIcon={<BookOpen className="w-3 h-3 text-[#007BFF]" />}
+                className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-[#007BFF] hover:border-blue-300 transition-colors cursor-pointer"
               >
-                Vincular Livro
-              </Button>
+                <BookOpen className="w-3 h-3 text-[#007BFF]" />
+                <span>Vincular Livro</span>
+              </button>
 
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => setIsPollModalOpen(true)}
-                className="rounded-full text-[11px] h-7 px-3 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-purple-600"
-                leftIcon={<BarChart2 className="w-3 h-3 text-purple-600" />}
+                className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-purple-600 hover:border-purple-300 transition-colors cursor-pointer"
               >
-                Criar Enquete
-              </Button>
+                <BarChart2 className="w-3 h-3 text-purple-600" />
+                <span>Criar Enquete</span>
+              </button>
             </div>
           </form>
         )}
@@ -687,13 +662,20 @@ export function CommunityChatView({
         selectedBookId={selectedBook?.id}
       />
 
-      {/* Modal de Membros & Moderação */}
+      {/* Modal de Ajustes, Membros & Moderação (3 Tracinhos) */}
       <CommunityMembersModal
-        isOpen={isMembersModalOpen}
-        onClose={() => setIsMembersModalOpen(false)}
+        isOpen={isMenuModalOpen}
+        onClose={() => setIsMenuModalOpen(false)}
         community={community}
         currentUserId={currentUserId}
         onMemberChanged={() => loadMessages(false)}
+        onCommunityUpdated={(updated) => {
+          setCommunity(updated);
+          onCommunityUpdatedRef.current?.(updated);
+        }}
+        onLeaveCommunity={() => {
+          onLeaveCommunity?.();
+        }}
       />
     </div>
   );
