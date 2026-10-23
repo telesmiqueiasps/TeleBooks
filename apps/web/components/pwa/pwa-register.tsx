@@ -41,6 +41,9 @@ export function PwaRegister() {
         navigator.serviceWorker
           .register("/sw.js", { scope: "/" })
           .then((registration) => {
+            // Força verificação de nova versão no servidor
+            registration.update().catch(() => {});
+
             // Verifica se há atualização pendente
             if (registration.waiting) {
               setWaitingWorker(registration.waiting);

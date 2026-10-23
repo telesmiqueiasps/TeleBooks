@@ -1,10 +1,10 @@
 /**
  * TeleBooks Service Worker
- * Versão: 1.0.2
- * Estratégia: Cache-first para estáticos, Network-first para navegação, Fallback offline resiliente
+ * Versão: 1.0.3
+ * Estratégia: Cache-first para estáticos, Network-first para navegação e RSC, Fallback offline resiliente
  */
 
-const CACHE_VERSION = "telebooks-pwa-v1.0.2";
+const CACHE_VERSION = "telebooks-pwa-v1.0.3";
 const STATIC_CACHE = `telebooks-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `telebooks-pages-${CACHE_VERSION}`;
 const FONTS_CACHE = `telebooks-fonts-${CACHE_VERSION}`;
@@ -68,7 +68,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Ativação e limpeza de caches antigos
+// Ativação e limpeza imediata de caches antigos
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -117,7 +117,8 @@ self.addEventListener("fetch", (event) => {
         return new Response(
           JSON.stringify({
             error: "offline",
-            message: "Você está sem conexão com a internet. Suas ações serão sincronizadas ao reconectar.",
+            message:
+              "Você está sem conexão com a internet. Suas ações serão sincronizadas ao reconectar.",
           }),
           {
             status: 503,
@@ -129,7 +130,30 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 3. Fontes do Google Fonts (Cache-First)
+  // 3. Requisições internas do Next.js RSC (App Router Client Navigation)
+  // Devem ir direto para a rede sem risco de retornar undefined
+  if (
+    request.headers.get("rsc") === "1" ||
+    url.searchParams.has("_rsc") ||
+    request.headers.get("accept")?.includes("text/x-component") ||
+    request.headers.get("next-router-state-tree") ||
+    url.pathname.startsWith("/_next/data/")
+  ) {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const pagesCache = await caches.open(PAGES_CACHE);
+        const cached = await pagesCache.match(request);
+        if (cached) return cached;
+        return new Response(null, {
+          status: 503,
+          statusText: "Offline",
+        });
+      })
+    );
+    return;
+  }
+
+  // 4. Fontes do Google Fonts (Cache-First com fallback seguro)
   if (
     url.hostname === "fonts.googleapis.com" ||
     url.hostname === "fonts.gstatic.com"
@@ -138,17 +162,21 @@ self.addEventListener("fetch", (event) => {
       caches.open(FONTS_CACHE).then((cache) => {
         return cache.match(request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
-          return fetch(request).then((networkResponse) => {
-            safeCloneAndCache(FONTS_CACHE, request, networkResponse);
-            return networkResponse;
-          });
+          return fetch(request)
+            .then((networkResponse) => {
+              safeCloneAndCache(FONTS_CACHE, request, networkResponse);
+              return networkResponse;
+            })
+            .catch(() => {
+              return new Response("", { status: 404, statusText: "Font Not Found" });
+            });
         });
       })
     );
     return;
   }
 
-  // 4. Imagens de capas externas (Stale-While-Revalidate com cache dedicado)
+  // 5. Imagens de capas externas (Stale-While-Revalidate com cache dedicado)
   if (
     request.destination === "image" &&
     (url.pathname.includes("/covers/") ||
@@ -157,23 +185,27 @@ self.addEventListener("fetch", (event) => {
       url.hostname.includes("cloudflare"))
   ) {
     event.respondWith(
-      caches.open(COVERS_CACHE).then((cache) => {
-        return cache.match(request).then((cachedResponse) => {
-          const fetchPromise = fetch(request)
-            .then((networkResponse) => {
-              safeCloneAndCache(COVERS_CACHE, request, networkResponse);
-              return networkResponse;
-            })
-            .catch(() => cachedResponse);
+      caches.open(COVERS_CACHE).then(async (cache) => {
+        const cachedResponse = await cache.match(request);
+        const networkFetch = fetch(request)
+          .then((networkResponse) => {
+            safeCloneAndCache(COVERS_CACHE, request, networkResponse);
+            return networkResponse;
+          })
+          .catch(() => {
+            return (
+              cachedResponse ||
+              new Response("", { status: 404, statusText: "Cover Not Found" })
+            );
+          });
 
-          return cachedResponse || fetchPromise;
-        });
+        return cachedResponse || networkFetch;
       })
     );
     return;
   }
 
-  // 5. Assets Estáticos do Next.js e Locais (Cache-First)
+  // 6. Assets Estáticos do Next.js e Locais (Cache-First)
   if (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.match(/\.(css|js|woff2?|ico|png|jpg|jpeg|svg|webp)$/)
@@ -181,89 +213,64 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       caches.open(STATIC_CACHE).then((cache) => {
         return cache.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          return fetch(request).then((networkResponse) => {
-            safeCloneAndCache(STATIC_CACHE, request, networkResponse);
-            return networkResponse;
-          });
+          if (cachedResponse) return cachedResponse;
+          return fetch(request)
+            .then((networkResponse) => {
+              safeCloneAndCache(STATIC_CACHE, request, networkResponse);
+              return networkResponse;
+            })
+            .catch(() => {
+              // Se o chunk não for encontrado (ex: hash antigo após deploy), retorna 404 seguro
+              return new Response("", { status: 404, statusText: "Asset Not Found" });
+            });
         });
       })
     );
     return;
   }
 
-  // 6. Páginas HTML / Navegação (Network-First com timeout de 3.5s e Fallback Offline)
-  if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
+  // 7. Páginas HTML / Navegação (Network-First com suporte a query params e Fallback Offline)
+  if (
+    request.mode === "navigate" ||
+    request.headers.get("accept")?.includes("text/html")
+  ) {
     event.respondWith(
-      new Promise((resolve) => {
-        let hasResolved = false;
+      fetch(request)
+        .then((networkResponse) => {
+          safeCloneAndCache(PAGES_CACHE, request, networkResponse);
+          return networkResponse;
+        })
+        .catch(async () => {
+          // 1. Tenta página exata no cache (incluindo query params como ?id=...)
+          const pagesCache = await caches.open(PAGES_CACHE);
+          const cachedPage = await pagesCache.match(request);
+          if (cachedPage) return cachedPage;
 
-        // Timeout para conexões muito lentas/3G instável
-        const timeoutId = setTimeout(() => {
-          if (!hasResolved) {
-            caches.open(PAGES_CACHE).then((cache) => {
-              cache.match(request).then((cachedPage) => {
-                if (cachedPage && !hasResolved) {
-                  hasResolved = true;
-                  resolve(cachedPage);
-                }
-              });
-            }).catch(() => {});
-          }
-        }, 3500);
+          // 2. Tenta página sem query params (ex: /comunidade)
+          try {
+            const urlNoQuery = new URL(request.url);
+            urlNoQuery.search = "";
+            const cachedPageNoQuery = await pagesCache.match(urlNoQuery.toString());
+            if (cachedPageNoQuery) return cachedPageNoQuery;
+          } catch (_e) {}
 
-        fetch(request)
-          .then((networkResponse) => {
-            clearTimeout(timeoutId);
-            if (!hasResolved) {
-              hasResolved = true;
-              safeCloneAndCache(PAGES_CACHE, request, networkResponse);
-              resolve(networkResponse);
-            }
-          })
-          .catch(async () => {
-            clearTimeout(timeoutId);
-            if (!hasResolved) {
-              hasResolved = true;
-              // Tenta página cacheada
-              const cache = await caches.open(PAGES_CACHE);
-              const cachedPage = await cache.match(request);
-              if (cachedPage) {
-                resolve(cachedPage);
-                return;
-              }
+          // 3. Fallback para página offline estilizada
+          const staticCache = await caches.open(STATIC_CACHE);
+          const offlinePage = await staticCache.match(OFFLINE_URL);
+          if (offlinePage) return offlinePage;
 
-              // Fallback para página offline estilizada
-              const staticCache = await caches.open(STATIC_CACHE);
-              const offlinePage = await staticCache.match(OFFLINE_URL);
-              if (offlinePage) {
-                resolve(offlinePage);
-                return;
-              }
-
-              resolve(new Response("TeleBooks - Offline", { status: 503 }));
-            }
+          // 4. Último recurso: Response válido com erro 503
+          return new Response("TeleBooks - Você está offline", {
+            status: 503,
+            headers: { "Content-Type": "text/html; charset=utf-8" },
           });
-      })
+        })
     );
     return;
   }
 
-  // 7. Qualquer outra requisição segue padrão Stale-While-Revalidate suave
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          safeCloneAndCache(STATIC_CACHE, request, networkResponse);
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // 8. Para qualquer outra requisição não categorizada, NÃO chamar event.respondWith!
+  // O navegador cuidará nativamente da requisição, eliminando riscos de TypeError.
 });
 
 // Comunicação com a interface (para forçar atualização se requisitado)
