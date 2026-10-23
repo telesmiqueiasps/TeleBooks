@@ -10,7 +10,6 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
-  Image as ImageIcon,
   Camera,
   Trash2,
   Upload,
@@ -34,52 +33,22 @@ export function CreateCommunityModal({
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [onlyAdminsCanPost, setOnlyAdminsCanPost] = useState(false);
-  const [coverUrl, setCoverUrl] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
-
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("Por favor, selecione um arquivo de imagem válido para a capa.");
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      setError("A capa deve ter no máximo 8MB.");
-      return;
-    }
-
-    try {
-      setIsUploadingCover(true);
-      setError(null);
-      const res = await api.uploadFile(file, "covers");
-      setCoverUrl(res.url);
-    } catch (err: any) {
-      setError(err?.message || "Erro ao fazer upload da capa.");
-    } finally {
-      setIsUploadingCover(false);
-      if (coverInputRef.current) coverInputRef.current.value = "";
-    }
-  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setError("Por favor, selecione um arquivo de imagem válido para a foto.");
+      setError("Por favor, selecione um arquivo de imagem válido (JPEG, PNG, WebP).");
       return;
     }
 
@@ -94,7 +63,7 @@ export function CreateCommunityModal({
       const res = await api.uploadFile(file, "avatars");
       setAvatarUrl(res.url);
     } catch (err: any) {
-      setError(err?.message || "Erro ao fazer upload da foto.");
+      setError(err?.message || "Erro ao fazer upload da foto de perfil.");
     } finally {
       setIsUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
@@ -117,7 +86,6 @@ export function CreateCommunityModal({
         description: description.trim() || undefined,
         is_private: isPrivate,
         only_admins_can_post: onlyAdminsCanPost,
-        cover_url: coverUrl.trim() || undefined,
         avatar_url: avatarUrl.trim() || undefined,
       };
 
@@ -129,7 +97,6 @@ export function CreateCommunityModal({
       setDescription("");
       setIsPrivate(false);
       setOnlyAdminsCanPost(false);
-      setCoverUrl("");
       setAvatarUrl("");
     } catch (err: any) {
       setError(
@@ -176,119 +143,64 @@ export function CreateCommunityModal({
             </div>
           )}
 
-          {/* Seção Visual: Capa e Foto da Comunidade */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Capa & Foto do Grupo
-            </label>
-
-            {/* Banner da Capa com visualização e botão de upload */}
-            <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/80 group">
-              {coverUrl ? (
-                <>
+          {/* Foto de Perfil da Comunidade */}
+          <div className="flex flex-col items-center justify-center gap-2.5 py-1">
+            <div className="relative group">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-lg shadow-md border-3 border-white dark:border-[#0F172A] overflow-hidden">
+                {avatarUrl ? (
                   <img
-                    src={coverUrl}
-                    alt="Capa da Comunidade"
+                    src={avatarUrl}
+                    alt="Foto da Comunidade"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => coverInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-full bg-white/90 hover:bg-white text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      Trocar Capa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCoverUrl("")}
-                      className="p-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md cursor-pointer"
-                      title="Remover capa"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 text-center">
-                  <ImageIcon className="w-6 h-6 mb-1 opacity-60" />
-                  <span className="text-[11px] font-medium">Nenhuma capa adicionada</span>
-                  <button
-                    type="button"
-                    onClick={() => coverInputRef.current?.click()}
-                    disabled={isUploadingCover}
-                    className="mt-1.5 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-[#007BFF] text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                  >
-                    {isUploadingCover ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007BFF]" />
-                    ) : (
-                      <Upload className="w-3.5 h-3.5 text-[#007BFF]" />
-                    )}
-                    <span>{isUploadingCover ? "Enviando..." : "Adicionar Capa"}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Foto / Avatar embutido na Capa */}
-              <div className="absolute bottom-2.5 left-3.5 z-10 flex items-center gap-2.5">
-                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-sm shadow-md border-2 border-white dark:border-[#0F172A] overflow-hidden group/avatar">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Users className="w-5 h-5" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={isUploadingAvatar}
-                    className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
-                    title="Adicionar/Trocar foto do grupo"
-                  >
-                    {isUploadingAvatar ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Camera className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-
-                <div className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] text-white font-medium">
-                  {avatarUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => setAvatarUrl("")}
-                      className="hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-2.5 h-2.5" />
-                      Remover foto
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => avatarInputRef.current?.click()}
-                      className="hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Upload className="w-2.5 h-2.5" />
-                      Escolher foto
-                    </button>
-                  )}
-                </div>
+                ) : (
+                  <Users className="w-8 h-8" />
+                )}
               </div>
+
+              {/* Botão de sobreposição para envio de foto */}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute inset-0 bg-black/40 hover:bg-black/60 text-white rounded-3xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                title="Adicionar ou trocar foto"
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Camera className="w-5 h-5" />
+                )}
+                <span className="text-[10px] font-semibold mt-1">Alterar</span>
+              </button>
             </div>
 
-            {/* Inputs de arquivo ocultos */}
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/jpg"
-              onChange={handleCoverUpload}
-              className="hidden"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="text-xs font-semibold text-[#007BFF] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{avatarUrl ? "Trocar Foto" : "Adicionar Foto de Perfil"}</span>
+              </button>
+
+              {avatarUrl && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl("")}
+                    className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remover</span>
+                  </button>
+                </>
+              )}
+            </div>
+
             <input
               ref={avatarInputRef}
               type="file"

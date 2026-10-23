@@ -83,12 +83,18 @@ export function CommunityChatView({
         setIsLoadingMessages(true);
       }
       try {
-        const [commData, msgsData] = await Promise.all([
-          api.getCommunity(initialCommunity.id),
-          api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 60 }),
-        ]);
-        setCommunity(commData);
-        setMessages(msgsData.items || []);
+        if (isInitial) {
+          const [commData, msgsData] = await Promise.all([
+            api.getCommunity(initialCommunity.id),
+            api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 60 }),
+          ]);
+          setCommunity(commData);
+          setMessages(msgsData.items || []);
+        } else {
+          // Polling periódico silencioso: apenas busca mensagens novas para não resetar o estado de edição da comunidade
+          const msgsData = await api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 60 });
+          setMessages(msgsData.items || []);
+        }
       } catch (err) {
         console.error("TeleBooks Comunidade: Erro ao carregar mensagens:", err);
       } finally {

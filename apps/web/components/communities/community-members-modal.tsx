@@ -5,7 +5,6 @@ import {
   X,
   Users,
   ShieldCheck,
-  ShieldAlert,
   UserPlus,
   Check,
   Ban,
@@ -15,7 +14,6 @@ import {
   AlertCircle,
   Search,
   Settings,
-  Image as ImageIcon,
   Camera,
   Upload,
   Globe,
@@ -68,16 +66,14 @@ export function CommunityMembersModal({
   const [description, setDescription] = useState(community.description || "");
   const [isPrivate, setIsPrivate] = useState(community.is_private);
   const [onlyAdminsCanPost, setOnlyAdminsCanPost] = useState(community.only_admins_can_post);
-  const [coverUrl, setCoverUrl] = useState(community.cover_url || "");
   const [avatarUrl, setAvatarUrl] = useState(community.avatar_url || "");
 
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const isInitializedRef = useRef(false);
 
   // Mensagens globais de feedback
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -87,18 +83,23 @@ export function CommunityMembersModal({
   const [userSearchResults, setUserSearchResults] = useState<UserSearchItem[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
-  // Sincronizar dados da comunidade quando abrir
+  // Sincronizar dados da comunidade APENAS na abertura inicial do modal
+  // Isso impede que polling em background ou re-renders apaguem o que o usuário está digitando!
   useEffect(() => {
     if (isOpen) {
-      setName(community.name);
-      setDescription(community.description || "");
-      setIsPrivate(community.is_private);
-      setOnlyAdminsCanPost(community.only_admins_can_post);
-      setCoverUrl(community.cover_url || "");
-      setAvatarUrl(community.avatar_url || "");
-      setMessage(null);
+      if (!isInitializedRef.current) {
+        setName(community.name || "");
+        setDescription(community.description || "");
+        setIsPrivate(community.is_private ?? false);
+        setOnlyAdminsCanPost(community.only_admins_can_post ?? false);
+        setAvatarUrl(community.avatar_url || "");
+        setMessage(null);
+        isInitializedRef.current = true;
+      }
+    } else {
+      isInitializedRef.current = false;
     }
-  }, [isOpen, community]);
+  }, [isOpen]); // Dependência estrita em isOpen
 
   // Carregar membros e pendentes
   const loadMembersData = useCallback(async () => {
@@ -148,47 +149,18 @@ export function CommunityMembersModal({
 
   if (!isOpen) return null;
 
-  // Upload de Capa
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage({ text: "Selecione uma imagem válida para a capa.", type: "error" });
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      setMessage({ text: "A capa deve ter no máximo 8MB.", type: "error" });
-      return;
-    }
-
-    try {
-      setIsUploadingCover(true);
-      setMessage(null);
-      const res = await api.uploadFile(file, "covers");
-      setCoverUrl(res.url);
-      setMessage({ text: "Capa carregada! Lembre-se de clicar em 'Salvar Ajustes'.", type: "success" });
-    } catch (err: any) {
-      setMessage({ text: err?.message || "Erro ao carregar capa.", type: "error" });
-    } finally {
-      setIsUploadingCover(false);
-      if (coverInputRef.current) coverInputRef.current.value = "";
-    }
-  };
-
   // Upload de Foto / Avatar
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setMessage({ text: "Selecione uma imagem válida para o avatar.", type: "error" });
+      setMessage({ text: "Selecione uma imagem válida para a foto de perfil.", type: "error" });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setMessage({ text: "O avatar deve ter no máximo 5MB.", type: "error" });
+      setMessage({ text: "A foto deve ter no máximo 5MB.", type: "error" });
       return;
     }
 
@@ -197,7 +169,7 @@ export function CommunityMembersModal({
       setMessage(null);
       const res = await api.uploadFile(file, "avatars");
       setAvatarUrl(res.url);
-      setMessage({ text: "Foto carregada! Lembre-se de clicar em 'Salvar Ajustes'.", type: "success" });
+      setMessage({ text: "Foto carregada! Clique em 'Salvar Alterações' para confirmar.", type: "success" });
     } catch (err: any) {
       setMessage({ text: err?.message || "Erro ao carregar foto.", type: "error" });
     } finally {
@@ -210,7 +182,8 @@ export function CommunityMembersModal({
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
-    if (!name.trim()) {
+    const cleanName = name.trim();
+    if (!cleanName) {
       setMessage({ text: "O nome da comunidade é obrigatório.", type: "error" });
       return;
     }
@@ -220,16 +193,20 @@ export function CommunityMembersModal({
       setMessage(null);
 
       const payload: CommunityUpdateParams = {
-        name: name.trim(),
+        name: cleanName,
         description: description.trim() || null,
         is_private: isPrivate,
         only_admins_can_post: onlyAdminsCanPost,
-        cover_url: coverUrl.trim() || null,
         avatar_url: avatarUrl.trim() || null,
       };
 
       const updated = await api.updateCommunity(community.id, payload);
-      setMessage({ text: "Informações da comunidade atualizadas com sucesso!", type: "success" });
+      setName(updated.name);
+      setDescription(updated.description || "");
+      setIsPrivate(updated.is_private);
+      setOnlyAdminsCanPost(updated.only_admins_can_post);
+      setAvatarUrl(updated.avatar_url || "");
+      setMessage({ text: "Ajustes salvos com sucesso!", type: "success" });
       onCommunityUpdated?.(updated);
     } catch (err: any) {
       setMessage({ text: err?.message || "Erro ao salvar alterações da comunidade.", type: "error" });
@@ -355,7 +332,7 @@ export function CommunityMembersModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#0F172A] w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Cabeçalho */}
+        {/* Cabeçalho do Modal */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center shadow-xs overflow-hidden">
@@ -370,7 +347,7 @@ export function CommunityMembersModal({
                 {name || community.name}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Ajustes e gerenciamento da comunidade
+                Ajustes e membros da comunidade
               </p>
             </div>
           </div>
@@ -421,7 +398,7 @@ export function CommunityMembersModal({
             <span>Membros ({members.length})</span>
           </button>
 
-          {/* Aba Solicitações (visível apenas para admins de comunidades privadas ou se houver pendentes) */}
+          {/* Aba Solicitações (visível apenas para admins) */}
           {isAdmin && (
             <button
               type="button"
@@ -495,117 +472,63 @@ export function CommunityMembersModal({
             <div className="space-y-4">
               {isAdmin ? (
                 <form onSubmit={handleSaveSettings} className="space-y-4">
-                  {/* Capa e Foto da Comunidade */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Capa e Foto do Grupo
-                    </label>
-
-                    <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/80 group">
-                      {coverUrl ? (
-                        <>
+                  {/* Foto de Perfil da Comunidade */}
+                  <div className="flex flex-col items-center justify-center gap-2 py-2">
+                    <div className="relative group">
+                      <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-lg shadow-md border-3 border-white dark:border-[#0F172A] overflow-hidden">
+                        {avatarUrl ? (
                           <img
-                            src={coverUrl}
-                            alt="Capa da Comunidade"
+                            src={avatarUrl}
+                            alt="Foto da Comunidade"
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => coverInputRef.current?.click()}
-                              className="px-3 py-1.5 rounded-full bg-white/90 hover:bg-white text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
-                            >
-                              <Camera className="w-3.5 h-3.5" />
-                              Alterar Capa
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCoverUrl("")}
-                              className="p-1.5 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md cursor-pointer"
-                              title="Remover capa"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 text-center">
-                          <ImageIcon className="w-6 h-6 mb-1 opacity-60" />
-                          <span className="text-[11px] font-medium">Nenhuma capa adicionada</span>
-                          <button
-                            type="button"
-                            onClick={() => coverInputRef.current?.click()}
-                            disabled={isUploadingCover}
-                            className="mt-1.5 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-[#007BFF] text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                          >
-                            {isUploadingCover ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007BFF]" />
-                            ) : (
-                              <Upload className="w-3.5 h-3.5 text-[#007BFF]" />
-                            )}
-                            <span>{isUploadingCover ? "Enviando..." : "Adicionar Capa"}</span>
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Avatar Flutuante na Capa */}
-                      <div className="absolute bottom-2.5 left-3.5 z-10 flex items-center gap-2.5">
-                        <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-sm shadow-md border-2 border-white dark:border-[#0F172A] overflow-hidden group/avatar">
-                          {avatarUrl ? (
-                            <img
-                              src={avatarUrl}
-                              alt="Avatar"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Users className="w-5 h-5" />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => avatarInputRef.current?.click()}
-                            disabled={isUploadingAvatar}
-                            className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
-                            title="Trocar foto do grupo"
-                          >
-                            {isUploadingAvatar ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Camera className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-
-                        <div className="bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] text-white font-medium">
-                          {avatarUrl ? (
-                            <button
-                              type="button"
-                              onClick={() => setAvatarUrl("")}
-                              className="hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                              Remover foto
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => avatarInputRef.current?.click()}
-                              className="hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <Upload className="w-2.5 h-2.5" />
-                              Escolher foto
-                            </button>
-                          )}
-                        </div>
+                        ) : (
+                          <Users className="w-8 h-8" />
+                        )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                        className="absolute inset-0 bg-black/40 hover:bg-black/60 text-white rounded-3xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Alterar foto de perfil"
+                      >
+                        {isUploadingAvatar ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Camera className="w-5 h-5" />
+                        )}
+                        <span className="text-[10px] font-semibold mt-1">Alterar</span>
+                      </button>
                     </div>
 
-                    <input
-                      ref={coverInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/jpg"
-                      onChange={handleCoverUpload}
-                      className="hidden"
-                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                        className="text-xs font-semibold text-[#007BFF] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{avatarUrl ? "Trocar Foto" : "Adicionar Foto"}</span>
+                      </button>
+
+                      {avatarUrl && (
+                        <>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setAvatarUrl("")}
+                            className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remover</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -719,7 +642,7 @@ export function CommunityMembersModal({
                           </h4>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                             {onlyAdminsCanPost
-                              ? "Ativado: Outros membros podem apenas curtir e votar em enquetes."
+                              ? "Ativado: Outros membros podem curtir e votar em enquetes."
                               : "Desativado: Todos os membros ativos podem mandar mensagens."}
                           </p>
                         </div>
@@ -759,12 +682,22 @@ export function CommunityMembersModal({
               ) : (
                 /* Visualização para leitores não-admins */
                 <div className="space-y-4">
-                  {/* Capa */}
-                  {community.cover_url && (
-                    <div className="h-28 w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                      <img src={community.cover_url} alt="" className="w-full h-full object-cover" />
+                  <div className="flex flex-col items-center justify-center gap-2 py-2">
+                    <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-bold text-lg shadow-md border-3 border-white dark:border-[#0F172A] overflow-hidden">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Foto da Comunidade"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Users className="w-8 h-8" />
+                      )}
                     </div>
-                  )}
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                      {community.name}
+                    </h3>
+                  </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">

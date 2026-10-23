@@ -1650,16 +1650,24 @@ export const api = {
   },
 
   async updateCommunity(communityId: string, payload: CommunityUpdateParams): Promise<Community> {
-    return request<Community>(`/communities/${communityId}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
+    return request<Community>(
+      `/communities/${communityId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      true
+    );
   },
 
   async deleteCommunity(communityId: string): Promise<void> {
-    return request<void>(`/communities/${communityId}`, {
-      method: "DELETE",
-    });
+    return request<void>(
+      `/communities/${communityId}`,
+      {
+        method: "DELETE",
+      },
+      true
+    );
   },
 
   async joinCommunity(communityId: string): Promise<CommunityJoinResponse> {
