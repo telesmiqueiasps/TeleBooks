@@ -66,39 +66,67 @@ export function CommunityChatView({
 
   // Estado para rolagem
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialScrollDone = useRef(false);
+
+  // Ref estável para onCommunityUpdated para evitar loops de render
+  const onCommunityUpdatedRef = useRef(onCommunityUpdated);
+  useEffect(() => {
+    onCommunityUpdatedRef.current = onCommunityUpdated;
+  }, [onCommunityUpdated]);
 
   const isOwner = community.my_role === "owner";
   const isAdmin = community.my_role === "admin" || isOwner;
   const canPost = !community.only_admins_can_post || isAdmin;
 
-  // Carregar detalhes atualizados da comunidade e mensagens
-  const loadCommunityAndMessages = useCallback(async () => {
-    try {
-      setIsLoadingMessages(true);
-      const [commData, msgsData] = await Promise.all([
-        api.getCommunity(community.id),
-        api.getCommunityMessages(community.id, { page: 1, page_size: 50 }),
-      ]);
-      setCommunity(commData);
-      onCommunityUpdated?.(commData);
-      setMessages(msgsData.items || []);
-    } catch {
-      // Ignora erro
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [community.id, onCommunityUpdated]);
+  // Carregar mensagens (com modo silencioso para não piscar a tela)
+  const loadMessages = useCallback(
+    async (isInitial = false) => {
+      if (isInitial) {
+        setIsLoadingMessages(true);
+      }
+      try {
+        const [commData, msgsData] = await Promise.all([
+          api.getCommunity(initialCommunity.id),
+          api.getCommunityMessages(initialCommunity.id, { page: 1, page_size: 50 }),
+        ]);
+        setCommunity(commData);
+        setMessages(msgsData.items || []);
+      } catch (err) {
+        console.error("TeleBooks Comunidade: Erro ao carregar mensagens:", err);
+      } finally {
+        if (isInitial) {
+          setIsLoadingMessages(false);
+        }
+      }
+    },
+    [initialCommunity.id]
+  );
+
+  // Efeito de montagem e polling silencioso a cada 6 segundos
+  useEffect(() => {
+    let isMounted = true;
+    isInitialScrollDone.current = false;
+    loadMessages(true);
+
+    const interval = setInterval(() => {
+      if (isMounted) {
+        loadMessages(false);
+      }
+    }, 6000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [loadMessages]);
 
   useEffect(() => {
-    loadCommunityAndMessages();
-  }, [loadCommunityAndMessages]);
-
-  useEffect(() => {
-    // Rolagem automática para a mensagem mais recente
-    if (!isLoadingMessages) {
+    // Rolagem suave no primeiro carregamento de mensagens
+    if (!isLoadingMessages && messages.length > 0 && !isInitialScrollDone.current) {
+      isInitialScrollDone.current = true;
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length, isLoadingMessages]);
+  }, [isLoadingMessages, messages.length]);
 
   // Enviar Mensagem
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -161,7 +189,7 @@ export function CommunityChatView({
       );
     } catch {
       // Reverter em caso de falha
-      loadCommunityAndMessages();
+      loadMessages(false);
     }
   };
 
@@ -665,7 +693,7 @@ export function CommunityChatView({
         onClose={() => setIsMembersModalOpen(false)}
         community={community}
         currentUserId={currentUserId}
-        onMemberChanged={loadCommunityAndMessages}
+        onMemberChanged={() => loadMessages(false)}
       />
     </div>
   );

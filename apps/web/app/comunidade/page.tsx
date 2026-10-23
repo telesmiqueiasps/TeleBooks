@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Users,
@@ -62,16 +62,21 @@ function ComunidadeContent() {
     loadCommunities();
   }, [loadCommunities]);
 
+  const activeCommunityRef = useRef<string | null>(null);
+  activeCommunityRef.current = activeCommunity?.id || null;
+
   // Carregar comunidade direta se houver id na URL (ex: ?id=uuid)
   useEffect(() => {
     const urlId = searchParams.get("id");
-    if (urlId && (!activeCommunity || activeCommunity.id !== urlId)) {
+    if (urlId && activeCommunityRef.current !== urlId) {
       api
         .getCommunity(urlId)
         .then((data) => setActiveCommunity(data))
         .catch(() => {});
+    } else if (!urlId && activeCommunityRef.current) {
+      setActiveCommunity(null);
     }
-  }, [searchParams, activeCommunity]);
+  }, [searchParams]);
 
   // Participar de uma comunidade
   const handleJoin = async (community: Community) => {
@@ -99,18 +104,22 @@ function ComunidadeContent() {
   };
 
   // Abrir Chat de uma Comunidade
-  const handleOpenCommunity = (comm: Community) => {
+  const handleOpenCommunity = useCallback((comm: Community) => {
     setActiveCommunity(comm);
-    // Atualiza a URL sem recarregar
     router.replace(`/comunidade?id=${comm.id}`, { scroll: false });
-  };
+  }, [router]);
+
+  // Atualizar dados da Comunidade
+  const handleCommunityUpdated = useCallback((updated: Community) => {
+    setActiveCommunity(updated);
+  }, []);
 
   // Voltar para a lista de comunidades
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     setActiveCommunity(null);
     router.replace("/comunidade", { scroll: false });
     loadCommunities();
-  };
+  }, [router, loadCommunities]);
 
   return (
     <AppShell currentTab="community">
@@ -121,7 +130,7 @@ function ComunidadeContent() {
             community={activeCommunity}
             currentUserId={user?.id || ""}
             onBack={handleBackToList}
-            onCommunityUpdated={(updated) => setActiveCommunity(updated)}
+            onCommunityUpdated={handleCommunityUpdated}
             onLeaveCommunity={handleBackToList}
           />
         ) : (
