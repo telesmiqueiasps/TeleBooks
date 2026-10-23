@@ -125,6 +125,8 @@ def test_search_external_endpoint_mocked(client):
 
 def test_confirm_import_and_deduplication(client):
     import uuid
+    from app.db.session import SessionLocal
+    from app.models.catalog import Book
 
     rnd_suffix = str(uuid.uuid4().int)[:9]
     unique_isbn13 = f"978{rnd_suffix}".ljust(13, "0")[:13]
@@ -141,32 +143,44 @@ def test_confirm_import_and_deduplication(client):
         "add_to_shelf": False,
     }
 
-    # 1. Primeira chamada: cria o livro no acervo
-    r1 = client.post("/api/v1/books/import/confirm", json=payload)
-    assert r1.status_code == 200
-    d1 = r1.json()
-    assert d1["reused"] is False
-    created_id = d1["book"]["id"]
-    assert created_id is not None
-    assert d1["book"]["title"] == unique_title
-    assert d1["book"]["isbn13"] == unique_isbn13
+    created_id = None
+    try:
+        # 1. Primeira chamada: cria o livro no acervo
+        r1 = client.post("/api/v1/books/import/confirm", json=payload)
+        assert r1.status_code == 200
+        d1 = r1.json()
+        assert d1["reused"] is False
+        created_id = d1["book"]["id"]
+        assert created_id is not None
+        assert d1["book"]["title"] == unique_title
+        assert d1["book"]["isbn13"] == unique_isbn13
 
-    # 2. Segunda chamada com o MESMO ISBN (com hífens para testar normalização):
-    formatted_hyphens = (
-        f"{unique_isbn13[:3]}-{unique_isbn13[3:5]}-{unique_isbn13[5:8]}-{unique_isbn13[8:12]}-{unique_isbn13[12:]}"
-    )
-    payload_with_hyphens = {
-        **payload,
-        "isbn13": formatted_hyphens,
-    }
-    r2 = client.post("/api/v1/books/import/confirm", json=payload_with_hyphens)
-    assert r2.status_code == 200
-    d2 = r2.json()
+        # 2. Segunda chamada com o MESMO ISBN (com hífens para testar normalização):
+        formatted_hyphens = (
+            f"{unique_isbn13[:3]}-{unique_isbn13[3:5]}-{unique_isbn13[5:8]}-{unique_isbn13[8:12]}-{unique_isbn13[12:]}"
+        )
+        payload_with_hyphens = {
+            **payload,
+            "isbn13": formatted_hyphens,
+        }
+        r2 = client.post("/api/v1/books/import/confirm", json=payload_with_hyphens)
+        assert r2.status_code == 200
+        d2 = r2.json()
 
-    # DEVE REUTILIZAR sem duplicar!
-    assert d2["reused"] is True
-    assert d2["book"]["id"] == created_id
-    assert "reutilizado" in d2["message"].lower()
+        # DEVE REUTILIZAR sem duplicar!
+        assert d2["reused"] is True
+        assert d2["book"]["id"] == created_id
+        assert "reutilizado" in d2["message"].lower()
+    finally:
+        if created_id:
+            db = SessionLocal()
+            try:
+                b = db.query(Book).filter(Book.id == uuid.UUID(created_id)).first()
+                if b:
+                    db.delete(b)
+                    db.commit()
+            finally:
+                db.close()
 
 
 def test_parse_publication_date():
@@ -181,6 +195,8 @@ def test_parse_publication_date():
 
 def test_confirm_import_with_duplicate_genres_and_authors(client):
     import uuid
+    from app.db.session import SessionLocal
+    from app.models.catalog import Book
 
     rnd_suffix = str(uuid.uuid4().int)[:9]
     unique_isbn13 = f"978{rnd_suffix}".ljust(13, "0")[:13]
@@ -200,22 +216,35 @@ def test_confirm_import_with_duplicate_genres_and_authors(client):
         "add_to_shelf": False,
     }
 
-    # Não pode lançar IntegrityError (UniqueViolation em book_genres_pkey ou book_authors_pkey)
-    response = client.post("/api/v1/books/import/confirm", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["book"]["id"] is not None
-    assert data["book"]["title"] == unique_title
-    assert data["book"]["publication_date"] == "1952-01-01"
+    created_id = None
+    try:
+        # Não pode lançar IntegrityError (UniqueViolation em book_genres_pkey ou book_authors_pkey)
+        response = client.post("/api/v1/books/import/confirm", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        created_id = data["book"]["id"]
+        assert created_id is not None
+        assert data["book"]["title"] == unique_title
+        assert data["book"]["publication_date"] == "1952-01-01"
 
-    # Autores e gêneros devem estar deduplicados
-    authors = data["book"]["authors"]
-    assert len(authors) == 1
-    assert authors[0]["name"] == "Isaac Asimov"
+        # Autores e gêneros devem estar deduplicados
+        authors = data["book"]["authors"]
+        assert len(authors) == 1
+        assert authors[0]["name"] == "Isaac Asimov"
 
-    genres = data["book"]["genres"]
-    genre_names = [g["name"].lower() for g in genres]
-    assert len(genre_names) == len(set(genre_names))
+        genres = data["book"]["genres"]
+        genre_names = [g["name"].lower() for g in genres]
+        assert len(genre_names) == len(set(genre_names))
+    finally:
+        if created_id:
+            db = SessionLocal()
+            try:
+                b = db.query(Book).filter(Book.id == uuid.UUID(created_id)).first()
+                if b:
+                    db.delete(b)
+                    db.commit()
+            finally:
+                db.close()
 
 
 def test_brasil_api_ignores_invalid_isbn_length():
