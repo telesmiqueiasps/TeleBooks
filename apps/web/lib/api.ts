@@ -42,6 +42,15 @@ import type {
   IncompleteBooksCounts,
   IncompleteBooksResponse,
   BookUpdatePayload,
+  Community,
+  CommunityMember,
+  CommunityMessage,
+  CommunityPoll,
+  CommunityCreateParams,
+  CommunityUpdateParams,
+  CommunityMessageCreateParams,
+  CommunityJoinResponse,
+  CommunityMessageLikeResponse,
 } from "@telebooks/types";
 import { createClient } from "./supabase/client";
 
@@ -1608,6 +1617,157 @@ export const api = {
   async deleteRabisco(rabiscoId: string): Promise<void> {
     return request<void>(`/rabiscos/${rabiscoId}`, {
       method: "DELETE",
+    });
+  },
+
+  // ============================================================================
+  // Comunidades (Grupos / Enquetes / Mensagens / Moderação)
+  // ============================================================================
+  async getCommunities(params?: {
+    tab?: "explore" | "my" | "managed";
+    query?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResult<Community>> {
+    const searchParams = new URLSearchParams();
+    if (params?.tab) searchParams.set("tab", params.tab);
+    if (params?.query) searchParams.set("q", params.query);
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return request<PaginatedResult<Community>>(`/communities${query}`, {}, true);
+  },
+
+  async getCommunity(communityId: string): Promise<Community> {
+    return request<Community>(`/communities/${communityId}`, {}, true);
+  },
+
+  async createCommunity(payload: CommunityCreateParams): Promise<Community> {
+    return request<Community>("/communities", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateCommunity(communityId: string, payload: CommunityUpdateParams): Promise<Community> {
+    return request<Community>(`/communities/${communityId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteCommunity(communityId: string): Promise<void> {
+    return request<void>(`/communities/${communityId}`, {
+      method: "DELETE",
+    });
+  },
+
+  async joinCommunity(communityId: string): Promise<CommunityJoinResponse> {
+    return request<CommunityJoinResponse>(`/communities/${communityId}/join`, {
+      method: "POST",
+    });
+  },
+
+  async leaveCommunity(communityId: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>(`/communities/${communityId}/leave`, {
+      method: "POST",
+    });
+  },
+
+  async getCommunityMembers(
+    communityId: string,
+    status: "active" | "pending" = "active"
+  ): Promise<CommunityMember[]> {
+    return request<CommunityMember[]>(
+      `/communities/${communityId}/members?status=${status}`,
+      {},
+      true
+    );
+  },
+
+  async approveCommunityMember(communityId: string, targetUserId: string): Promise<CommunityMember> {
+    return request<CommunityMember>(
+      `/communities/${communityId}/members/${targetUserId}/approve`,
+      { method: "POST" }
+    );
+  },
+
+  async rejectCommunityMember(
+    communityId: string,
+    targetUserId: string
+  ): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>(
+      `/communities/${communityId}/members/${targetUserId}/reject`,
+      { method: "POST" }
+    );
+  },
+
+  async removeCommunityMember(
+    communityId: string,
+    targetUserId: string
+  ): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>(
+      `/communities/${communityId}/members/${targetUserId}`,
+      { method: "DELETE" }
+    );
+  },
+
+  async updateCommunityMemberRole(
+    communityId: string,
+    targetUserId: string,
+    role: "admin" | "member"
+  ): Promise<CommunityMember> {
+    return request<CommunityMember>(
+      `/communities/${communityId}/members/${targetUserId}/role`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }
+    );
+  },
+
+  async inviteCommunityMember(communityId: string, targetUserId: string): Promise<CommunityMember> {
+    return request<CommunityMember>(`/communities/${communityId}/members/invite`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: targetUserId }),
+    });
+  },
+
+  async getCommunityMessages(
+    communityId: string,
+    params?: { page?: number; page_size?: number }
+  ): Promise<PaginatedResult<CommunityMessage>> {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set("page", params.page.toString());
+    if (params?.page_size) searchParams.set("page_size", params.page_size.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return request<PaginatedResult<CommunityMessage>>(
+      `/communities/${communityId}/messages${query}`,
+      {},
+      true
+    );
+  },
+
+  async createCommunityMessage(
+    communityId: string,
+    payload: CommunityMessageCreateParams
+  ): Promise<CommunityMessage> {
+    return request<CommunityMessage>(`/communities/${communityId}/messages`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async likeCommunityMessage(messageId: string): Promise<CommunityMessageLikeResponse> {
+    return request<CommunityMessageLikeResponse>(`/communities/messages/${messageId}/like`, {
+      method: "POST",
+    });
+  },
+
+  async voteCommunityPoll(pollId: string, optionId: string): Promise<CommunityPoll> {
+    return request<CommunityPoll>(`/communities/polls/${pollId}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ option_id: optionId }),
     });
   },
 };

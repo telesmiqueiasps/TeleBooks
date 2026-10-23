@@ -9,6 +9,15 @@ from app.models.catalog import (
     Genre,
     Publisher,
 )
+from app.models.community import (
+    Community,
+    CommunityMember,
+    CommunityMessage,
+    CommunityMessageLike,
+    CommunityPoll,
+    CommunityPollOption,
+    CommunityPollVote,
+)
 from app.models.feed import (
     FeedPost,
     FeedPostComment,
@@ -65,4 +74,12 @@ __all__ = [
     "BookSubmission",
     "Rabisco",
     "RabiscoView",
+    "Community",
+    "CommunityMember",
+    "CommunityMessage",
+    "CommunityPoll",
+    "CommunityPollOption",
+    "CommunityPollVote",
+    "CommunityMessageLike",
 ]
+

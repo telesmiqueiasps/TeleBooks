@@ -604,5 +604,130 @@ export interface BookUpdatePayload {
   author_names?: string[];
 }
 
+// ============================================================================
+// Comunidades (Grupos / Enquetes / Mensagens / Membros)
+// ============================================================================
+
+export type CommunityRole = "owner" | "admin" | "member";
+export type CommunityMemberStatus = "active" | "pending";
+
+export interface CommunityAuthor {
+  id: string;
+  username: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface CommunityBookPreview {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  author_name?: string | null;
+  cover_url?: string | null;
+  page_count?: number | null;
+}
+
+export interface CommunityMember {
+  id: string;
+  community_id: string;
+  user_id: string;
+  role: CommunityRole;
+  status: CommunityMemberStatus;
+  joined_at: string;
+  user?: CommunityAuthor | null;
+}
+
+export interface CommunityPollOption {
+  id: string;
+  poll_id: string;
+  option_text: string;
+  position: number;
+  votes_count: number;
+  percentage: number;
+}
+
+export interface CommunityPoll {
+  id: string;
+  message_id: string;
+  question: string;
+  created_at: string;
+  options: CommunityPollOption[];
+  total_votes: number;
+  user_voted_option_id?: string | null;
+}
+
+export interface CommunityMessage {
+  id: string;
+  community_id: string;
+  user_id: string;
+  content: string;
+  book_id?: string | null;
+  book?: CommunityBookPreview | null;
+  is_poll: boolean;
+  poll?: CommunityPoll | null;
+  author?: CommunityAuthor | null;
+  likes_count: number;
+  has_liked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  is_private: boolean;
+  only_admins_can_post: boolean;
+  avatar_url?: string | null;
+  cover_url?: string | null;
+  created_by: string;
+  creator?: CommunityAuthor | null;
+  members_count: number;
+  pending_requests_count: number;
+  my_role?: CommunityRole | null;
+  my_status?: CommunityMemberStatus | null;
+  can_post: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityCreateParams {
+  name: string;
+  description?: string | null;
+  is_private?: boolean;
+  only_admins_can_post?: boolean;
+  avatar_url?: string | null;
+  cover_url?: string | null;
+}
+
+export interface CommunityUpdateParams {
+  name?: string | null;
+  description?: string | null;
+  is_private?: boolean | null;
+  only_admins_can_post?: boolean | null;
+  avatar_url?: string | null;
+  cover_url?: string | null;
+}
+
+export interface CommunityMessageCreateParams {
+  content: string;
+  book_id?: string | null;
+  poll_question?: string | null;
+  poll_options?: string[] | null;
+}
+
+export interface CommunityJoinResponse {
+  success: boolean;
+  status: CommunityMemberStatus;
+  message: string;
+}
+
+export interface CommunityMessageLikeResponse {
+  liked: boolean;
+  likes_count: number;
+}
+
+
 
 
