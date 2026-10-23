@@ -19,7 +19,7 @@ interface AuthContextType {
     username: string,
     fullName?: string
   ) => Promise<{ error?: string; requiresEmailConfirmation?: boolean }>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { scope?: "local" | "global" | "others" }) => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   updatePassword: (password: string) => Promise<{ error?: string }>;
   updateProfile: (data: Partial<Profile>) => Promise<{ error?: string }>;
@@ -255,9 +255,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signOut = async () => {
+  const signOut = async (options?: { scope?: "local" | "global" | "others" }) => {
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: options?.scope || "local" });
       setUser(null);
       setSession(null);
       setProfile(null);
