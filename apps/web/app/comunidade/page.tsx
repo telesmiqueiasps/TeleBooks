@@ -38,6 +38,7 @@ function ComunidadeContent() {
   // Modais
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUserSearchOpen, setIsUserSearchOpen] = useState(false);
+  const [userSearchText, setUserSearchText] = useState("");
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
   // Carregar Comunidades da API
@@ -139,7 +140,7 @@ function ComunidadeContent() {
             {/* =========================================================================
                 1. Cabeçalho da Página + Barra de Pesquisa de Usuários
                 ========================================================================= */}
-            <div className="flex flex-col gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+            <div className="flex flex-col gap-3.5 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 {/* Título & Ícone */}
                 <div className="flex items-center gap-3">
@@ -156,11 +157,10 @@ function ComunidadeContent() {
                   </div>
                 </div>
 
-                {/* Botão de Criar Comunidade */}
+                {/* Botão de Criar Comunidade com Estética Premium */}
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       if (!user) {
                         router.push("/login");
@@ -168,44 +168,53 @@ function ComunidadeContent() {
                       }
                       setIsCreateModalOpen(true);
                     }}
-                    className="rounded-full text-xs px-4.5 bg-gradient-to-r from-[#006CEB] to-[#007BFF] shadow-sm font-bold active:scale-95"
-                    leftIcon={<Plus className="w-4 h-4" />}
+                    className="group relative inline-flex items-center gap-2 px-4.5 py-2.5 rounded-2xl bg-gradient-to-r from-[#0062E0] via-[#007BFF] to-[#0091FF] text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/35 hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer overflow-hidden border border-white/20"
                   >
-                    Criar Comunidade
-                  </Button>
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+                    <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                      <Plus className="w-3.5 h-3.5 stroke-[2.8]" />
+                    </div>
+                    <span>Criar Comunidade</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Barra de Pesquisa de Usuários (como a do perfil) no topo da tela */}
-              <div
-                onClick={() => {
+              {/* Barra de Pesquisa de Usuários Horizontal Compacta:
+                  - Fundo cinza-azulado muito claro (#F1F5F9)
+                  - Ícone de lupa dentro do campo à esquerda
+                  - Botão circular azul de busca à direita
+                  - Não ocupa área excessiva */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
                   if (!user) {
                     router.push("/login");
                     return;
                   }
                   setIsUserSearchOpen(true);
                 }}
-                className="w-full rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-2.5 sm:p-3 flex items-center justify-between gap-3 shadow-xs hover:border-[#007BFF]/50 transition-all cursor-pointer group"
+                className="w-full relative flex items-center"
               >
-                <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-[#007BFF] flex items-center justify-center shrink-0">
-                    <Search className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 block">
-                      Pesquisar outros leitores e amigos
-                    </span>
-                    <span className="text-[11px] text-slate-400 block">
-                      Encontre leitores por @username para seguir e trocar impressões
-                    </span>
-                  </div>
-                </div>
+                <div className="relative w-full flex items-center">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-4 pointer-events-none z-10" />
 
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] text-slate-500 font-semibold">
-                  <span>Buscar Leitores</span>
-                  <Search className="w-3 h-3" />
+                  <input
+                    type="text"
+                    value={userSearchText}
+                    onChange={(e) => setUserSearchText(e.target.value)}
+                    placeholder="Pesquisar leitores por nome ou @username..."
+                    className="w-full h-11 sm:h-12 pl-11 pr-13 rounded-2xl sm:rounded-full bg-[#F1F5F9] dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007BFF]/40 focus:border-[#007BFF] transition-all shadow-2xs"
+                  />
+
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 sm:right-2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center shadow-xs hover:shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    title="Buscar leitor"
+                  >
+                    <Search className="w-4 h-4 stroke-[2.3]" />
+                  </button>
                 </div>
-              </div>
+              </form>
             </div>
 
             {/* =========================================================================
@@ -310,7 +319,7 @@ function ComunidadeContent() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-stretch">
                 {communities.map((comm) => (
                   <CommunityCard
                     key={comm.id}
@@ -341,6 +350,7 @@ function ComunidadeContent() {
             isOpen={isUserSearchOpen}
             onClose={() => setIsUserSearchOpen(false)}
             currentUserId={user.id}
+            initialQuery={userSearchText}
           />
         )}
       </div>

@@ -33,18 +33,17 @@ export function CommunityCard({
   const isAdmin = community.my_role === "admin";
 
   return (
-    <Card className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs hover:shadow-md hover:border-blue-400/50 transition-all flex flex-col justify-between overflow-hidden group">
+    <Card className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs hover:shadow-md hover:border-blue-400/50 transition-all flex flex-col justify-between overflow-hidden group h-full">
       <div>
         {/* Banner de cabeçalho sutil */}
         <div
           className={cn(
-            "h-16 w-full relative p-3 flex items-start justify-between",
+            "h-16 w-full relative p-3 flex items-start justify-between shrink-0",
             community.is_private
               ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 dark:from-amber-950/40 dark:to-slate-900"
               : "bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-blue-500/5 dark:from-blue-950/40 dark:to-slate-900"
           )}
         >
-
           {/* Badges de Privacidade e Permissão */}
           <div className="flex flex-wrap items-center gap-1.5 z-10">
             {community.is_private ? (
@@ -93,15 +92,15 @@ export function CommunityCard({
         </div>
 
         {/* Informações Principais */}
-        <div className="p-4 sm:p-5 pt-0 relative">
-          {/* Avatar da Comunidade Flutuante */}
+        <div className="p-4 sm:p-5 pt-0 relative flex-1">
+          {/* Avatar da Comunidade Flutuante com Dimensão Fixa Rígida */}
           <div className="-mt-7 mb-3 flex items-center justify-between">
-            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-extrabold text-lg shadow-md shadow-blue-500/20 border-3 border-white dark:border-[#0F172A] shrink-0">
+            <div className="w-14 h-14 min-w-[3.5rem] min-h-[3.5rem] max-w-[3.5rem] max-h-[3.5rem] rounded-2xl bg-gradient-to-tr from-[#006CEB] to-[#007BFF] text-white flex items-center justify-center font-extrabold text-lg shadow-md shadow-blue-500/20 border-3 border-white dark:border-[#0F172A] shrink-0 overflow-hidden">
               {community.avatar_url ? (
                 <img
                   src={community.avatar_url}
                   alt={community.name}
-                  className="w-full h-full object-cover rounded-2xl"
+                  className="w-full h-full object-cover shrink-0 block aspect-square"
                 />
               ) : (
                 <Users className="w-6 h-6 stroke-[2.2]" />
@@ -117,12 +116,12 @@ export function CommunityCard({
             </div>
           </div>
 
-          {/* Nome e Descrição */}
-          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors line-clamp-1">
+          {/* Nome e Descrição com Altura Fixa */}
+          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white group-hover:text-[#007BFF] transition-colors line-clamp-1 h-6">
             {community.name}
           </h3>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed min-h-[32px]">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed h-10 overflow-hidden">
             {community.description || "Comunidade literária no TeleBooks para debater leituras e compartilhar opiniões."}
           </p>
         </div>

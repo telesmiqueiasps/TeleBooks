@@ -22,6 +22,7 @@ interface UserSearchDialogProps {
   onClose: () => void;
   currentUserId?: string;
   onFollowAction?: () => void;
+  initialQuery?: string;
 }
 
 export function UserSearchDialog({
@@ -29,8 +30,9 @@ export function UserSearchDialog({
   onClose,
   currentUserId,
   onFollowAction,
+  initialQuery = "",
 }: UserSearchDialogProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<UserSearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [actionLoadingMap, setActionLoadingMap] = useState<Record<string, boolean>>({});
@@ -38,12 +40,15 @@ export function UserSearchDialog({
 
   useEffect(() => {
     if (isOpen) {
+      if (initialQuery) {
+        setQuery(initialQuery);
+      }
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       setQuery("");
       setResults([]);
     }
-  }, [isOpen]);
+  }, [isOpen, initialQuery]);
 
   useEffect(() => {
     const q = query.trim();

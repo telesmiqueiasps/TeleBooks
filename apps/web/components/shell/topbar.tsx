@@ -302,20 +302,10 @@ export function Topbar({
                 ? "bg-white text-[#006CEB] shadow-sm font-bold scale-[1.02]"
                 : "text-white/85 hover:text-white hover:bg-white/15"
             )}
-            title="Comunidade de Leitores (Em Desenvolvimento)"
+            title="Comunidade de Leitores"
           >
             <Users className={cn("h-4 w-4", isCommunityActive ? "stroke-[2.5]" : "stroke-[2]")} />
             <span>Comunidade</span>
-            <span
-              className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider leading-none",
-                isCommunityActive
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-amber-400 text-slate-900"
-              )}
-            >
-              Em Breve
-            </span>
           </button>
 
           {/* 5. Aba Moderação (Admin) */}
