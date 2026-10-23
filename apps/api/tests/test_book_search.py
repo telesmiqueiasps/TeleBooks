@@ -1,5 +1,10 @@
+import asyncio
+import uuid
+from datetime import date
 from unittest.mock import AsyncMock, patch
 
+from app.db.session import SessionLocal
+from app.models.catalog import Book
 from app.schemas.book_search import ExternalBookItem
 from app.services.book_integration_service import BookIntegrationService, book_integration_service
 from app.services.book_providers.brasil_api import BrasilApiProvider
@@ -124,10 +129,6 @@ def test_search_external_endpoint_mocked(client):
 
 
 def test_confirm_import_and_deduplication(client):
-    import uuid
-    from app.db.session import SessionLocal
-    from app.models.catalog import Book
-
     rnd_suffix = str(uuid.uuid4().int)[:9]
     unique_isbn13 = f"978{rnd_suffix}".ljust(13, "0")[:13]
     unique_title = f"Livro de Teste de Deduplicação {uuid.uuid4().hex[:8]}"
@@ -156,9 +157,7 @@ def test_confirm_import_and_deduplication(client):
         assert d1["book"]["isbn13"] == unique_isbn13
 
         # 2. Segunda chamada com o MESMO ISBN (com hífens para testar normalização):
-        formatted_hyphens = (
-            f"{unique_isbn13[:3]}-{unique_isbn13[3:5]}-{unique_isbn13[5:8]}-{unique_isbn13[8:12]}-{unique_isbn13[12:]}"
-        )
+        formatted_hyphens = f"{unique_isbn13[:3]}-{unique_isbn13[3:5]}-{unique_isbn13[5:8]}-{unique_isbn13[8:12]}-{unique_isbn13[12:]}"
         payload_with_hyphens = {
             **payload,
             "isbn13": formatted_hyphens,
@@ -184,7 +183,6 @@ def test_confirm_import_and_deduplication(client):
 
 
 def test_parse_publication_date():
-    from datetime import date
     assert BookIntegrationService.parse_publication_date("2021-05-12") == date(2021, 5, 12)
     assert BookIntegrationService.parse_publication_date("1997-06") == date(1997, 6, 1)
     assert BookIntegrationService.parse_publication_date("2005") == date(2005, 1, 1)
@@ -194,10 +192,6 @@ def test_parse_publication_date():
 
 
 def test_confirm_import_with_duplicate_genres_and_authors(client):
-    import uuid
-    from app.db.session import SessionLocal
-    from app.models.catalog import Book
-
     rnd_suffix = str(uuid.uuid4().int)[:9]
     unique_isbn13 = f"978{rnd_suffix}".ljust(13, "0")[:13]
     unique_title = f"Fundação e Império {uuid.uuid4().hex[:8]}"
@@ -248,9 +242,7 @@ def test_confirm_import_with_duplicate_genres_and_authors(client):
 
 
 def test_brasil_api_ignores_invalid_isbn_length():
-    import asyncio
     brasil = BrasilApiProvider()
     # Código de 12 dígitos (ex: 791606410248) retorna None imediatamente sem fazer request
     res = asyncio.run(brasil.get_by_isbn("791606410248"))
     assert res is None
-
